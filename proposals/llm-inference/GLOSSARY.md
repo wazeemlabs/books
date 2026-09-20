@@ -84,3 +84,16 @@ explanation.
 | paging | 3 | Storing a sequence's cache in fixed-size blocks that can be anywhere, so nothing need be reserved in advance. |
 | indirection | 14 | Reaching data through a table of addresses rather than directly. The cost paging pays for its flexibility. |
 | eviction, preemption | 12 | Taking memory back from a running sequence when the pool fills, and recomputing or restoring it later. |
+| prefix | 3 | However much of a prompt's start another prompt also had. The unit prefix caching reuses. |
+| prefix caching | 3 | Reusing the keys and values of a prompt's opening because some earlier request already computed them. |
+| working set | 4 | The amount of data a piece of work actually touches, as opposed to how much it could touch. |
+| radix tree, prefix tree | 6 | An index that groups items by how they begin, so everything sharing an opening is found in one walk down from the root. |
+| system prompt | 11 | The standing instruction an application puts in front of whatever the user typed. Identical on every request, which is what makes it worth caching. |
+| reference count | 14 | A tally of how many holders a piece of memory has. It is released only when the last of them lets go. |
+| cache hit, cache miss | 15 | Whether what was asked for was already there. |
+| hit rate | 15 | The share of what was asked for that was already there. For a prefix cache, measured in prompt tokens, not in requests. |
+| hash | 15 | A short number computed from a piece of data, used as its name. Two different pieces of data are overwhelmingly unlikely to get the same one. |
+| least recently used | 15 | The eviction rule that throws away whatever has gone longest without being wanted. |
+| least frequently used | 15 | The eviction rule that throws away whatever has been wanted least often. Blind to age, which is its weakness. |
+| copy-on-write | 15 | Sharing something until somebody writes to it, and copying only then. Prefix caching avoids needing it by sharing only blocks that are already full. |
+| side channel | 15 | Information leaked by how long something takes rather than by what it returns. |

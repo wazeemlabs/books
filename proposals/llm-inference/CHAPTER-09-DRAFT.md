@@ -116,8 +116,10 @@ not anyone asked.
 with. It is small, and each part exists because of one of the failures
 above.
 
+<!-- listing: bench/harness.py repeat -->
+
 ```python
-def repeat(fn, warmup: int = 1, runs: int = 3) -> Repeated:
+def repeat(fn: Callable[[], float], warmup: int = 1, runs: int = 3) -> Repeated:
     """Warm up, then time `runs` times. Returns every value, not just the median."""
     for _ in range(warmup):
         fn()
@@ -129,10 +131,14 @@ summary is computed from those, and the raw values stay in the results
 file, so a reader can compute a different summary and disagree with
 mine.
 
+<!-- abridged: bench/harness.py -->
+
 ```python
     @property
     def spread(self) -> float:
-        """Half-range as a fraction of the median."""
+        """Half-range as a fraction of the median: the number §1.4 asks about."""
+        if len(self.values) < 2 or self.median == 0:
+            return 0.0
         return (max(self.values) - min(self.values)) / 2 / abs(self.median)
 
     @property

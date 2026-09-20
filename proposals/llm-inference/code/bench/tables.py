@@ -382,6 +382,80 @@ def ch14_blocksize(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch15_numerics(d: dict) -> str:
+    n, e = d["numerics"], d["equivalence"]
+    yes = lambda b: "**yes**" if b else "**no**"
+    out = [
+        "| Step of the forward pass | Contracts over | Same answer when the sequence is "
+        f"{n['padding_tokens']} tokens longer? |",
+        "|---|---|---|",
+        f"| A projection (Q, K, V, feed-forward) | the model dimension, which does not change | "
+        f"{yes(n['projection_same'])} |",
+        f"| The softmax in attention | the sequence, which does | "
+        f"{yes(n['softmax_same'])} — differs by {n['softmax_diff']:.1e} |",
+        "",
+        "And what that does to the keys the cache hands back, layer by layer:",
+        "",
+        "| Layer | Difference from the same key computed afresh |",
+        "|---|---|",
+    ]
+    for i, diff in enumerate(e["cached_key_diff_by_layer"]):
+        out.append(f"| {i} | {'exactly 0' if diff == 0 else f'{diff:.1e}'} |")
+    out += ["", "Layer 0's keys come from the embedding and a projection alone, so "
+                "they are identical. Every layer after it has been through an "
+                "attention softmax."]
+    return "\n".join(out)
+
+
+def ch15_prefill(d: dict) -> str:
+    pf = d["prefill"]
+    out = ["| Prompt already cached | Tokens still computed | Prefill, no hit | "
+           "Prefill, hit | Speedup | If time went with tokens |",
+           "|---|---|---|---|---|---|"]
+    for r in pf["points"]:
+        flag = " \\*" if r["noisy"] else ""
+        out.append(f"| {r['shared_tokens']} of {pf['prompt_tokens']} "
+                   f"({r['shared_frac'] * 100:.0f}%) | {r['tokens_computed']} | "
+                   f"{r['cold_s']['median'] * 1e3:.1f} ms | "
+                   f"{r['warm_s']['median'] * 1e3:.1f} ms | "
+                   f"**{r['speedup']:.2f}x**{flag} | "
+                   f"{r['speedup_if_proportional']:.2f}x |")
+    out += ["", f"Median of {pf['runs']} paired runs after {pf['warmup']} warmup, "
+                "cold and warm measured one after the other in each run so that "
+                "a machine-wide stall moves both. The lookup in the index is "
+                "timed with the hit; the miss lookup on the cold path is not "
+                "charged, which makes the comparison slightly unkind to the "
+                "cache.",
+            "",
+            "\\* spread of the paired ratio exceeded 5%; this machine is a "
+            "shared container."]
+    return "\n".join(out)
+
+
+def ch15_policies(d: dict) -> str:
+    gb = d["assumptions"]["gb_per_block"]
+    names = {"lru": "Least recently used **leaf**",
+             "lfu": "Least frequently used leaf",
+             "unstructured": "Least recently used block, leaf or not"}
+    sizes = sorted({r["pool_blocks"] for r in d["sizes"]})
+    out = ["| Cache size | " + " | ".join(names[p] for p in ("lru", "lfu", "unstructured")) + " |",
+           "|---|---|---|---|"]
+    for n in sizes:
+        cells = []
+        for policy in ("lru", "lfu", "unstructured"):
+            r = next(x for x in d["sizes"]
+                     if x["policy"] == policy and x["pool_blocks"] == n)
+            cells.append(f"{r['hit_rate'] * 100:.1f}%")
+        out.append(f"| {n * gb:,.1f} GB ({n:,} blocks) | " + " | ".join(cells) + " |")
+    out += ["", "Share of prompt tokens served from the cache, over "
+                f"{d['trace']['requests']} requests from {d['trace']['sessions']} "
+                f"sessions (seed {d['assumptions']['seed']}). The largest size "
+                "holds everything this traffic can share. Sizes are the "
+                "reference model's bytes; the simulation runs the real index "
+                "and the real allocator."]
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -433,6 +507,8 @@ def main() -> None:
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),
+        "ch15": (("ch15-numerics", ch15_numerics), ("ch15-prefill", ch15_prefill),
+                 ("ch15-policies", ch15_policies)),
     }
     for chapter, entries in specs.items():
         path = RESULTS / f"{chapter}.json"

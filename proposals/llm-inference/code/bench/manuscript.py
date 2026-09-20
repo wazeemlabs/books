@@ -1,9 +1,18 @@
 """Render a chapter source into the manuscript, or check that it is current.
 
-A chapter source contains two kinds of hole:
+A chapter source contains three kinds of hole:
 
   {{name}}                             a number, resolved from bench.values
   <!-- include: tables/x.md -->        a generated table, inserted below it
+  <!-- listing: path Class.method -->  source code, extracted from the repo
+
+A listing is never typed into a chapter. It names a file and a symbol,
+and the renderer reads the code out of the file, so a listing cannot
+survive a refactor unchanged. Where a chapter genuinely needs an
+abridged listing -- a few lines lifted from different places -- it is
+written literally but must be claimed by an `<!-- abridged: path -->`
+marker, and `make audit` checks every one of its lines against that
+file.
 
     python3 -m bench.manuscript          render every chapter
     python3 -m bench.manuscript --check  fail if any rendered file is stale
@@ -18,11 +27,14 @@ import re
 import sys
 from pathlib import Path
 
+from .listings import extract
+
 from .values import load, resolve_chapter
 
 SRC = Path("../chapters")
 OUT = Path("..")
 INCLUDE = re.compile(r"^<!-- include: (\S+) -->$", re.M)
+LISTING = re.compile(r"^<!-- listing: (\S+) (\S+)(?: (no-docstring))? -->$", re.M)
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 CHAPTER_REF = re.compile(r"\{\{ch:([a-z0-9-]+)\}\}")
 
@@ -51,6 +63,11 @@ def render(text: str, values: dict[str, str]) -> str:
             raise FileNotFoundError(f"{path} - run `make tables` first")
         return m.group(0) + "\n" + path.read_text().rstrip("\n")
 
+    def listing(m: re.Match) -> str:
+        code = extract(m.group(1), m.group(2), drop_docstring=bool(m.group(3)))
+        return m.group(0) + "\n\n```python\n" + code + "\n```"
+
+    text = LISTING.sub(listing, text)
     return INCLUDE.sub(insert, text)
 
 

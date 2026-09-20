@@ -36,15 +36,22 @@ Chapter 2 described generation as a loop: score every
 word, take one, append it, run the whole path again. Written out, that
 is:
 
+<!-- abridged: tinyserve/generate.py -->
+
 ```python
 def naive(model: Model, prompt: list[int], n_new: int) -> Run:
     """Recompute every token's keys and values at every step."""
     seq = list(prompt)
-    for _ in range(n_new):
+    ...
+    for i in range(n_new):
+        ...
         logits = forward(model, np.array(seq))
         seq.append(int(logits[-1].argmax()))
-    return Run(tokens=seq[len(prompt):], ...)
+        ...
+    return Run(tokens=seq[len(prompt) :], ttft_s=ttft, step_s=steps)
 ```
+
+(`...` is where the timing lives; the file has it in full.)
 
 <!-- defines: autoregressive -->
 There is nothing wrong with it. It is the definition of
@@ -54,6 +61,8 @@ Chapter 10 checked the model underneath it against
 PyTorch, so the tokens it produces are the right ones.
 
 Look closely at one line, though:
+
+<!-- abridged: tinyserve/generate.py -->
 
 ```python
         logits = forward(model, np.array(seq))
@@ -196,7 +205,11 @@ everywhere, one layer up:
   for reprocessing a prompt whose prefix has not changed. This is the
   same waste with an invoice attached, and
   Chapter 15 is the mechanism that removes it.
-- **A long system prompt reprocessed for every request.** Identical
+- **A long system prompt reprocessed for every request.** A **system
+  prompt** is the standing instruction an application puts in front of
+  whatever the user typed, and it is the same on every request.
+  <!-- defines: system prompt -->
+  Identical
   every time, recomputed every time, unless something deliberately
   reuses it.
 - **Agent frameworks that rebuild the prompt each turn** and hand the

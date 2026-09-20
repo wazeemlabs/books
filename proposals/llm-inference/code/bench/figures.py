@@ -116,6 +116,17 @@ def caption(d: dict) -> str:
                 f"{p['hardware']['cpu']}, {p['hardware']['cores_available']} vCPU - "
                 f"arithmetic counted from the shapes, time measured as the median "
                 f"of {e['runs']} runs - commit {p['commit']}, {p['measured_utc']}")
+    if "unlimited" in d and "prefill" in d:  # Chapter 15: prefix caching
+        a, pf, tr = d["assumptions"], d["prefill"], d["trace"]
+        return (f"prefill measured on tinyserve, {pf['prompt_tokens']}-token prompts, "
+                f"median of {pf['runs']} paired runs after {pf['warmup']} warmup - "
+                f"{p['hardware']['cpu']}, {p['hardware']['cores_available']} vCPU, "
+                f"NumPy {p['software']['numpy']} - hit rates simulated over "
+                f"{tr['requests']} requests from {tr['sessions']} sessions "
+                f"(seed {a['seed']}) through the real index and allocator; cache "
+                f"sizes converted at the reference model's "
+                f"{a['kv_bytes_per_token'] / 1024:.0f} KiB per token - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     if "block_sizes" in d and "step_cost" in d:  # Chapter 14: paging
         a = d["assumptions"]
         return (f"step cost measured on tinyserve, {p['hardware']['cpu']}, "
@@ -1205,6 +1216,157 @@ def fig_blocksize(d: dict) -> None:
               "the size production engines use."))
 
 
+# --- Chapter 15: a prefix tree, what a hit saves, and what fits --------
+
+def fig_prefixtree(d: dict) -> None:
+    """A diagram: three conversations, one copy of what they share."""
+    from matplotlib.patches import FancyArrowPatch, Rectangle
+
+    fig, ax = plt.subplots(figsize=(7.6, 3.9), dpi=200)
+    ax.set_xlim(0, 88); ax.set_ylim(-7, 58); ax.axis("off")
+    ax.text(0, 57, "One copy of what they share", fontsize=11, color=T.INK,
+            fontweight="bold", va="top")
+
+    bw, bh = 11.0, 7.5
+
+    def block(x, y, label, sub, shared):
+        ax.add_patch(Rectangle((x, y), bw, bh,
+                               facecolor="#DCE7FC" if shared else "#FDF6EA",
+                               edgecolor=T.BLUE if shared else T.AMBER,
+                               linewidth=1.2))
+        ax.text(x + bw / 2, y + 4.7, label, ha="center", va="center",
+                fontsize=7.4, color=T.INK)
+        ax.text(x + bw / 2, y + 2.0, sub, ha="center", va="center",
+                fontsize=6.3, color=T.MUTED)
+
+    # The shared trunk: the system prompt, held by everyone at once.
+    trunk_y, trunk = 38, [11, 2, 6]
+    ax.text(0, 50.5, "the system prompt every session sends, stored once",
+            fontsize=7.6, color=T.MUTED, va="center")
+    for i, b in enumerate(trunk):
+        block(i * (bw + 1.6), trunk_y, f"block {b}", "3 holders", True)
+    trunk_right = 3 * (bw + 1.6) - 1.6
+
+    # Three branches, each with its own physical blocks.
+    rows = [("session A", 25, [9, 14]), ("session B", 13.5, [4, 12]),
+            ("session C", 2, [7, 15])]
+    for name, y, blocks in rows:
+        for i, b in enumerate(blocks):
+            block(46 + i * (bw + 1.6), y, f"block {b}", "1 holder", False)
+        ax.text(46 + 2 * (bw + 1.6) + 1.5, y + bh / 2, name, fontsize=7.6,
+                color=T.INK, ha="left", va="center")
+        ax.add_patch(FancyArrowPatch((trunk_right + 0.6, trunk_y + bh / 2),
+                                     (45, y + bh / 2),
+                                     arrowstyle="-|>", mutation_scale=8,
+                                     linewidth=1.0, color=T.MUTED,
+                                     connectionstyle="arc3,rad=0.18"))
+
+    ax.text(0, -4.5, "blue: one set of blocks, three holders     "
+                     "amber: private to one session",
+            fontsize=7.0, color=T.MUTED, va="center")
+
+    save(fig, "ch15-prefixtree", d,
+         alt=("A diagram of a prefix tree. A trunk of three blue blocks holds "
+              "the system prompt every session sends, each labelled three "
+              "holders. Arrows lead from the end of the trunk to three "
+              "branches, one per session, each of two amber blocks with "
+              "different block numbers, each labelled one holder. The shared "
+              "blocks are stored once rather than three times."))
+
+
+def fig_prefill(d: dict) -> None:
+    """Measured prefill time against how much of the prompt was cached."""
+    pts = d["prefill"]["points"]
+    x = [p["shared_frac"] * 100 for p in pts]
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.6, 3.4), dpi=200)
+
+    ax.plot(x, [p["cold_s"]["median"] * 1e3 for p in pts], color=T.AMBER,
+            linestyle="-", marker="o", markersize=4, linewidth=T.LINE_WIDTH,
+            label="no cache hit")
+    ax.plot(x, [p["warm_s"]["median"] * 1e3 for p in pts], color=T.BLUE,
+            linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH,
+            label="prefix already cached")
+    ax.set_xlabel("share of the prompt already cached (%)")
+    ax.set_ylabel("prefill time (ms)")
+    ax.set_ylim(bottom=0)
+    ax.legend(frameon=False, fontsize=7.6)
+    ax.set_title("Prefill time falls with the hit", loc="left", fontsize=10)
+    T.style(ax)
+
+    ax2.plot(x, [p["speedup_if_proportional"] for p in pts], color=T.MUTED,
+             linestyle=":", marker="", linewidth=1.4,
+             label="if time went with tokens computed")
+    ax2.plot(x, [p["speedup"] for p in pts], color=T.BLUE, linestyle="--",
+             marker="s", markersize=4, linewidth=T.LINE_WIDTH, label="measured")
+    last = pts[-1]
+    ax2.annotate(f"{last['speedup']:.0f}x, not "
+                 f"{last['speedup_if_proportional']:.0f}x",
+                 (x[-1], last["speedup"]), textcoords="offset points",
+                 xytext=(-10, -1), ha="right", fontsize=7.2, color=T.INK)
+    ax2.set_xlabel("share of the prompt already cached (%)")
+    ax2.set_ylabel("prefill speedup")
+    ax2.legend(frameon=False, fontsize=7.6, loc="upper left")
+    ax2.set_title("and falls short of proportional", loc="left", fontsize=10)
+    T.style(ax2)
+
+    save(fig, "ch15-prefill", d,
+         alt=("Two panels. Left: measured prefill time against the share of "
+              f"the prompt already cached, falling from about "
+              f"{pts[0]['cold_s']['median'] * 1e3:.0f} milliseconds with no hit to "
+              f"{pts[-1]['warm_s']['median'] * 1e3:.0f} milliseconds when "
+              f"{pts[-1]['shared_frac'] * 100:.0f}% is cached, while the no-hit line "
+              "stays flat. Right: the speedup that produces, measured against "
+              "what it would be if time went strictly with the number of "
+              f"tokens computed. The two agree up to about 75% cached, then "
+              f"the measured curve falls short: {pts[-1]['speedup']:.0f} times "
+              f"rather than {pts[-1]['speedup_if_proportional']:.0f}."))
+
+
+def fig_hitrate(d: dict) -> None:
+    """Hit rate against cache size, for three eviction policies."""
+    ceiling = d["unlimited"]["hit_rate"] * 100
+    styles = {"lru": (T.BLUE, "--", "s", "least recently used leaf"),
+              "lfu": (T.AMBER, "-", "o", "least frequently used leaf"),
+              "unstructured": (T.MUTED, ":", "^", "least recently used block")}
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.9), dpi=200)
+    gb = d["assumptions"]["gb_per_block"]
+    for policy, (colour, ls, marker, label) in styles.items():
+        rows = [r for r in d["sizes"] if r["policy"] == policy]
+        ax.plot([r["pool_blocks"] * gb for r in rows],
+                [r["hit_rate"] * 100 for r in rows], color=colour, linestyle=ls,
+                marker=marker, markersize=4, linewidth=T.LINE_WIDTH, label=label)
+
+    ax.axhline(ceiling, color=T.INK, linestyle="-", linewidth=0.9, alpha=0.5)
+    sizes_gb = sorted({r["pool_blocks"] * gb for r in d["sizes"]})
+    ax.annotate(f"everything this traffic can share: {ceiling:.0f}%",
+                (sizes_gb[0], ceiling), textcoords="offset points",
+                xytext=(2, 5), fontsize=7.2, color=T.INK)
+    ax.set_xscale("log")
+    ax.set_xticks([1, 2, 3, 5, 7, 10, 20, 30],
+                  ["1", "2", "3", "5", "7", "10", "20", "30"])
+    ax.set_xlabel("cache size (GB of keys and values, at 8B scale)")
+    ax.set_ylabel("prompt tokens served from cache (%)")
+    ax.set_ylim(40, 100)
+    ax.legend(frameon=False, fontsize=7.6, loc="lower right")
+    ax.set_title("Most of the hit rate comes from the first few gigabytes",
+                 loc="left", fontsize=11)
+    T.style(ax)
+
+    lru = [r for r in d["sizes"] if r["policy"] == "lru"]
+    save(fig, "ch15-hitrate", d,
+         alt=("Share of prompt tokens served from cache against cache size, x "
+              "axis logarithmic, for three eviction policies. All three rise "
+              f"steeply and flatten: least-recently-used-leaf reaches "
+              f"{lru[2]['hit_rate'] * 100:.0f}% at "
+              f"{lru[2]['pool_blocks'] * gb:.0f} GB and "
+              f"{lru[-1]['hit_rate'] * 100:.0f}% at "
+              f"{lru[-1]['pool_blocks'] * gb:.0f} GB, against a ceiling of "
+              f"{ceiling:.0f}% with unlimited memory. Least-frequently-used "
+              "trails the other two badly at small sizes."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -1214,7 +1376,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch08": [fig_roofline, fig_batching_roof],
             "ch09": [fig_framings],
             "ch10": [fig_framework],
-            "ch11": [fig_waste], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory], "ch14": [fig_blocktable, fig_blocksize]}
+            "ch11": [fig_waste], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory], "ch14": [fig_blocktable, fig_blocksize],
+            "ch15": [fig_prefixtree, fig_prefill, fig_hitrate]}
 
 
 def _check_no_shared_figure_functions() -> None:

@@ -490,12 +490,77 @@ def ch13(d: dict) -> dict[str, str]:
     return v
 
 
+def ch15(d: dict) -> dict[str, str]:
+    e, pf, tr, u, a = (d["equivalence"], d["prefill"], d["trace"],
+                       d["unlimited"], d["assumptions"])
+    pts = pf["points"]
+    best, half = pts[-1], next(p for p in pts if p["shared_frac"] == 0.5)
+    by = {(r["policy"], r["pool_blocks"]): r for r in d["sizes"]}
+    lru = sorted((r for r in d["sizes"] if r["policy"] == "lru"),
+                 key=lambda r: r["pool_blocks"])
+    lfu = sorted((r for r in d["sizes"] if r["policy"] == "lfu"),
+                 key=lambda r: r["pool_blocks"])
+    un = sorted((r for r in d["sizes"] if r["policy"] == "unstructured"),
+                key=lambda r: r["pool_blocks"])
+    gb = a["gb_per_block"]
+    # The smallest cache that is within one point of the ceiling.
+    enough = next(r for r in lru if r["hit_rate"] >= u["hit_rate"] - 0.01)
+    return {
+        "block": str(a["block"]),
+        "same_tokens": "yes" if e["same_tokens"] else "NO",
+        "compared": str(e["tokens_compared"]),
+        "skipped": str(e["tokens_skipped"]),
+        "logit_diff": f"{e['max_logit_diff']:.0e}".replace("e-0", "e-"),
+        "key_diff": f"{e['cached_key_diff']:.0e}".replace("e-0", "e-"),
+        "softmax_diff": f"{d['numerics']['softmax_diff']:.0e}".replace("e-0", "e-"),
+        "prompt_tokens": str(pf["prompt_tokens"]),
+        "runs": str(pf["runs"]),
+        "warmup": str(pf["warmup"]),
+        "half_speedup": f"{half['speedup']:.2f}x",
+        "best_shared": f"{best['shared_frac'] * 100:.0f}%",
+        "best_computed": str(best["tokens_computed"]),
+        "best_speedup": f"{best['speedup']:.0f}x",
+        "best_proportional": f"{best['speedup_if_proportional']:.0f}x",
+        "best_cold_ms": f"{best['cold_s']['median'] * 1e3:.0f} ms",
+        "best_warm_ms": f"{best['warm_s']['median'] * 1e3:.1f} ms",
+        "requests": f"{tr['requests']:,}",
+        "sessions": str(tr["sessions"]),
+        "follow_ups": str(tr["follow_up_turns"]),
+        "system_prompts": str(tr["system_prompts"]),
+        "trace_prompt_tokens": f"{tr['prompt_tokens']:,}",
+        "prompt_p50": f"{tr['prompt_p50']:,.0f}",
+        "hit_rate": f"{u['hit_rate'] * 100:.0f}%",
+        "ideal_rate": f"{u['ideal_rate'] * 100:.1f}%",
+        "computed_tokens": f"{u['computed_tokens']:,}",
+        "quant_loss": f"{u['quantization_loss_mean']:.0f}",
+        "working_set": f"{u['working_set_blocks']:,}",
+        "working_gb": f"{u['working_set_gb']:.0f} GB",
+        "pool_gb": f"{a['pool_bytes'] / 1000**3:.0f} GB",
+        "enough_share": f"{enough['pool_blocks'] * gb * 1000**3 / a['pool_bytes'] * 100:.0f}%",
+        "dedup": f"{u['dedup']:.1f}x",
+        "index_us": f"{u['index_us_per_request']:.0f}",
+        "index_us_block": f"{u['index_us_per_block']:.1f}",
+        "cold_points": str(len(pts)),
+        "cold_spread": f"{(max(p['cold_s']['median'] for p in pts) - min(p['cold_s']['median'] for p in pts)) / 2 / sorted(p['cold_s']['median'] for p in pts)[len(pts) // 2] * 100:.0f}%",
+        "small_gb": f"{lru[0]['pool_blocks'] * gb:.1f} GB",
+        "small_hit": f"{lru[0]['hit_rate'] * 100:.0f}%",
+        "enough_gb": f"{enough['pool_blocks'] * gb:.0f} GB",
+        "enough_hit": f"{enough['hit_rate'] * 100:.0f}%",
+        "enough_frac": f"{enough['pool_blocks'] / u['working_set_blocks'] * 100:.0f}%",
+        "lfu_gap": f"{(lru[2]['hit_rate'] - lfu[2]['hit_rate']) * 100:.0f}",
+        "lfu_at": f"{lru[2]['pool_blocks'] * gb:.1f} GB",
+        "unstructured_gap": f"{(lru[0]['hit_rate'] - un[0]['hit_rate']) * 100:.0f}",
+        "stranded": f"{max(r['stranded_blocks'] for r in un):,}",
+    }
+
+
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
             "ch09": ch09, "ch10": ch10, "ch11": ch11,
-            "ch12": ch12, "ch13": ch13, "ch14": ch14}[chapter](d)
+            "ch12": ch12, "ch13": ch13, "ch14": ch14,
+            "ch15": ch15}[chapter](d)
 
 
 if __name__ == "__main__":

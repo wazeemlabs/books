@@ -90,10 +90,10 @@ that idea, built and measured.
 The cache is two arrays per layer — one for keys, one for values —
 plus a count of how many positions are filled.
 
+<!-- abridged: tinyserve/model.py -->
+
 ```python
 class KVCache:
-    """Storage for the keys and values of every token the model has seen."""
-
     def __init__(self, cfg: Config, max_seq: int | None = None) -> None:
         self.cfg = cfg
         self.max_seq = max_seq or cfg.max_seq
@@ -106,23 +106,28 @@ class KVCache:
 The cache stores what it is given and hands back everything attention
 should read:
 
+<!-- listing: tinyserve/model.py KVCache.append no-docstring -->
+
 ```python
-    def append(self, layer, k, v, start):
-        total = start + k.shape[1]
-        self.k[layer][:, start:total] = k      # this token's keys
-        self.v[layer][:, start:total] = v      # and values
-        return self.k[layer][:, :total], self.v[layer][:, :total]
+def append(self, layer: int, k: np.ndarray, v: np.ndarray,
+           start: int) -> tuple[np.ndarray, np.ndarray]:
+    total = start + k.shape[1]
+    self.k[layer][:, start:total] = k
+    self.v[layer][:, start:total] = v
+    return self.k[layer][:, :total], self.v[layer][:, :total]
 ```
 
 The model's forward pass then needs three changes. It takes only the
 **new** tokens rather than the whole sequence; it asks the cache where
 they go; and it attends over everything the cache returns.
 
+<!-- abridged: tinyserve/model.py -->
+
 ```python
     start = cache.length if cache is not None else 0
     ...
-    if cache is not None:
-        k, v = cache.append(i, k, v, start)
+        if cache is not None:
+            k, v = cache.append(i, k, v, start)
 ```
 
 That the model calls a method rather than writing into arrays is not
@@ -146,12 +151,17 @@ machines on exactly this seam.
 
 Generating now has two phases instead of one loop:
 
+<!-- abridged: tinyserve/generate.py -->
+
 ```python
 def cached(model: Model, prompt: list[int], n_new: int) -> Run:
     cache = KVCache(model.cfg, max_seq=len(prompt) + n_new)
-    logits = forward(model, np.array(prompt), cache)     # prefill: all at once
+    ...
+    logits = forward(model, np.array(prompt), cache)  # prefill
     nxt = int(logits[-1].argmax())
+    ...
     for _ in range(n_new - 1):
+        ...
         logits = forward(model, np.array([nxt]), cache)  # decode: one token
         nxt = int(logits[-1].argmax())
 ```
@@ -162,8 +172,10 @@ Before measuring a speedup, prove you did not buy it with accuracy.
 Both paths decode greedily, so for a given prompt they must return
 *identical* tokens:
 
+<!-- listing: tinyserve/generate.py check_equivalence -->
+
 ```python
-def check_equivalence(model, prompt, n_new) -> bool:
+def check_equivalence(model: Model, prompt: list[int], n_new: int) -> bool:
     return naive(model, prompt, n_new).tokens == cached(model, prompt, n_new).tokens
 ```
 

@@ -596,16 +596,16 @@ standards. It does, so that reason has expired.
 **Done:**
 
 1. **The harness and figure pipeline** (Chapter 9's and Appendix A's
-   subject matter) — built and in use by every chapter below. The
-   *prose* of Chapter 9 is not yet written; only its code exists.
-2. **Chapters 12–13** — the spine's first stretch: the KV cache and
-   what it costs in memory. Chapter 11's naive loop is implemented and
-   measured, but its prose is not written.
+   subject matter) — built and in use by every chapter below.
+2. **Chapters 12–13** — the spine's first stretch, written first: the
+   KV cache and what it costs in memory.
 3. **Chapters 1–3** — the opening, written once there were real numbers
    to open with.
+4. **Chapters 4–11, 14–15** — front to back from there, closing Part I
+   and Part II and carrying Part III as far as prefix caching.
 
-Drafted so far: **1, 2, 3, 12, 13**. Implemented but not yet written:
-**9, 11**.
+Drafted so far: **1–15**, every one of them passing `make check`.
+Next: **16, Batching**.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of

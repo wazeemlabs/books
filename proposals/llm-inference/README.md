@@ -22,6 +22,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | [CHAPTER-14-DRAFT.md](CHAPTER-14-DRAFT.md) | **Generated.** Chapter 14, "Paged Attention" |
+| [CHAPTER-15-DRAFT.md](CHAPTER-15-DRAFT.md) | **Generated.** Chapter 15, "Prefix Caching" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 
@@ -72,6 +73,15 @@ track of by hand:
   in an earlier chapter than the one that explains it. The reader is
   assumed to know nothing, and the check is what keeps that true as
   chapters are edited.
+- **Listings cannot go stale.** A chapter writes
+  `<!-- listing: tinyserve/prefix.py PrefixTree.match -->` and the
+  renderer reads that symbol out of the file, so no listing can survive
+  a refactor unchanged. An abridged listing — lines from more than one
+  place, with the middle marked `...` — must name its file, and
+  `bench/audit.py` checks every line of it against that file, in order.
+  A fenced code block with neither marker fails the audit. This was
+  added after a listing in Chapter 12 was found describing code that
+  had since been refactored.
 - **Cross-references cannot go stale.** Chapters are referenced
   symbolically (`{{ch:paged-attention}}`), resolved against `OUTLINE.md`
   at render time. `bench/xref.py` rejects any literal "Chapter 14" in a
@@ -164,6 +174,21 @@ committed numbers.
   held memory in use and at most one block wasted per sequence. Output
   is bit-identical, and the cost is 1.14x per decode step from an
   implementation deliberately written the slow, readable way.
+
+- Chapter 15 shares those blocks between requests that begin the same
+  way, and measures both halves of the bargain. On assistant-shaped
+  traffic 85% of prompt tokens have already been computed for somebody
+  else; 7 GB of cache — 11% of what an 80 GB accelerator has free after
+  the weights — comes within a point of that ceiling, so the feature
+  does not need careful sizing to be worth having. The measured prefill saving
+  tracks the tokens skipped up to about 75% cached and then falls
+  behind: 20x, not 32x, at 97% cached, because the new tokens still
+  attend over the whole context. And unlike paging, a cache hit is
+  *not* bit-exact — the chapter tracks the difference to the softmax
+  denominator, a sum whose grouping depends on how long the sequence
+  was, and shows the keys diverging from layer 1 onwards while layer 0
+  stays identical. vLLM issue #33123 is the same effect changing a
+  real answer.
 
 ## Open decisions
 

@@ -1,14 +1,14 @@
 # Regenerate everything the manuscript includes, from measurement to figure.
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make lock   - refresh environment.lock
-.PHONY: all ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15
 
 ch01:
 	python3 -m bench.run_ch01
@@ -66,6 +66,10 @@ ch12:
 	python3 -m bench.run_ch12
 	$(MAKE) figures tables manuscript
 
+ch15:
+	python3 -m bench.run_ch15
+	$(MAKE) figures tables manuscript
+
 figures:
 	python3 -m bench.figures
 
@@ -90,7 +94,11 @@ terms:
 tests:
 	@python3 -c "from bench.theme import test_theme_ramp_is_monotonic as a; a(); \
 from tinyserve.reference import test_reference_is_an_8b_model as b; b(); \
-print('tests: palette ramp monotonic, reference model is 8B')"
+from bench.listings import test_extract_is_exact as c; c(); \
+from tinyserve.prefix import test_chained_hash_distinguishes_context as d; d(); \
+from tinyserve.prefix import test_shared_blocks_outlive_their_sequence as e; e(); \
+from tinyserve.prefix import test_structured_eviction_never_strands as f; f(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing')"
 
 lock:
 	python3 -m pip freeze > environment.lock

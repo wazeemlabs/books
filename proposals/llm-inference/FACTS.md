@@ -83,6 +83,21 @@ Format: claim · value · source · last verified.
 | H100 streaming multiprocessors | 132 | NVIDIA H100 whitepaper | 2026-09 |
 | Better metrics | `DCGM_FI_PROF_SM_ACTIVE` (cycles with a warp resident), `DCGM_FI_PROF_SM_OCCUPANCY` | NVIDIA DCGM docs | 2026-09 |
 
+## Prefix caching
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| vLLM automatic prefix caching | on by default on the V1 engine; `--no-enable-prefix-caching` turns it off | vLLM docs, `features/automatic_prefix_caching` and `usage/v1_guide` | 2026-09 |
+| vLLM block hashing | "we hash each kv-cache block by the tokens in the block and the tokens in the prefix before the block"; the parent block's hash is a component; "We only cache full blocks" | vLLM design doc, `design/prefix_caching` | 2026-09 |
+| vLLM eviction | LRU over a free queue; a finished request's blocks are appended "in the *reverse* order", because "the last block of a request must hash more tokens and is less likely to be reused by other requests. As a result, it should be evicted first" | same | 2026-09 |
+| vLLM block hash algorithm | "As of v0.11, the default hashing algorithm is `sha256`"; `--prefix-caching-hash-algo` also takes `sha256_cbor`, `xxhash`, `xxhash_cbor` | vLLM design doc, `design/prefix_caching` | 2026-09 |
+| Why the hash matters | a non-cryptographic hash "theoretically increases the risk of hash collisions, which can cause undefined behavior or even leak private information in multi-tenant environments" | same | 2026-09 |
+| SGLang radix cache | on unless `--disable-radix-cache` is passed; `--radix-eviction-policy` defaults to `lru` and also accepts `lfu`, `slru`, `priority` | SGLang docs, `advanced_features/server_arguments` | 2026-09 |
+| vLLM prefix-cache metrics | `vllm:prefix_cache_queries` and `vllm:prefix_cache_hits`, both counted in **tokens**: queries rises by the prompt's token count, hits by the tokens found cached | vLLM docs, `design/metrics` | 2026-09 |
+| Anthropic prompt caching price | cache write 1.25x base input (5-minute TTL) or 2x (1-hour); cache read 0.1x base input | platform.claude.com, `build-with-claude/prompt-caching` | 2026-09 |
+| Anthropic minimum cacheable prompt | 512-4,096 tokens depending on the model; shorter prompts are silently not cached | same | 2026-09 |
+| OpenAI prompt caching | "enabled by default for supported OpenAI models"; applies from 1,024 tokens; cached input at 0.1x the uncached rate on GPT-5.6 and later; entries live about 30 minutes after last use | OpenAI docs, `guides/prompt-caching` | 2026-09 |
+
 ## Build versus buy
 
 | Claim | Value | Source | Verified |

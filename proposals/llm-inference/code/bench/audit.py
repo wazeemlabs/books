@@ -32,6 +32,43 @@ CAVEAT = ["## Where it breaks", "## Where this is soft",
 IMG = re.compile(r"!\[[^\]]*\]\((code/figures/([a-z0-9-]+)\.svg)\)")
 FIGNUM = re.compile(r"^\*\*Figure (\d+)\.(\d+)\*\*", re.M)
 INCLUDE = re.compile(r"^<!-- include: (tables/\S+) -->$", re.M)
+ABRIDGED = re.compile(r"<!-- abridged: (\S+) -->\s*\n+```python\n(.*?)```", re.S)
+CODE = re.compile(r"```python\n(.*?)```", re.S)
+
+
+def listings_match_the_code(text: str) -> list[str]:
+    """Every literal listing must still be in the file it came from.
+
+    STANDARDS.md section 6.2. The preferred form is a
+    `<!-- listing: -->` directive, which the renderer fills from the
+    file and which therefore cannot go stale at all; those leave no
+    fenced block in the source. What is left is an abridged listing --
+    lines lifted from more than one place, or with the middle cut out --
+    and it must name its file so that every line can be checked.
+    """
+    issues: list[str] = []
+    claimed = {code: path for path, code in ABRIDGED.findall(text)}
+    for code in CODE.findall(text):
+        path = claimed.get(code)
+        if path is None:
+            first = next((l for l in code.splitlines() if l.strip()), "")
+            issues.append(f"listing starting {first.strip()!r} is typed into the "
+                          "chapter: use <!-- listing: path symbol --> or claim it "
+                          "with <!-- abridged: path -->")
+            continue
+        source = Path(path)
+        if not source.exists():
+            issues.append(f"abridged listing names {path}, which does not exist")
+            continue
+        lines = iter(source.read_text().splitlines())
+        for want in code.splitlines():
+            if not want.strip() or want.strip() == "...":
+                continue
+            if not any(line == want for line in lines):
+                issues.append(f"listing line not in {path} (or out of order): "
+                              f"{want.strip()!r}")
+                break
+    return issues
 
 
 def cross_chapter_consistency() -> list[str]:
@@ -93,8 +130,13 @@ def cross_chapter_consistency() -> list[str]:
         # legitimately (time-averaged holding against admit-until-full), so
         # only the contiguous one is required to match.
         note("full-context capacity", "ch14", r["ch14"]["at_default"]["admitted_contiguous"])
+    if "ch15" in r:
+        note("KV bytes per token", "ch15",
+             r["ch15"]["assumptions"]["kv_bytes_per_token"])
+        note("free pool bytes", "ch15", r["ch15"]["assumptions"]["pool_bytes"])
     if "ch13" in r:
         note("KV bytes per token", "ch13", r["ch13"]["hardware"]["kv_bytes_per_token"])
+        note("free pool bytes", "ch13", r["ch13"]["hardware"]["free_bytes"])
         paged = next((x for x in r["ch13"]["policies"] if x["policy"] == "paged_16"), None)
         note("concurrent sequences", "ch13", paged and paged["concurrent_seqs"])
         full = next((x for x in r["ch13"]["policies"] if x["policy"] == "max_model_len"), None)
@@ -154,6 +196,8 @@ def main() -> int:
                           "(STANDARDS section 5.1)")
         if not any(h in text for h in CAVEAT):
             issues.append(f"no limitations section (one of {CAVEAT})")
+        issues += listings_match_the_code(text)
+
         if "**Depends on:**" not in text:
             issues.append("missing a 'Depends on:' line (STANDARDS section 10.3)")
 

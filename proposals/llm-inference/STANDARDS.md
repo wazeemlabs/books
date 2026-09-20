@@ -131,8 +131,18 @@ tradeoffs, and what would change the decision.
 6.1 `tinyserve` is a real package: typed, tested, linted, under 3,000
 lines, readable in one sitting. Its tests are its specification.
 
-6.2 Every code listing in the text is extracted from the repo at a
-tagged commit, never typed into the manuscript by hand.
+6.2 Every code listing in the text comes from a file that runs, and
+none is typed into the manuscript by hand. A chapter writes
+
+    <!-- listing: tinyserve/prefix.py PrefixTree.match -->
+
+and the renderer reads that symbol out of the file, so a listing cannot
+survive a refactor unchanged. Where a chapter genuinely needs an
+abridged listing -- lines lifted from more than one place, or with the
+middle cut out and marked `...` -- it is written literally and must
+name its file with `<!-- abridged: path -->`; `make audit` then checks
+every line of it against that file, in order. A fenced code block with
+neither marker fails the audit.
 
 6.3 The harness reports machine-readable results (JSON) that the
 figure pipeline consumes; no number is transcribed by hand.

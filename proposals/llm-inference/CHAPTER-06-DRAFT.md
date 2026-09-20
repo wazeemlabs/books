@@ -117,8 +117,11 @@ built around.
   idea that Chapter 14 builds, and it is the default
   choice: the widest model support and the largest community.
   Chapter 34 takes it apart.
-- **SGLang** — built around **reusing shared prefixes**. Its radix tree
-  of cached prompts, which Chapter 15 builds, makes it
+- **SGLang** — built around **reusing shared prefixes**. Its **radix
+  tree** of cached prompts — an index that groups prompts by how they
+  begin, so a shared opening is found at once — <!-- defines: radix tree, prefix tree -->
+  which
+  Chapter 15 builds, makes it
   strong where many requests begin the same way: agents, few-shot
   prompts, long system messages. Chapter 35 covers it.
 - **TensorRT-LLM** — built around **compiling ahead of time**. NVIDIA's
