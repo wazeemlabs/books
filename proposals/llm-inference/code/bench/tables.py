@@ -736,6 +736,125 @@ def ch18_swap(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch19_transfer(d: dict) -> str:
+    tr, a = d["transfer"], d["assumptions"]
+    links = list(tr["links"])
+    out = ["| Context | Its cache | Prefill takes | "
+           + " | ".join(f"Over {n}" for n in links)
+           + " | Link to match the prefill |",
+           "|---|---|---|" + "---|" * (len(links) + 1)]
+    for r in tr["rows"]:
+        out.append(f"| {r['tokens']:,} tokens | {r['bytes'] / 1e6:,.0f} MB | "
+                   f"{r['prefill_s'] * 1e3:.1f} ms | "
+                   + " | ".join(f"{r['over'][n] * 1e3:.1f} ms" for n in links)
+                   + f" | **{r['link_to_match_prefill'] / 1e9:.1f} GB/s** |")
+    out += ["", f"The reference model keeps "
+                f"{a['kv_bytes_per_token'] / 1024:.0f} KiB of keys and values "
+                "per token, so a cache is large and moving it is a bandwidth "
+                "problem, not a latency one. The last column is the link speed "
+                "at which the move takes exactly as long as the prefill that "
+                "produced it -- a link slower than that turns the move into "
+                f"the bottleneck. One decode step, for scale, is "
+                f"{tr['decode_step_ms']:.1f} ms."]
+    return "\n".join(out)
+
+
+def ch19_split(d: dict) -> str:
+    a, co = d["assumptions"], d["colocated"]
+    out = ["| Machines | Tokens/s | TTFT p50 | TTFT p99 | Between tokens, p50 | "
+           "Between tokens, p99 | Sequences per decode machine |",
+           "|---|---|---|---|---|---|---|"]
+    for r in d["splits"]:
+        name = f"{r['prefill_workers']}P + {r['decode_workers']}D"
+        if r is d["best_split"] or (r["prefill_workers"]
+                                    == d["best_split"]["prefill_workers"]):
+            name = f"**{name}**"
+        fmt = lambda x: f"{x / 1e3:,.1f} s" if x >= 1000 else f"{x:,.0f} ms"
+        out.append(f"| {name} | {r['tokens_per_s']:,.0f} | "
+                   f"{fmt(r['ttft_p50_ms'])} | {fmt(r['ttft_p99_ms'])} | "
+                   f"{r['itl_p50_ms']:.1f} ms | {r['itl_p99_ms']:.1f} ms | "
+                   f"{r['mean_batch']:.1f} |")
+    out.append(f"| _{a['fleet']} colocated_ | **{co['tokens_per_s']:,.0f}** | "
+               f"{co['ttft_p50_ms']:,.0f} ms | {co['ttft_p99_ms']:,.0f} ms | "
+               f"{co['itl_p50_ms']:.1f} ms | {co['itl_p99_ms']:.1f} ms | "
+               f"{co['mean_batch']:.1f} |")
+    out += ["", f"{a['n_requests']:,} requests at {a['rate']} a second "
+                f"(seed {a['seed']}) through {a['fleet']} accelerators, "
+                f"divided every way, over {a['link']}. The last row is the "
+                f"same {a['fleet']} accelerators each doing both phases with "
+                f"Chapter 18's scheduler at a {a['token_budget']}-token "
+                "budget. Throughput is measured over the arrival window with "
+                f"the first {a['warm_fraction'] * 100:.0f}% discarded, so a "
+                "fleet's drain tail is not counted as slow serving."]
+    return "\n".join(out)
+
+
+def ch19_links(d: dict) -> str:
+    a, co = d["assumptions"], d["colocated"]
+    out = ["| Link | Speed | Tokens/s | Wait for the second token, p50 | "
+           "p99 | Every later gap, p99 |",
+           "|---|---|---|---|---|---|"]
+    for r in d["links"]:
+        out.append(f"| {r['link']} | "
+                   f"{d['transfer']['links'][r['link']] / 1e9:,.0f} GB/s | "
+                   f"{r['tokens_per_s']:,.0f} | "
+                   f"**{r['second_token_p50_ms']:.1f} ms** | "
+                   f"{r['second_token_p99_ms']:.1f} ms | "
+                   f"{r['itl_p99_ms']:.1f} ms |")
+    out.append(f"| _colocated: no link_ | -- | {co['tokens_per_s']:,.0f} | "
+               f"**{co['second_token_p50_ms']:.1f} ms** | "
+               f"{co['second_token_p99_ms']:.1f} ms | "
+               f"{co['itl_p99_ms']:.1f} ms |")
+    out += ["", f"The same {d['best_split']['prefill_workers']}P + "
+                f"{d['best_split']['decode_workers']}D fleet over each link. "
+                "The prefill machine produces the first token before the cache "
+                "goes anywhere, so the whole cost of the move lands in one "
+                "place: the wait for the *second* token. Every gap after that "
+                "is an ordinary decode step, which is why the last column "
+                "barely moves."]
+    return "\n".join(out)
+
+
+def ch19_regimes(d: dict) -> str:
+    a = d["assumptions"]
+    by = {}
+    for r in d["prompts"]:
+        by.setdefault(r["prompt_mean"], {})[r["design"]] = r
+    out = ["| Regime | Best split | Disaggregated | Colocated | Ratio |",
+           "|---|---|---|---|---|"]
+    for mean in sorted(by):
+        dis, co = by[mean]["disaggregated"], by[mean]["colocated"]
+        out.append(f"| {mean:,}-token prompts at {a['rate']} req/s | "
+                   f"{dis['prefill_workers']}P + {dis['decode_workers']}D | "
+                   f"{dis['tokens_per_s']:,.0f} tok/s | "
+                   f"{co['tokens_per_s']:,.0f} tok/s | "
+                   f"**{dis['tokens_per_s'] / co['tokens_per_s']:.2f}x** |")
+    lp = {r["design"]: r for r in d["long_prompts"]}
+    out.append(f"| {a['long_prompt']:,}-token prompts at "
+               f"{a['long_rate']:.0f} req/s | "
+               f"{lp['disaggregated']['prefill_workers']}P + "
+               f"{lp['disaggregated']['decode_workers']}D | "
+               f"{lp['disaggregated']['tokens_per_s']:,.0f} tok/s | "
+               f"{lp['colocated']['tokens_per_s']:,.0f} tok/s | "
+               f"**{lp['disaggregated']['tokens_per_s'] / lp['colocated']['tokens_per_s']:.2f}x** |")
+    for r in d["fleets"]:
+        b, c = r["best"], r["colocated"]
+        out.append(f"| {r['fleet']} accelerators at {b['rate']:.0f} req/s | "
+                   f"{b['prefill_workers']}P + {b['decode_workers']}D | "
+                   f"{b['tokens_per_s']:,.0f} tok/s | "
+                   f"{c['tokens_per_s']:,.0f} tok/s | "
+                   f"**{b['tokens_per_s'] / c['tokens_per_s']:.2f}x** |")
+    out += ["", "Every disaggregated row re-searches the split, so none of "
+                "them is a straw man. The colocated arm is one accelerator "
+                f"per replica running Chapter 18's scheduler. The "
+                f"{a['long_prompt']:,}-token row holds the prompt tokens "
+                "arriving per second at the case study's, so the fleet is not "
+                "simply saturated; the rows above it do not, which is why "
+                f"both designs fall behind at {a['rate']} req/s with long "
+                "prompts."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -762,6 +881,8 @@ def main() -> None:
                  ("ch17-load", ch17_load), ("ch17-pool", ch17_pool)),
         "ch18": (("ch18-budget", ch18_budget), ("ch18-policy", ch18_policy),
                  ("ch18-preemption", ch18_preemption), ("ch18-swap", ch18_swap)),
+        "ch19": (("ch19-transfer", ch19_transfer), ("ch19-split", ch19_split),
+                 ("ch19-links", ch19_links), ("ch19-regimes", ch19_regimes)),
     }
     for chapter, entries in specs.items():
         path = RESULTS / f"{chapter}.json"

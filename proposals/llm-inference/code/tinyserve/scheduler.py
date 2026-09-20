@@ -36,6 +36,8 @@ import math
 from dataclasses import dataclass, field
 
 from .paged import BLOCK_SIZE
+
+BIN_S = 0.1                      # resolution of the emission histogram
 from .reference import KV_BYTES_PER_TOKEN
 from .serving import decode_step, mixed_step, prefill_step
 
@@ -59,6 +61,17 @@ class Request:
     waiting_since: float = 0.0
     gap_s: float = 0.0           # time accumulating since its last token
     gaps_ms: list[float] = field(default_factory=list)   # this one's own waits
+
+    @property
+    def first_gap_ms(self) -> float | None:
+        """The wait between the first token and the second.
+
+        On one machine this is an ordinary decode step. Across two, it
+        is where the cache's trip over the network lands, because the
+        first token comes out of the prefill worker before the cache
+        has gone anywhere.
+        """
+        return self.gaps_ms[0] if self.gaps_ms else None
 
     @property
     def context(self) -> int:
@@ -95,12 +108,31 @@ class Trace:
     recomputed_prompt_tokens: int = 0    # and the prompt behind them, re-read
     swapped_bytes: int = 0       # cache copied out to host memory and back
     swap_s: float = 0.0          # time spent doing that copying
+    transfer_s: float = 0.0      # time moving caches between machines
     chunk_tokens: int = 0        # prompt tokens read, counting every chunk
     peak_blocks: int = 0
     batch_steps: int = 0          # sum of batch sizes over decode iterations
     slots: int = 0                # sum of slots held over decode iterations
     gaps_ms: list[float] = field(default_factory=list)
     batch_sizes: list[int] = field(default_factory=list)
+    emitted: dict[int, int] = field(default_factory=dict)   # 0.1 s bins
+
+    def tokens_between(self, start_s: float, end_s: float) -> int:
+        """Tokens produced in a window, from the emission bins."""
+        a, b = int(start_s / BIN_S), int(end_s / BIN_S)
+        return sum(n for k, n in self.emitted.items() if a <= k < b)
+
+    def steady_tokens_per_s(self, start_s: float, end_s: float) -> float:
+        """Throughput while the server was actually loaded.
+
+        Measuring over a whole trace divides by its drain tail as well,
+        and a tail is long: the last request of a short trace can still
+        be generating a thousand tokens after everything else is done.
+        A window inside the arrival period has the server at its
+        steady state throughout.
+        """
+        span = end_s - start_s
+        return self.tokens_between(start_s, end_s) / span if span > 0 else 0.0
 
     @property
     def output_tokens(self) -> int:
@@ -149,6 +181,8 @@ def _advance(trace: Trace, running: list[Request], seconds: float) -> None:
 def _emit(trace: Trace, r: Request, clock: float) -> None:
     """One token for this request: its wait since the last one is over."""
     r.generated += 1
+    k = int(clock / BIN_S)
+    trace.emitted[k] = trace.emitted.get(k, 0) + 1
     if r.first_token_s is None:
         r.first_token_s = clock
     else:
@@ -622,3 +656,230 @@ def test_swapping_keeps_the_tokens_that_recomputing_throws_away() -> None:
     assert swap.swap_s > 0 and recompute.swap_s == 0
     assert swap.chunk_tokens < recompute.chunk_tokens, (
         "a swapped sequence should not have to read its prompt again")
+
+
+# --- Chapter 19: the two phases on different machines ------------------
+
+def _merge(traces: list[Trace], requests: list[Request]) -> Trace:
+    """One trace for a fleet, from one trace per worker.
+
+    Wall-clock time is shared, so the fleet finishes when its last
+    worker does; everything else adds up.
+    """
+    out = Trace(requests=requests)
+    out.makespan_s = max((t.makespan_s for t in traces), default=0.0)
+    for t in traces:
+        out.prefill_s += t.prefill_s
+        out.decode_s += t.decode_s
+        out.idle_s += t.idle_s
+        out.transfer_s += t.transfer_s
+        out.iterations += t.iterations
+        out.prefill_iterations += t.prefill_iterations
+        out.preemptions += t.preemptions
+        out.recomputed_tokens += t.recomputed_tokens
+        out.recomputed_prompt_tokens += t.recomputed_prompt_tokens
+        out.swapped_bytes += t.swapped_bytes
+        out.swap_s += t.swap_s
+        out.chunk_tokens += t.chunk_tokens
+        out.batch_steps += t.batch_steps
+        out.slots += t.slots
+        out.peak_blocks += t.peak_blocks          # summed across workers
+        out.gaps_ms += t.gaps_ms
+        out.batch_sizes += t.batch_sizes
+        for k, n in t.emitted.items():
+            out.emitted[k] = out.emitted.get(k, 0) + n
+    return out
+
+
+def serve_colocated(requests: list[Request], workers: int, blocks: int,
+                    token_budget: int, max_batch: int,
+                    block_size: int = BLOCK_SIZE) -> Trace:
+    """A fleet of identical servers, each doing both phases.
+
+    Requests are dealt out to workers in arrival order, which is what a
+    round-robin load balancer in front of N replicas does. Each worker
+    runs Chapter 18's scheduler over its own share, with its own share
+    of the memory. This is the baseline disaggregation has to beat.
+    """
+    shares: list[list[Request]] = [[] for _ in range(workers)]
+    for n, r in enumerate(sorted(requests, key=lambda r: r.arrival_s)):
+        shares[n % workers].append(r)
+    traces = [serve_chunked(share, max_batch=max_batch, blocks=blocks,
+                            token_budget=token_budget, block_size=block_size)
+              for share in shares if share]
+    return _merge(traces, requests)
+
+
+def serve_disaggregated(requests: list[Request], prefill_workers: int,
+                        decode_workers: int, blocks: int,
+                        link_bytes_per_s: float, max_batch: int,
+                        block_size: int = BLOCK_SIZE) -> Trace:
+    """Prefill on one pool of machines, decode on another.
+
+    The phases want opposite hardware and opposite schedules
+    (Chapter 3), and Chapter 18's answer was to interleave them on the
+    same machine. This is the other answer: give each phase its own
+    machines, and move the keys and values between them.
+
+    The model:
+
+      * A prefill worker takes one prompt at a time. Prefill is already
+        compute-bound, so batching buys it little (Chapter 16), and one
+        at a time is the clearest thing to count.
+      * The prompt's last position produces the first token, which the
+        prefill worker returns at once. This is why disaggregation's
+        time-to-first-token does not include the transfer.
+      * The cache then crosses the link at `link_bytes_per_s`. The
+        prefill worker does not wait for it -- NVIDIA's Dynamo
+        documentation calls the transfer "non-blocking" -- but the user
+        does, and it lands in the gap before their second token.
+      * A decode worker runs continuous batching over the sequences it
+        has been given and never prefills anything. Its inter-token
+        latency is therefore one decode step, always.
+      * Each decode worker gets `blocks` of pool. When it runs out it
+        preempts, and a preempted sequence goes back to the prefill
+        queue, because that is where its cache has to be rebuilt.
+
+    Prefill-side memory is not modelled: a prefill worker holds one
+    prompt's cache for as long as the transfer takes, which is small
+    beside a decode worker's working set.
+    """
+    waiting = sorted(requests, key=lambda r: r.arrival_s)
+    queue: list[Request] = []
+    trace = Trace(requests=requests)
+
+    # Prefill side: when each worker frees up, and what it is holding.
+    p_free = [0.0] * prefill_workers
+    p_job: list[Request | None] = [None] * prefill_workers
+    # In flight across the link: (arrival time at the decode worker, request).
+    in_flight: list[tuple[float, Request]] = []
+    # Decode side: a pool, a running set and a joining set per worker. A
+    # sequence that lands mid-iteration waits for the next one, as it
+    # would in any iteration-level scheduler.
+    d_free = [0.0] * decode_workers
+    d_running: list[list[Request]] = [[] for _ in range(decode_workers)]
+    d_joining: list[list[Request]] = [[] for _ in range(decode_workers)]
+    d_pool = [Pool(blocks, block_size) for _ in range(decode_workers)]
+
+    clock, i = 0.0, 0
+    while True:
+        while i < len(waiting) and waiting[i].arrival_s <= clock:
+            queue.append(waiting[i]); i += 1
+
+        # Prefill completions: the first token, then the cache sets off.
+        for w in range(prefill_workers):
+            r = p_job[w]
+            if r is not None and p_free[w] <= clock:
+                _emit(trace, r, clock)               # the prompt's last position
+                seconds = r.context * KV_BYTES_PER_TOKEN / link_bytes_per_s
+                trace.transfer_s += seconds
+                in_flight.append((clock + seconds, r))
+                p_job[w] = None
+
+        # Decode iterations that have finished: a token for everyone in them.
+        for w in range(decode_workers):
+            run = d_running[w]
+            if not run or d_free[w] > clock:
+                continue
+            needed = 0
+            for r in run:
+                before = r.blocks(block_size)
+                _emit(trace, r, clock)
+                needed += r.blocks(block_size) - before
+            d_pool[w].used += needed
+            for r in list(run):
+                if r.done:
+                    d_pool[w].used -= r.blocks(block_size)
+                    run.remove(r)
+            trace.preemptions += _spill(trace, d_pool[w], run, queue,
+                                        block_size, 0, max_batch)
+            d_free[w] = clock                       # free to start another
+
+        # Arrivals at the decode side, to the emptiest worker.
+        for when, r in [x for x in in_flight if x[0] <= clock]:
+            in_flight.remove((when, r))
+            w = min(range(decode_workers),
+                    key=lambda k: (len(d_running[k]) + len(d_joining[k]),
+                                   d_pool[k].used))
+            need = r.blocks(block_size)
+            trace.preemptions += _spill(trace, d_pool[w], d_running[w], queue,
+                                        block_size, need, max_batch - 1)
+            if r.first_token_s is not None:
+                r.gap_s += clock - r.first_token_s   # the link, and any wait
+            d_pool[w].used += need
+            d_joining[w].append(r)
+            trace.peak_blocks = max(trace.peak_blocks,
+                                    sum(p.used for p in d_pool))
+
+        # Start whatever can start now.
+        for w in range(prefill_workers):
+            if p_job[w] is None and queue and p_free[w] <= clock:
+                r = queue.pop(0)
+                r.prefills += 1
+                r.prefilled = r.prompt_tokens
+                seconds = prefill_step(r.prompt_tokens).seconds
+                p_job[w], p_free[w] = r, clock + seconds
+                trace.prefill_s += seconds
+                trace.iterations += 1
+                trace.prefill_iterations += 1
+                trace.chunk_tokens += r.prompt_tokens
+        for w in range(decode_workers):
+            if d_free[w] <= clock and d_joining[w]:
+                d_running[w] += d_joining[w]         # they join at a boundary
+                d_joining[w] = []
+            run = d_running[w]
+            if run and d_free[w] <= clock:
+                context = sum(r.context for r in run) // len(run)
+                seconds = decode_step(len(run), context).seconds
+                for r in run:
+                    r.gap_s += seconds
+                d_free[w] = clock + seconds
+                trace.decode_s += seconds
+                trace.iterations += 1
+                trace.batch_steps += len(run)
+                trace.slots += len(run)
+                trace.batch_sizes.append(len(run))
+
+        # When does anything next happen?
+        nxt = [t for t in
+               ([waiting[i].arrival_s] if i < len(waiting) else [])
+               + [p_free[w] for w in range(prefill_workers) if p_job[w]]
+               + [t for t, _ in in_flight]
+               + [d_free[w] for w in range(decode_workers) if d_running[w]]
+               if t > clock]
+        if not nxt:
+            outstanding = (queue or in_flight or any(p_job)
+                           or any(d_running) or any(d_joining))
+            if outstanding:
+                raise RuntimeError("the fleet is stuck with work outstanding")
+            break
+        clock = min(nxt)
+
+    trace.makespan_s = clock
+    return trace
+
+
+def _spill(trace: Trace, pool: Pool, running: list[Request],
+           queue: list[Request], block_size: int, need: int = 0,
+           max_batch: int | None = None) -> int:
+    """A decode worker is full. Send the newest sequence back to prefill.
+
+    On one machine a preempted sequence just re-enters the same
+    scheduler. Across two pools it has to go all the way back: its
+    cache lives on the decode worker that is evicting it, and rebuilding
+    it is a prefill, which happens somewhere else entirely.
+    """
+    evicted = 0
+    while running and (pool.free < need
+                       or (max_batch is not None and len(running) > max_batch)):
+        victim = running.pop()
+        pool.used -= victim.blocks(block_size)
+        trace.recomputed_tokens += victim.generated
+        trace.recomputed_prompt_tokens += victim.prefilled
+        victim.generated = victim.prefilled = 0
+        victim.first_token_s = None
+        victim.gaps_ms.clear()
+        victim.gap_s = 0.0
+        queue.insert(0, victim)
+        evicted += 1
+    return evicted

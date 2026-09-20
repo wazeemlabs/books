@@ -35,6 +35,19 @@ def style(ax) -> None:
 
 def caption(d: dict) -> str:
     p = d["provenance"]
+    if "splits" in d and "transfer" in d:  # Chapter 19: two pools
+        a = d["assumptions"]
+        return (f"SIMULATION, not a measurement: {a['n_requests']:,} requests "
+                f"arriving as a Poisson process at {a['rate']} a second, "
+                f"prompt and output lengths from the case study (means "
+                f"{a['prompt_mean']:,} and {a['output_mean']}, seed "
+                f"{a['seed']}), through {a['fleet']} identical accelerators - "
+                f"what a prefill and a decode step cost is arithmetic over the "
+                f"reference model and published hardware specifications, not a "
+                f"timing run; link speeds are published specifications "
+                f"(FACTS.md) - throughput measured over the arrival window "
+                f"less the first {a['warm_fraction'] * 100:.0f}% - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     if "budgets" in d and "swap_arithmetic" in d:  # Chapter 18: policies
         a = d["assumptions"]
         return (f"SIMULATION, not a measurement: {a['n_requests']} requests "
@@ -1889,6 +1902,166 @@ def fig_policy(d: dict) -> None:
               f"{sq['longest-output']['slowdown_p99']:.0f}x."))
 
 
+# --- Chapter 19: the two phases on different machines ------------------
+
+def fig_transfer(d: dict) -> None:
+    """What a cache costs to move, against what it cost to make."""
+    tr = d["transfer"]
+    rows = tr["rows"]
+    x = [r["tokens"] for r in rows]
+    links = list(tr["links"])
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.9), dpi=200)
+    ax.plot(x, [r["prefill_s"] * 1e3 for r in rows], color=T.AMBER,
+            linestyle="-", marker="o", markersize=4.5,
+            linewidth=T.LINE_WIDTH + 0.4, label="making it (prefill)")
+    shades = [T.SEQUENTIAL_STEPS[i] for i in (8, 6, 5, 3, 2)]
+    for name, shade in zip(links, shades):
+        ax.plot(x, [r["over"][name] * 1e3 for r in rows], color=shade,
+                linestyle="--", marker="s", markersize=3.2, linewidth=1.4,
+                label=f"moving it over {name}")
+    ax.axhline(tr["decode_step_ms"], color=T.INK, linewidth=0.9,
+               linestyle=":", alpha=0.7)
+    ax.annotate(f"one decode step: {tr['decode_step_ms']:.1f} ms",
+                (x[0], tr["decode_step_ms"]), textcoords="offset points",
+                xytext=(2, -11), fontsize=7, color=T.INK)
+    ax.set_xscale("log", base=2); ax.set_xticks(x, [f"{v:,}" for v in x],
+                                                fontsize=7.4)
+    ax.set_yscale("log")
+    ax.set_xlabel("tokens of context")
+    ax.set_ylabel("milliseconds (log scale)")
+    ax.legend(frameon=False, fontsize=7.2, loc="upper left", ncol=2)
+    ax.set_title("A cache is cheap to move only on the links that cost money",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+
+    last = rows[-1]
+    save(fig, "ch19-transfer", d,
+         alt=("Time against context length, on log axes. Computing a "
+              f"{last['tokens']:,}-token prefill takes "
+              f"{last['prefill_s'] * 1e3:.0f} milliseconds; moving the "
+              f"{last['bytes'] / 1e6:,.0f} MB of keys and values it produced "
+              f"takes {last['over']['NVLink, same node'] * 1e3:.1f} "
+              "milliseconds over NVLink inside a node, "
+              f"{last['over']['InfiniBand NDR'] * 1e3:.0f} over InfiniBand, "
+              f"and {last['over']['25 GbE'] * 1e3:.0f} over 25 gigabit "
+              "Ethernet -- longer than the prefill itself. The Ethernet lines "
+              "cross above the prefill line, which is where the move becomes "
+              "the bottleneck; NVLink stays below one decode step at every "
+              "length."))
+
+
+def fig_split(d: dict) -> None:
+    """One fleet, every division of it, against doing both phases everywhere."""
+    a, co = d["assumptions"], d["colocated"]
+    rows = d["splits"]
+    x = [r["prefill_workers"] for r in rows]
+    best = d["best_split"]
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.8, 3.6), dpi=200)
+
+    ax.plot(x, [r["tokens_per_s"] for r in rows], color=T.BLUE,
+            linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH,
+            label="disaggregated, this split")
+    ax.axhline(co["tokens_per_s"], color=T.AMBER, linewidth=1.3)
+    ax.annotate(f"all {a['fleet']} doing both phases: "
+                f"{co['tokens_per_s']:,.0f}",
+                (x[0], co["tokens_per_s"]), textcoords="offset points",
+                xytext=(2, -13), ha="left", fontsize=7.2, color=T.INK)
+    ax.plot([best["prefill_workers"]], [best["tokens_per_s"]], marker="o",
+            markersize=9, markerfacecolor="none", markeredgecolor=T.INK,
+            linestyle="none")
+    ax.set_xticks(x, [str(v) for v in x], fontsize=7.6)
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel(f"prefill machines (the other {a['fleet']} minus this decode)")
+    ax.set_ylabel("output tokens a second")
+    ax.legend(frameon=False, fontsize=7.4, loc="lower center")
+    ax.set_title("The split is the design decision", loc="left", fontsize=10)
+    T.style(ax)
+
+    ax2.plot(x, [r["ttft_p99_ms"] for r in rows], color=T.AMBER, linestyle="-",
+             marker="o", markersize=4, linewidth=T.LINE_WIDTH,
+             label="to the first token, p99")
+    ax2.plot(x, [r["itl_p99_ms"] for r in rows], color=T.BLUE, linestyle="--",
+             marker="s", markersize=4, linewidth=T.LINE_WIDTH,
+             label="between tokens, p99")
+    ax2.axhline(a["ttft_budget_ms"], color=T.AMBER, linewidth=0.8,
+                linestyle=":", alpha=0.8)
+    ax2.annotate(f"first-token budget: {a['ttft_budget_ms']:,} ms",
+                 (x[0], a["ttft_budget_ms"]), textcoords="offset points",
+                 xytext=(0, 4), fontsize=6.8, color=T.INK)
+    ax2.axvline(best["prefill_workers"], color=T.INK, linewidth=0.9, alpha=0.4)
+    ax2.set_xticks(x, [str(v) for v in x], fontsize=7.6)
+    ax2.set_yscale("log")
+    ax2.set_xlabel("prefill machines")
+    ax2.set_ylabel("p99 latency (ms, log scale)")
+    ax2.legend(frameon=False, fontsize=7.4, loc="upper right")
+    ax2.set_title("and it moves both promises at once", loc="left", fontsize=10)
+    T.style(ax2)
+
+    worst = min(rows, key=lambda r: r["tokens_per_s"])
+    save(fig, "ch19-split", d,
+         alt=(f"Two panels against how many of the {a['fleet']} accelerators "
+              "do prefill. Left: throughput, rising from "
+              f"{worst['tokens_per_s']:,.0f} tokens a second at the worst "
+              f"split to {best['tokens_per_s']:,.0f} at "
+              f"{best['prefill_workers']} prefill machines, then falling "
+              "again; the same fleet doing both phases everywhere delivers "
+              f"{co['tokens_per_s']:,.0f}, above every split. Right: the p99 "
+              "waits on a log scale. Too few prefill machines and the wait "
+              "for a first token is tens of seconds; too many and the decode "
+              "machines are overloaded, so the wait between tokens climbs "
+              "and the first-token wait climbs again behind it."))
+
+
+def fig_second_token(d: dict) -> None:
+    """Where the network bill lands: one token, of one user."""
+    import numpy as np
+
+    rows = d["links"]
+    co = d["colocated"]
+    names = [r["link"] for r in rows] + ["colocated\n(no link)"]
+    p50 = [r["second_token_p50_ms"] for r in rows] + [co["second_token_p50_ms"]]
+    p99 = [r["second_token_p99_ms"] for r in rows] + [co["second_token_p99_ms"]]
+    later = [r["itl_p99_ms"] for r in rows] + [co["itl_p99_ms"]]
+    pos = np.arange(len(names))
+    width = 0.28
+
+    fig, ax = plt.subplots(figsize=(7.6, 3.8), dpi=200)
+    ax.bar(pos - width, p50, width, color=T.SEQUENTIAL_STEPS[5],
+           label="wait for the second token, p50")
+    ax.bar(pos, p99, width, color=T.BLUE,
+           label="wait for the second token, p99")
+    ax.bar(pos + width, later, width, color=T.AMBER,
+           label="every later gap, p99")
+    ax.axhline(d["assumptions"]["itl_budget_ms"], color=T.INK, linewidth=0.9,
+               linestyle=":", alpha=0.8)
+    ax.annotate(f"the between-token budget: {d['assumptions']['itl_budget_ms']} ms",
+                (pos[-1] + width, d["assumptions"]["itl_budget_ms"]),
+                textcoords="offset points", xytext=(4, 3), ha="right",
+                fontsize=7, color=T.INK)
+    ax.set_xticks(pos, names, fontsize=7.4)
+    ax.set_ylabel("milliseconds")
+    ax.legend(frameon=False, fontsize=7.6, loc="upper left")
+    ax.set_title("The whole cost of the network lands on one token",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+
+    slow = rows[-1]
+    save(fig, "ch19-second-token", d,
+         alt=("Bars for each link. The wait for a user's second token is "
+              f"{rows[0]['second_token_p50_ms']:.1f} milliseconds over "
+              f"{rows[0]['link']} and {slow['second_token_p50_ms']:.0f} over "
+              f"{slow['link']} at the median, reaching "
+              f"{slow['second_token_p99_ms']:.0f} at the 99th percentile and "
+              "crossing the budget. Every gap after the second is an "
+              f"ordinary decode step -- between "
+              f"{min(r['itl_p99_ms'] for r in rows):.1f} and "
+              f"{max(r['itl_p99_ms'] for r in rows):.1f} milliseconds -- "
+              "whatever the link. A colocated fleet has no link and no second-"
+              "token penalty at all."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -1902,7 +2075,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch15": [fig_prefixtree, fig_prefill, fig_hitrate],
             "ch16": [fig_matmul, fig_batch_tradeoff, fig_static_batch],
             "ch17": [fig_scheduler_timeline, fig_load, fig_itl],
-            "ch18": [fig_interference, fig_budget, fig_policy]}
+            "ch18": [fig_interference, fig_budget, fig_policy],
+            "ch19": [fig_transfer, fig_split, fig_second_token]}
 
 
 def _check_no_shared_figure_functions() -> None:

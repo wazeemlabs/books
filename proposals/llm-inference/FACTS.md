@@ -18,6 +18,8 @@ Format: claim · value · source · last verified.
 | B300 (Blackwell Ultra) HBM3e | 288 GB, ~8 TB/s; ~15 PFLOP/s dense FP4 | provider spec pages; SemiAnalysis InferenceX | 2026-09 |
 | NVLink (H100) per GPU | 900 GB/s | NVIDIA H100 datasheet | 2026-09 |
 | PCIe 5.0 x16 | ~64 GB/s per direction | PCI-SIG | stable |
+| InfiniBand NDR (ConnectX-7) | 400 Gb/s per port = 50 GB/s | NVIDIA ConnectX-7 datasheet; Quantum-2 switch page | 2026-09 |
+| Quantum-2 switch | "64 400Gb/s ports or 128 200Gb/s ports", 51.2 Tb/s bidirectional aggregate | NVIDIA Quantum-2 platform page | 2026-09 |
 
 ## Prices (on-demand, per GPU-hour)
 
@@ -120,6 +122,17 @@ Format: claim · value · source · last verified.
 | vLLM chunked prefill default | "In V1, chunked prefill is enabled by default whenever possible." | vLLM docs, `configuration/optimization` | 2026-09 |
 | vLLM's scheduling order | the policy "prioritizes decode requests": it "batches all pending decode requests before scheduling any prefill operations", then fills the remaining token budget with prefills, chunking those that do not fit | same | 2026-09 |
 | The token-budget trade-off | "Smaller values (e.g., 2048) achieve better ITL because there are fewer prefills slowing down decodes"; "Higher values achieve better time to first token (TTFT) as you can process more prefill tokens in a batch"; "For optimal throughput, we recommend setting `max_num_batched_tokens > 8192` especially for smaller models on large GPUs" | same | 2026-09 |
+
+## Disaggregated prefill and decode
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| DistServe | Zhong, Liu, Chen, Hu, Zhu, Liu, Jin and Zhang, "DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving", OSDI 2024, pp. 193-210. Serves "7.4x more requests or 12.6x tighter SLO" than state-of-the-art systems while meeting latency constraints for over 90% of requests; colocating the phases "leads to strong prefill-decoding interferences"; it "places the two phases according to the serving cluster's bandwidth to minimize the communication caused by disaggregation" | usenix.org/conference/osdi24/presentation/zhong-yinmin | 2026-09 |
+| Splitwise | Patel, Choukse, Zhang, Shah, Goiri, Maleki and Bianchini, "Splitwise: Efficient Generative LLM Inference Using Phase Splitting", ISCA 2024, doi:10.1109/ISCA59077.2024.00019. Splits the two phases onto separate machines so each runs on hardware suited to it; reports 1.4x higher throughput at 20% lower cost, or 2.35x better throughput at the same cost and power | Microsoft Research publication page; ACM DL | 2026-09 |
+| Mooncake | Qin, Li, He, Cui, Ren, Zhang, Wu, Zheng and Xu, "Mooncake: Trading More Storage for Less Computation - A KVCache-centric Architecture for Serving LLM Chatbot", FAST 2025, pp. 155-170 (Best Paper). "Increases the effective request capacity by 59%~498% when compared to baseline methods, all while complying with SLOs"; in production Kimi handles "115% and 107% more requests on NVIDIA A800 and H800 clusters". The arXiv version (2407.00079) reports "up to a 525% increase in throughput in certain simulated scenarios" and "75% more requests" under real workloads | usenix.org/conference/fast25/presentation/qin; arxiv.org/abs/2407.00079 | 2026-09 |
+| vLLM disaggregated prefilling | "This feature is experimental and subject to change." Configured with `--kv-transfer-config`; connectors include NixlConnector, LMCacheConnectorV1 and MooncakeConnector. Benefits given: "Tuning time-to-first-token (TTFT) and inter-token-latency (ITL) separately" and "Controlling tail ITL" by keeping prefill from interrupting decode. **"Disaggregated prefill DOES NOT improve throughput."** | vLLM docs, `features/disagg_prefill` | 2026-09 |
+| SGLang PD disaggregation | `--disaggregation-mode` takes `prefill` or `decode`; `--disaggregation-transfer-backend` takes `mooncake` (default), `nixl` or `ascend`; `--disaggregation-ib-device` names the InfiniBand device. The router takes `--pd-disaggregation`, `--prefill [url]`, `--decode [url]`. Motivated by "Prefill Interruption" and "DP Attention Imbalance" | SGLang docs, `advanced_features/pd_disaggregation` | 2026-09 |
+| NVIDIA Dynamo | "Dynamo leverages NIXL to transfer KV cache directly from the VRAM of the prefill engine to the VRAM of the decode engine"; "The KV transfer is non-blocking, allowing GPU forward passes to continue serving other requests during the transfer". Suggests "a larger TP for the memory-bound decoding phase while a smaller TP for the computation-bound prefill phase" | NVIDIA Dynamo docs, `design-docs/disaggregated-serving` | 2026-09 |
 
 ## Prefix caching
 

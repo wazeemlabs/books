@@ -109,3 +109,5 @@ explanation.
 | token budget | 18 | The cap on how many token positions one iteration may carry, across decodes and prefill chunks together. The knob that decides the wait between tokens. |
 | shortest-job-first | 18 | Serving the shortest waiting work first. It minimises the average wait and lengthens the longest one, which is the whole of the fairness argument. |
 | swapping | 17 | Making room by copying a sequence's cache to host memory and back, rather than discarding it and computing it again. |
+| disaggregation | 19 | Running prefill and decode on different machines, and moving the keys and values between them. |
+| tensor parallelism | 19 | Splitting each weight matrix across several accelerators so they share the work of one layer. A way to fit a model that does not fit, and to go faster once it does. |

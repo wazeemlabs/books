@@ -893,6 +893,142 @@ def ch18(d: dict) -> dict[str, str]:
     }
 
 
+def _delta(splits: list[dict], best: dict, offset: int) -> str:
+    """How much a split `offset` machines from the best one costs."""
+    want = best["prefill_workers"] + offset
+    row = next((r for r in splits if r["prefill_workers"] == want), None)
+    if row is None:
+        return "off the end of the fleet"
+    change = row["tokens_per_s"] / best["tokens_per_s"] - 1
+    return f"{abs(change) * 100:.0f}% {'more' if change > 0 else 'less'}"
+
+
+def ch19(d: dict) -> dict[str, str]:
+    a = d["assumptions"]
+    splits, co, best = d["splits"], d["colocated"], d["best_split"]
+    worst = min(splits, key=lambda r: r["tokens_per_s"])
+    tr = d["transfer"]
+    at_prompt = next(r for r in tr["rows"] if r["tokens"] == a["prompt_mean"])
+    at_context = next(r for r in tr["rows"] if r["tokens"] == a["context"])
+    longest = tr["rows"][-1]
+    links = {r["link"]: r for r in d["links"]}
+    fast, slow = d["links"][0], d["links"][-1]
+    by_prompt = {}
+    for r in d["prompts"]:
+        by_prompt.setdefault(r["prompt_mean"], {})[r["design"]] = r
+    short = by_prompt[min(by_prompt)]
+    lp = {r["design"]: r for r in d["long_prompts"]}
+    fleets = d["fleets"]
+    tok = lambda x: f"{x:,.0f}"
+    ms = lambda x: f"{x:,.0f} ms"
+    return {
+        "fleet": str(a["fleet"]),
+        "rate": str(a["rate"]),
+        "requests": f"{a['n_requests']:,}",
+        "prompt_mean": f"{a['prompt_mean']:,}",
+        "output_mean": str(a["output_mean"]),
+        "budget": f"{a['token_budget']:,}",
+        "pool_gb": f"{a['pool_bytes'] / 1e9:.0f} GB",
+        "link": a["link"],
+        "link_speed": f"{a['link_bytes_per_s'] / 1e9:.0f} GB/s",
+        "ttft_budget": ms(a["ttft_budget_ms"]),
+        "itl_budget": f"{a['itl_budget_ms']:,.0f} ms",
+        "offered": tok(co["offered_tokens_per_s"]),
+        "warm": f"{a['warm_fraction'] * 100:.0f}%",
+        # what a cache costs to move
+        "kv_per_token": f"{a['kv_bytes_per_token'] / 1024:.0f} KiB",
+        "prompt_mb": f"{at_prompt['bytes'] / 1e6:.0f} MB",
+        "prompt_prefill": f"{at_prompt['prefill_s'] * 1e3:.0f} ms",
+        "prompt_over_link": f"{at_prompt['over'][a['link']] * 1e3:.1f} ms",
+        "prompt_over_nvlink": f"{at_prompt['over']['NVLink, same node'] * 1e3:.1f} ms",
+        "prompt_over_slow": f"{at_prompt['over']['25 GbE'] * 1e3:.0f} ms",
+        "prompt_match_link": f"{at_prompt['link_to_match_prefill'] / 1e9:.1f} GB/s",
+        "context_mb": f"{at_context['bytes'] / 1e6:.0f} MB",
+        "long_tokens": f"{longest['tokens']:,}",
+        "long_mb": f"{longest['bytes'] / 1e6:,.0f} MB",
+        "long_over_link": f"{longest['over'][a['link']] * 1e3:.0f} ms",
+        "long_match_link": f"{longest['link_to_match_prefill'] / 1e9:.1f} GB/s",
+        "decode_step": f"{tr['decode_step_ms']:.1f} ms",
+        # the split
+        "best_p": str(best["prefill_workers"]),
+        "best_d": str(best["decode_workers"]),
+        "best_tok": tok(best["tokens_per_s"]),
+        "best_ttft50": ms(best["ttft_p50_ms"]),
+        "best_ttft99": ms(best["ttft_p99_ms"]),
+        "best_itl50": f"{best['itl_p50_ms']:.1f} ms",
+        "best_itl99": f"{best['itl_p99_ms']:.1f} ms",
+        "best_batch": f"{best['mean_batch']:.1f}",
+        # the two ends of the sweep, named rather than inferred
+        "low_p": str(splits[0]["prefill_workers"]),
+        "low_p_d": str(splits[0]["decode_workers"]),
+        "low_p_tok": tok(splits[0]["tokens_per_s"]),
+        "low_p_ttft99": f"{splits[0]['ttft_p99_ms'] / 1e3:.0f} s",
+        "low_p_batch": f"{splits[0]['mean_batch']:.1f}",
+        "high_p": str(splits[-1]["prefill_workers"]),
+        "high_p_d": str(splits[-1]["decode_workers"]),
+        "high_p_tok": tok(splits[-1]["tokens_per_s"]),
+        "high_p_ttft99": f"{splits[-1]['ttft_p99_ms'] / 1e3:.0f} s",
+        "high_p_itl99": f"{splits[-1]['itl_p99_ms']:.1f} ms",
+        "high_p_batch": f"{splits[-1]['mean_batch']:.0f}",
+        # how sharp the optimum is, on each side
+        "one_below": _delta(splits, best, -1),
+        "one_above": _delta(splits, best, +1),
+        "three_below": _delta(splits, best, -3),
+        "three_above": _delta(splits, best, +3),
+        "worst_p": str(worst["prefill_workers"]),
+        "worst_d": str(worst["decode_workers"]),
+        "worst_tok": tok(worst["tokens_per_s"]),
+        "split_range": f"{best['tokens_per_s'] / worst['tokens_per_s']:.1f}x",
+        "split_ratio": f"1:{best['decode_workers'] / best['prefill_workers']:.0f}",
+        # the fleet doing both phases everywhere
+        "co_tok": tok(co["tokens_per_s"]),
+        "co_ttft50": ms(co["ttft_p50_ms"]),
+        "co_ttft99": ms(co["ttft_p99_ms"]),
+        "co_itl50": f"{co['itl_p50_ms']:.1f} ms",
+        "co_itl99": f"{co['itl_p99_ms']:.1f} ms",
+        "co_batch": f"{co['mean_batch']:.1f}",
+        "co_over_best": f"{co['tokens_per_s'] / best['tokens_per_s']:.2f}x",
+        "co_gain_pct": f"{(co['tokens_per_s'] / best['tokens_per_s'] - 1) * 100:.0f}%",
+        # where the network bill lands
+        "second_co50": f"{co['second_token_p50_ms']:.1f} ms",
+        "second_co99": f"{co['second_token_p99_ms']:.1f} ms",
+        "second_fast50": f"{fast['second_token_p50_ms']:.1f} ms",
+        "second_link50": f"{links[a['link']]['second_token_p50_ms']:.1f} ms",
+        "second_link99": f"{links[a['link']]['second_token_p99_ms']:.1f} ms",
+        "second_slow50": f"{slow['second_token_p50_ms']:.0f} ms",
+        "second_slow99": f"{slow['second_token_p99_ms']:.0f} ms",
+        "slow_link": slow["link"],
+        "link_span": f"{max(tr['links'].values()) / min(tr['links'].values()):.0f}x",
+        "fast_link": fast["link"],
+        "link_tok_spread": f"{(max(r['tokens_per_s'] for r in d['links']) / min(r['tokens_per_s'] for r in d['links']) - 1) * 100:.1f}%",
+        "link_itl_spread": f"{max(r['itl_p99_ms'] for r in d['links']) - min(r['itl_p99_ms'] for r in d['links']):.1f} ms",
+        # regimes
+        "short_prompt": f"{min(by_prompt):,}",
+        "short_dis_tok": tok(short["disaggregated"]["tokens_per_s"]),
+        "short_co_tok": tok(short["colocated"]["tokens_per_s"]),
+        "short_p": str(short["disaggregated"]["prefill_workers"]),
+        "long_prompt": f"{a['long_prompt']:,}",
+        "long_rate": f"{a['long_rate']:.0f}",
+        "long_dis_p": str(lp["disaggregated"]["prefill_workers"]),
+        "long_dis_d": str(lp["disaggregated"]["decode_workers"]),
+        "long_dis_tok": tok(lp["disaggregated"]["tokens_per_s"]),
+        "long_co_tok": tok(lp["colocated"]["tokens_per_s"]),
+        "long_dis_second": f"{lp['disaggregated']['second_token_p50_ms']:.1f} ms",
+        "long_co_second": f"{lp['colocated']['second_token_p50_ms']:.1f} ms",
+        "small_fleet": str(min(r["fleet"] for r in fleets)),
+        "small_p": str(fleets[0]["best"]["prefill_workers"]),
+        "small_dis_tok": tok(fleets[0]["best"]["tokens_per_s"]),
+        "small_co_tok": tok(fleets[0]["colocated"]["tokens_per_s"]),
+        "small_dis_itl": f"{fleets[0]['best']['itl_p99_ms']:.1f} ms",
+        "small_co_itl": f"{fleets[0]['colocated']['itl_p99_ms']:.1f} ms",
+        "every_fleet": " and ".join(
+            f"{min(v):.2f}" if len(v := sorted(
+                r["best"]["tokens_per_s"] / r["colocated"]["tokens_per_s"]
+                for r in fleets)) else "" for _ in [0]) + "x to "
+            + f"{max(r['best']['tokens_per_s'] / r['colocated']['tokens_per_s'] for r in fleets):.2f}x",
+    }
+
+
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
@@ -900,7 +1036,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch09": ch09, "ch10": ch10, "ch11": ch11,
             "ch12": ch12, "ch13": ch13, "ch14": ch14,
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
-            "ch18": ch18}[chapter](d)
+            "ch18": ch18, "ch19": ch19}[chapter](d)
 
 
 if __name__ == "__main__":

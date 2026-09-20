@@ -601,13 +601,13 @@ standards. It does, so that reason has expired.
    KV cache and what it costs in memory.
 3. **Chapters 1–3** — the opening, written once there were real numbers
    to open with.
-4. **Chapters 4–11, 14–18** — front to back from there, closing Part I
-   and Part II and carrying Part III through the scheduler: batching,
-   continuous batching, and the policies that make it keep a promise.
+4. **Chapters 4–11, 14–19** — front to back from there, closing Part I,
+   Part II and Part III: memory, the scheduler, and the fleet.
 
-Drafted so far: **1–18**, every one of them passing `make check`.
-Next: **19, Disaggregated Prefill and Decode** — the last chapter of
-Part III, and the first that needs more than one accelerator.
+Drafted so far: **1–19**, every one of them passing `make check`.
+Next: **Design decision record I** (the case study's scheduler and
+cache policy, chosen from the measurements of Chapters 13–19), then
+Part IV, starting at **20, Attention Kernels**.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of
