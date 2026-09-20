@@ -26,7 +26,7 @@ def main() -> int:
     print(f"outline defines {len(chapters)} chapters")
     failed = False
 
-    for src in sorted(SRC.glob("ch*.md")):
+    for src in sorted(SRC.glob("ch*.md")) + sorted(SRC.glob("ddr*.md")):
         text = src.read_text()
         print(f"\n{src.name}")
 

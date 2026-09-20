@@ -28,6 +28,11 @@ REQUIRED = ["## Objectives", "## Why it matters", "## Numbers to remember",
 # chapters legitimately distribute their evidence through the narrative.
 CAVEAT = ["## Where it breaks", "## Where this is soft",
           "## Where this chapter simplifies", "## Where this estimate is soft"]
+# STANDARDS.md section 5, last paragraph: what a design decision record
+# owes the reader. Not a chapter, so not the chapter headings.
+DDR_REQUIRED = ["## The decision", "## What was considered",
+                "## What the measurements said", "## What would change this",
+                "## Sources"]
 
 IMG = re.compile(r"!\[[^\]]*\]\((code/figures/([a-z0-9-]+)\.svg)\)")
 FIGNUM = re.compile(r"^\*\*Figure (\d+)\.(\d+)\*\*", re.M)
@@ -172,12 +177,13 @@ def main() -> int:
     used_figs: set[str] = set()
     used_tables: set[str] = set()
 
-    chapters = sorted(SRC.glob("ch*.md"))
-    print(f"auditing {len(chapters)} chapters\n")
+    chapters = sorted(SRC.glob("ch*.md")) + sorted(SRC.glob("ddr*.md"))
+    print(f"auditing {len(chapters)} chapters and records\n")
 
     for src in chapters:
         text = src.read_text()
-        num = int(src.stem.removeprefix("ch"))
+        ddr = src.stem.startswith("ddr")
+        num = int(src.stem.removeprefix("ddr" if ddr else "ch"))
         issues: list[str] = []
 
         # Figures: cited must exist; drawn must be cited; numbered in order.
@@ -190,6 +196,8 @@ def main() -> int:
         if len(nums) != len(cited):
             issues.append(f"{len(cited)} figures embedded but {len(nums)} numbered captions")
         for i, (chap, idx) in enumerate(nums, start=1):
+            if ddr:
+                continue                       # a record numbers nothing
             if chap != num:
                 issues.append(f"caption 'Figure {chap}.{idx}' is in chapter {num}")
             if idx != i:
@@ -202,21 +210,22 @@ def main() -> int:
                 issues.append(f"includes {t}, which does not exist")
 
         # Required sections.
-        for heading in REQUIRED:
+        for heading in (DDR_REQUIRED if ddr else REQUIRED):
             if heading not in text:
                 issues.append(f"missing section {heading!r}")
         if not (cited or INCLUDE.findall(text)):
             issues.append("not evidence-backed: no generated figure or table "
                           "(STANDARDS section 5.1)")
-        if not any(h in text for h in CAVEAT):
+        if not ddr and not any(h in text for h in CAVEAT):
             issues.append(f"no limitations section (one of {CAVEAT})")
         issues += listings_match_the_code(text)
 
-        if "**Depends on:**" not in text:
+        if not ddr and "**Depends on:**" not in text:
             issues.append("missing a 'Depends on:' line (STANDARDS section 10.3)")
 
         # The rendered draft must exist.
-        draft = DRAFTS / f"CHAPTER-{src.stem.removeprefix('ch')}-DRAFT.md"
+        draft = (DRAFTS / f"DDR-{src.stem.removeprefix('ddr')}-DRAFT.md" if ddr
+                 else DRAFTS / f"CHAPTER-{src.stem.removeprefix('ch')}-DRAFT.md")
         if not draft.exists():
             issues.append(f"no rendered draft at {draft.name}")
         elif "{{" in draft.read_text():

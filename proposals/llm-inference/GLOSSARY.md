@@ -111,3 +111,4 @@ explanation.
 | swapping | 17 | Making room by copying a sequence's cache to host memory and back, rather than discarding it and computing it again. |
 | disaggregation | 19 | Running prefill and decode on different machines, and moving the keys and values between them. |
 | tensor parallelism | 19 | Splitting each weight matrix across several accelerators so they share the work of one layer. A way to fit a model that does not fit, and to go faster once it does. |
+| design decision record | 19 | A short document naming a decision, what else was considered, the measurement that settled it, and the condition that would reverse it. One closes each Part of this book. |

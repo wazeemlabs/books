@@ -1035,6 +1035,116 @@ def ch19(d: dict) -> dict[str, str]:
     }
 
 
+def ddr1(d: dict) -> dict[str, str]:
+    """Design decision record I: the values its prose quotes.
+
+    Almost every number here is a number some chapter in Part III
+    already published. It is read back out of `ddr1.json`, which read it
+    out of that chapter's results file, so a decision quoted in this
+    record cannot disagree with the measurement it was taken from.
+    """
+    a, f, m = d["assumptions"], d["fleet"], d["memory_policies"]
+    by_chapter: dict[str, list[dict]] = {}
+    for dec in d["decisions"]:
+        by_chapter.setdefault(dec["chapter"], []).append(dec)
+    sizing = {x["workers"]: x for x in d["sizing"]}
+    chosen, below = sizing[f["chosen"]], sizing[f["one_below"]]
+    biggest = sizing[max(sizing)]
+    cheapest = min(d["sizing"], key=lambda x: x["usd_per_m_output_tokens"])
+    tok = lambda x: f"{x:,.0f}"
+    pct = lambda x: f"{x * 100:.0f}%"
+    ms = lambda x: f"{x:,.0f} ms"
+    # Match the table: seconds once a wait has stopped being a latency.
+    secs = lambda x: f"{x / 1e3:,.1f} s" if x >= 1000 else f"{x:,.0f} ms"
+    return {
+        # what the record is made of
+        "decisions": str(len(d["decisions"])),
+        "chapters": str(len(a["from_chapters"])),
+        "first_chapter": a["from_chapters"][0].removeprefix("ch").lstrip("0"),
+        "last_chapter": a["from_chapters"][-1].removeprefix("ch").lstrip("0"),
+        # the standing assumptions
+        "block": str(a["block"]),
+        "budget": f"{a['token_budget']:,}",
+        "pool_gb": f"{a['pool_bytes'] / 1e9:.0f} GB",
+        "blocks": f"{a['blocks_per_worker']:,}",
+        "prompt_tokens": f"{a['prompt_tokens']:,}",
+        "output_tokens": str(a["output_tokens"]),
+        "rate": str(a["requests_per_s"]),
+        "ttft_budget": ms(a["ttft_budget_ms"]),
+        "itl_budget": f"{a['itl_budget_ms']:,.0f} ms",
+        "keeping_up_share": pct(a["keeping_up_share"]),
+        "sizing_requests": f"{a['sizing_requests']:,}",
+        "warm_fraction": pct(a["warm_fraction"]),
+        # the fleet
+        "chosen": str(f["chosen"]),
+        "one_below": str(f["one_below"]),
+        "needed": tok(f["tokens_per_s_needed"]),
+        "offered": tok(f["offered_tokens_per_s"]),
+        "chosen_tps": tok(f["chosen_tokens_per_s"]),
+        "chosen_share": pct(f["chosen_share_of_offered"]),
+        "chosen_ttft99": f"{f['chosen_ttft_p99_ms']:,.0f} ms",
+        "chosen_itl99": f"{f['chosen_itl_p99_ms']:.1f} ms",
+        "below_share": pct(f["one_below_share"]),
+        "below_ttft99": f"{below['ttft_p99_ms']:,.0f} ms",
+        "measured": str(f["measured_in_ch19"]),
+        "measured_share": pct(f["measured_share_of_offered"]),
+        "measured_ttft99": f"{f['measured_ttft_p99_ms']:,.0f} ms",
+        "biggest": str(biggest["workers"]),
+        "biggest_share": pct(biggest["share_of_offered"]),
+        "biggest_ttft99": f"{biggest['ttft_p99_ms']:,.0f} ms",
+        # against Chapter 16's arithmetic
+        "arith_batch": str(f["arithmetic_batch"]),
+        "arith_tps": tok(f["arithmetic_tokens_per_s"]),
+        "arith_fleet": f"{f['arithmetic_accelerators']:.1f}",
+        "per_machine_tps": tok(f["per_machine_tokens_per_s"]),
+        "per_machine_share": pct(f["per_machine_share_of_arithmetic"]),
+        "per_machine_rate": f"{f['per_machine_requests_per_s']:.1f}",
+        # the bill
+        "usd_hour": f"${f['usd_per_hour']:,.2f}",
+        "usd_month": f"${f['usd_per_month']:,.0f}",
+        "usd_m_tokens": f"${f['usd_per_m_output_tokens']:.3f}",
+        "usd_m_at_measured": f"${f['usd_per_m_at_measured']:.3f}",
+        "usd_gpu_hour": f"${f['gpu_usd_per_hour']:.2f}",
+        "cheapest": str(cheapest["workers"]),
+        "cheapest_usd_m": f"${cheapest['usd_per_m_output_tokens']:.3f}",
+        "cheapest_ttft99": secs(cheapest["ttft_p99_ms"]),
+        "usd_over_cheapest":
+            f"{f['usd_per_m_output_tokens'] / cheapest['usd_per_m_output_tokens']:.1f}x",
+        "biggest_usd_m": f"${biggest['usd_per_m_output_tokens']:.3f}",
+        # which memory policies this service actually put under pressure
+        "cache_small_frac": pct(m["cache_smallest_frac"]),
+        "cache_small_hit": pct(m["cache_smallest_hit"]),
+        "cache_full_hit": pct(m["cache_largest_hit"]),
+        "full_pool_preemptions": str(m["preemptions_at_full_pool"]),
+        "first_preempt_share": pct(m["largest_pool_share_that_preempts"]),
+        "first_preempt_count": str(m["preemptions_there"]),
+        "squeezed_preemptions": f"{m['order_preemptions_squeezed']:,}",
+        "usd_biggest_over_chosen":
+            f"{biggest['usd_per_m_output_tokens'] / chosen['usd_per_m_output_tokens']:.1f}x",
+        "usd_measured_over_chosen":
+            f"{f['usd_per_m_at_measured'] / f['usd_per_m_output_tokens']:.1f}x",
+        # a few decisions quoted in the prose
+        "block_paged": str(by_chapter["ch14"][0]["evidence"]
+                           ["sequences admitted, paged"]),
+        "block_reserved": str(by_chapter["ch14"][0]["evidence"]
+                              ["sequences admitted, whole context reserved"]),
+        "cache_hit": pct(by_chapter["ch15"][0]["evidence"]["hit rate, tree with LRU"]),
+        "cache_gb": f"{by_chapter['ch15'][0]['evidence']['cache GB']:.0f} GB",
+        "static_gain": f"{by_chapter['ch17'][0]['evidence']['tokens/s, continuous'] / by_chapter['ch17'][0]['evidence']['tokens/s, static']:.1f}x",
+        "order_worth": f"{abs(by_chapter['ch18'][1]['evidence']['end-to-end p50 s, shortest first, full pool'] / by_chapter['ch18'][1]['evidence']['end-to-end p50 s, FCFS, full pool'] - 1) * 100:.1f}%",
+        "order_squeezed": f"{by_chapter['ch18'][1]['evidence']['end-to-end p50 s, FCFS, squeezed pool'] / by_chapter['ch18'][1]['evidence']['end-to-end p50 s, shortest first, squeezed pool']:.1f}x",
+        "squeezed_gb": f"{by_chapter['ch18'][1]['evidence']['squeezed pool, GB']:.1f} GB",
+        "colocated_gain": f"{by_chapter['ch19'][0]['evidence']['tokens/s, colocated'] / by_chapter['ch19'][0]['evidence']['tokens/s, best split']:.2f}x",
+        "recompute_gain": f"{by_chapter['ch18'][2]['evidence']['tokens/s, recompute'] / by_chapter['ch18'][2]['evidence']['tokens/s, swap over PCIe 5.0']:.2f}x",
+        "recompute_ttft_gain": f"{by_chapter['ch18'][2]['evidence']['TTFT p99 ms, swap over PCIe 5.0'] / by_chapter['ch18'][2]['evidence']['TTFT p99 ms, recompute']:.1f}x",
+        "recompute_ms": f"{by_chapter['ch18'][2]['evidence']['one sequence, recompute ms']:.0f} ms",
+        "swap_ms": f"{by_chapter['ch18'][2]['evidence']['one sequence, PCIe 5.0 ms']:.0f} ms",
+        "recompute_over_swap": f"{by_chapter['ch18'][2]['evidence']['one sequence, recompute ms'] / by_chapter['ch18'][2]['evidence']['one sequence, PCIe 5.0 ms']:.1f}x",
+        "context_tokens": f"{a['prompt_tokens'] + a['output_tokens']:,}",
+        "colocated_gain_pct": f"{(by_chapter['ch19'][0]['evidence']['tokens/s, colocated'] / by_chapter['ch19'][0]['evidence']['tokens/s, best split'] - 1) * 100:.0f}%",
+    }
+
+
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
@@ -1042,7 +1152,8 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch09": ch09, "ch10": ch10, "ch11": ch11,
             "ch12": ch12, "ch13": ch13, "ch14": ch14,
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
-            "ch18": ch18, "ch19": ch19}[chapter](d)
+            "ch18": ch18, "ch19": ch19,
+            "ddr1": ddr1}[chapter](d)
 
 
 if __name__ == "__main__":

@@ -855,6 +855,64 @@ def ch19_regimes(d: dict) -> str:
     return "\n".join(out)
 
 
+def ddr1_decisions(d: dict) -> str:
+    """The record itself: what was decided, against what, on what evidence."""
+    out = ["| Decision | Instead of | Decided by | What decided it |",
+           "|---|---|---|---|"]
+    for dec in d["decisions"]:
+        n = dec["chapter"].removeprefix("ch").lstrip("0")
+        out.append(f"| **{dec['decision']}** | {dec['instead_of']} | "
+                   f"Chapter {n} | {dec['because']} |")
+    out += ["", "Every row is read out of the named chapter's results file "
+                "when this table is generated. Nothing in this table was "
+                "measured for this record, and nothing in it was typed in by "
+                "hand: change a chapter's measurement and the row changes "
+                "with it."]
+    return "\n".join(out)
+
+
+def ddr1_would_change(d: dict) -> str:
+    """The other half of a decision record: when to revisit it."""
+    out = ["| Decision | What would change it |", "|---|---|"]
+    for dec in d["decisions"]:
+        out.append(f"| {dec['decision']} | {dec['would_change']} |")
+    out += ["", "A decision without a condition attached to it is a habit. "
+                "These are the conditions -- the things that, if they became "
+                "true of a service, would make the row above the wrong answer "
+                "for it."]
+    return "\n".join(out)
+
+
+def ddr1_fleet(d: dict) -> str:
+    """How few machines the case study's traffic needs."""
+    a, f = d["assumptions"], d["fleet"]
+    out = ["| Machines | Tokens/s | Share of what the traffic asks for | "
+           "TTFT p99 | Between tokens, p99 | $/hour | $/M output tokens |",
+           "|---|---|---|---|---|---|---|"]
+    for r in d["sizing"]:
+        n = f"**{r['workers']}**" if r["workers"] == f["chosen"] else str(r["workers"])
+        mark = "" if r["keeping_up"] else " (behind)"
+        fmt = lambda x: f"{x / 1e3:,.1f} s" if x >= 1000 else f"{x:,.0f} ms"
+        out.append(f"| {n} | {r['tokens_per_s']:,.0f} | "
+                   f"{r['share_of_offered'] * 100:.0f}%{mark} | "
+                   f"{fmt(r['ttft_p99_ms'])} | {r['itl_p99_ms']:.1f} ms | "
+                   f"${r['usd_per_hour']:,.2f} | "
+                   f"${r['usd_per_m_output_tokens']:.3f} |")
+    out += ["", f"{a['sizing_requests']:,} requests at {a['requests_per_s']} a "
+                f"second (seed 0), every machine running Chapter 18's "
+                f"scheduler at a {a['token_budget']}-token budget over "
+                f"{a['blocks_per_worker']:,} blocks. Throughput is measured "
+                f"over the arrival window with the first "
+                f"{a['warm_fraction'] * 100:.0f}% discarded. A fleet is "
+                f"\"behind\" when it delivers less than "
+                f"{a['keeping_up_share'] * 100:.0f}% of the tokens the "
+                f"traffic asks for, or misses the "
+                f"{a['ttft_budget_ms']:,.0f} ms first-token promise. The "
+                f"dollar figures are ${f['gpu_usd_per_hour']:.2f} an hour a "
+                "machine, on-demand (FACTS.md)."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -883,6 +941,9 @@ def main() -> None:
                  ("ch18-preemption", ch18_preemption), ("ch18-swap", ch18_swap)),
         "ch19": (("ch19-transfer", ch19_transfer), ("ch19-split", ch19_split),
                  ("ch19-links", ch19_links), ("ch19-regimes", ch19_regimes)),
+        "ddr1": (("ddr1-decisions", ddr1_decisions),
+                 ("ddr1-would-change", ddr1_would_change),
+                 ("ddr1-fleet", ddr1_fleet)),
     }
     for chapter, entries in specs.items():
         path = RESULTS / f"{chapter}.json"

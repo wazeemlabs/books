@@ -604,10 +604,12 @@ standards. It does, so that reason has expired.
 4. **Chapters 4–11, 14–19** — front to back from there, closing Part I,
    Part II and Part III: memory, the scheduler, and the fleet.
 
-Drafted so far: **1–19**, every one of them passing `make check`.
-Next: **Design decision record I** (the case study's scheduler and
-cache policy, chosen from the measurements of Chapters 13–19), then
-Part IV, starting at **20, Attention Kernels**.
+Drafted so far: **1–19 and Design decision record I**, every one of
+them passing `make check`. The record closes Part III: seven decisions
+about the case study's scheduler and cache policy, each read back out
+of the results file of the chapter that measured it, plus one
+measurement of its own — how few machines the traffic needs.
+Next: Part IV, starting at **20, Attention Kernels**.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of

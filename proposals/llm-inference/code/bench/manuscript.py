@@ -71,12 +71,28 @@ def render(text: str, values: dict[str, str]) -> str:
     return INCLUDE.sub(insert, text)
 
 
+def output_for(stem: str) -> Path:
+    """Where a source renders to.
+
+    Chapters render to CHAPTER-nn-DRAFT.md. Design decision records
+    (STANDARDS.md section 5) close a Part rather than belonging to one
+    chapter, and render to DDR-n-DRAFT.md.
+    """
+    if stem.startswith("ddr"):
+        return OUT / f"DDR-{stem.removeprefix('ddr')}-DRAFT.md"
+    return OUT / f"CHAPTER-{stem.removeprefix('ch')}-DRAFT.md"
+
+
+def sources() -> list[Path]:
+    return sorted(SRC.glob("ch*.md")) + sorted(SRC.glob("ddr*.md"))
+
+
 def main(argv: list[str]) -> int:
     check = "--check" in argv
     stale: list[str] = []
-    for src in sorted(SRC.glob("ch*.md")):
+    for src in sources():
         values = load(src.stem)
-        out = OUT / f"CHAPTER-{src.stem.removeprefix('ch')}-DRAFT.md"
+        out = output_for(src.stem)
         new = render(src.read_text(), values)
         if check:
             if not out.exists() or out.read_text() != new:

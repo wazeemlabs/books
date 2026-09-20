@@ -24,6 +24,8 @@ import sys
 from pathlib import Path
 
 SRC, GLOSSARY = Path("../chapters"), Path("../GLOSSARY.md")
+# Which chapter each design decision record is read after.
+PART_ENDS = {"ddr1": 19}
 ROW = re.compile(r"^\|\s*([^|]+?)\s*\|\s*(\d+)\s*\|", re.M)
 MARKER = re.compile(r"<!--\s*defines:\s*([^>]+?)\s*-->")
 
@@ -68,9 +70,15 @@ def glossary() -> dict[str, int]:
 def main() -> int:
     terms = glossary()
     chapters = {int(p.stem[2:]): p for p in SRC.glob("ch*.md")}
+    # A design decision record closes a Part, so it may use every term
+    # the Part explained. It is checked at the number of its last
+    # chapter, which is the position it is read from.
+    records = {p: PART_ENDS[p.stem] for p in SRC.glob("ddr*.md")}
     text = {n: strip_uncounted(p.read_text()) for n, p in chapters.items()}
+    for p, n in records.items():
+        text[n] = text.get(n, "") + "\n" + strip_uncounted(p.read_text())
     claims: dict[str, int] = {}
-    for n, p in chapters.items():
+    for n, p in list(chapters.items()) + [(n, p) for p, n in records.items()]:
         for marker in MARKER.findall(p.read_text()):
             for name in marker.split(","):
                 claims[name.strip().lower()] = n
