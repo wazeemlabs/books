@@ -18,6 +18,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from . import legibility as L
 from . import theme as T
 
 RESULTS = Path("results")
@@ -25,6 +26,21 @@ FIGS = Path("figures")
 
 NAIVE = dict(color=T.AMBER, linestyle="-", marker="o", markersize=3.5, linewidth=1.8)
 CACHED = dict(color=T.BLUE, linestyle="--", marker="s", markersize=3.5, linewidth=1.8)
+
+
+def _log2_ticks(ax, x) -> None:
+    """Powers-of-two ticks, rotated and anchored under their own tick.
+
+    Rotating a tick label without setting `ha="right"` leaves it centred
+    on its own width, which slides it to the right of the tick it
+    belongs to -- far enough, on a crowded axis, to sit under the
+    neighbouring one.
+    """
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(x, [f"{v:,}" for v in x], rotation=45, fontsize=7)
+    for label in ax.get_xticklabels():
+        label.set_horizontalalignment("right")
+        label.set_rotation_mode("anchor")
 
 
 def style(ax) -> None:
@@ -266,15 +282,29 @@ def fig_cost(d: dict) -> None:
                label=f"Published API price for the same model (${api:.2f}/M)")
     ax.set_xscale("log", base=2)
     ax.set_yscale("log")
-    ax.set_xticks(x, [str(v) for v in x], fontsize=7.5)
+    # The last batch is not a power of two, and on a log axis its label
+    # lands on top of the one before it. Tick the powers of two; the
+    # last point is called out by its annotation instead.
+    ticks = [v for v in x if v & (v - 1) == 0]
+    ax.set_xticks(ticks, [str(v) for v in ticks], fontsize=7.5)
     ax.set_xlabel("Sequences decoded at the same time")
     ax.set_ylabel("USD per million output tokens (log)")
     ax.set_title("The same GPU and the same model, "
                  f"{d['spread']['ratio']:.0f}x apart in cost", loc="left")
-    for r in (rows[0], rows[-1]):
-        ax.annotate(f"${r['usd_per_m_tokens']:.3f}\n{r['flop_utilization']*100:.1f}% of peak FLOPs",
-                    (r["batch"], r["usd_per_m_tokens"]), textcoords="offset points",
-                    xytext=(10, 6), fontsize=7.5)
+    # Headroom above the first point for its two-line label, which
+    # otherwise runs into the title.
+    ax.set_ylim(min(y) / 2.4, max(y) * 2.8)
+    # Below and right of the first point, not above it: above it is the
+    # title. Below and left of the last, which is at the panel's edge.
+    # Above each end point. Below the first is the curve's own descent;
+    # below the last is the API price line.
+    for r, dx, dy, ha in ((rows[0], 7, 9, "left"),
+                          (rows[-1], 2, 34, "right")):
+        ax.annotate(f"${r['usd_per_m_tokens']:.3f}, batch {r['batch']}\n"
+                    f"{r['flop_utilization'] * 100:.1f}% of peak FLOPs",
+                    (r["batch"], r["usd_per_m_tokens"]),
+                    textcoords="offset points", xytext=(dx, dy), ha=ha,
+                    fontsize=7.5, color=T.INK)
     ax.legend(frameon=False, fontsize=8, loc="upper right")
     style(ax)
     save(fig, "ch01-cost", d,
@@ -327,6 +357,9 @@ def fig_memory(d: dict) -> None:
 def save(fig, name: str, d: dict, alt: str) -> None:
     FIGS.mkdir(exist_ok=True)
     fig.tight_layout()
+    # Read every label's position now, while the figure is still a live
+    # object: once it is an SVG nobody checks whether it can be read.
+    L.REPORT.add(fig, name)
     for ext in ("svg", "png"):
         fig.savefig(FIGS / f"{name}.{ext}", bbox_inches="tight")
     plt.close(fig)
@@ -482,9 +515,12 @@ def fig_scores(d: dict) -> None:
     fig, ax = plt.subplots(figsize=(6.6, 3.5), dpi=200)
     ax.barh(range(len(rows)), probs, color=T.BLUE, height=0.68)
     ax.axvline(uniform, color=T.AMBER, linestyle=":", linewidth=1.5)
+    # On a white ground: this sits below the bars, where a gridline
+    # would otherwise run through the middle of a word.
     ax.text(uniform + 0.15, -0.9,
             f"a coin-toss guess would be {uniform:.1f}%",
-            fontsize=7, color=T.AMBER, va="center")
+            fontsize=7, color=T.AMBER, va="center",
+            bbox=dict(facecolor="white", edgecolor="none", pad=1.2))
     for i, p in enumerate(probs):
         ax.text(p + 0.12, i, f"{p:.1f}%", va="center", fontsize=7.4, color=T.MUTED)
     ax.set_yticks(range(len(rows)), labels, fontsize=8)
@@ -601,8 +637,10 @@ def fig_intensity(d: dict) -> None:
                 ha="center", fontsize=8, color=T.BLUE, fontweight="bold")
     ax.annotate(f"prefill\n{pre:,.0f} FLOP/byte", xy=(pre, 0), xytext=(pre, 0.42),
                 ha="center", fontsize=8, color=T.AMBER, fontweight="bold")
-    ax.text(ridge, -0.55, f"this accelerator breaks even at {ridge:.0f}",
-            ha="center", fontsize=7.6, color=T.INK)
+    # To the left of the rule: centred on it, the rule runs up through
+    # the gap between two of the words.
+    ax.text(ridge * 0.93, -0.55, f"this accelerator breaks even at {ridge:.0f}",
+            ha="right", fontsize=7.6, color=T.INK)
     ax.text(lo * 1.4, -0.3, "limited by memory", fontsize=8, color=T.MUTED)
     ax.text(hi * 0.72, -0.3, "limited by arithmetic", fontsize=8,
             color=T.MUTED, ha="right")
@@ -647,9 +685,13 @@ def fig_cliff(d: dict) -> None:
         if lvl["kib"] < min(x) or lvl["kib"] > max(x):
             continue
         ax.axvline(lvl["kib"], color=T.MUTED, linestyle=":", linewidth=1.0)
-        ax.text(lvl["kib"], max(y) * 1.03,
+        # Beside the rule, not centred on it: a centred label has the
+        # rule running up through the gap between its two words.
+        near_right = lvl["kib"] > (min(x) * max(x)) ** 0.5
+        ax.text(lvl["kib"] * (0.88 if near_right else 1.14), max(y) * 1.03,
                 f"L{lvl['level']} ends\n{lvl['kib']:,} KiB", fontsize=7,
-                color=T.MUTED, ha="center", va="bottom")
+                color=T.MUTED, va="bottom",
+                ha="right" if near_right else "left")
 
     fastest, slowest = max(y), y[-1]
     ax.annotate(f"{fastest:.0f} GB/s", xy=(x[y.index(fastest)], fastest),
@@ -688,20 +730,29 @@ def fig_wall(d: dict) -> None:
             linestyle="--", marker="o", markersize=4.5, linewidth=T.LINE_WIDTH)
     ax.set_xscale("log"); ax.set_yscale("log")
 
+    # Headroom above and below, for the callouts at both ends of the
+    # curves; both ends sit in the corners of the panel.
+    ax.set_ylim(min(predicted) / 2.6, max(measured) * 2.4)
+
     l3 = next((c for c in d["cache_topology"] if c["level"] == 3), None)
     if l3 and min(x) < l3["kib"] / 1024 < max(x):
         ax.axvline(l3["kib"] / 1024, color=T.MUTED, linestyle=":", linewidth=1.0)
-        ax.text(l3["kib"] / 1024, max(measured) * 1.1, " weights outgrow\n last-level cache",
-                fontsize=7, color=T.MUTED, va="top")
+        # To the left of the rule, above where both curves run.
+        ax.text(l3["kib"] / 1024 * 0.92, max(measured) * 2.0,
+                "weights outgrow\nlast-level cache",
+                fontsize=7, color=T.MUTED, va="top", ha="right")
 
     first, last = w[0], w[-1]
+    # Below the amber curve, which is below the blue one at this end.
     ax.annotate(f"{first['measured_over_predicted']:.1f}x above",
-                xy=(first["weight_mib"], first["decode_step_s"] * 1e3),
-                textcoords="offset points", xytext=(8, -3), fontsize=7.5, color=T.MUTED)
+                xy=(first["weight_mib"], first["predicted_from_bandwidth_s"] * 1e3),
+                textcoords="offset points", xytext=(7, -9), fontsize=7.5,
+                color=T.MUTED, va="top")
+    # Above the blue curve, which is the upper one at this end.
     ax.annotate(f"{last['measured_over_predicted']:.2f}x",
                 xy=(last["weight_mib"], last["decode_step_s"] * 1e3),
-                textcoords="offset points", xytext=(-4, 10), fontsize=7.5,
-                color=T.MUTED, ha="right")
+                textcoords="offset points", xytext=(-3, 9), fontsize=7.5,
+                color=T.MUTED, ha="right", va="bottom")
 
     ax.set_xlabel("model weights (MiB, log)")
     ax.set_ylabel("time to write one token (ms, log)")
@@ -734,11 +785,8 @@ def fig_tradeoff(d: dict) -> None:
     fig, ax = plt.subplots(figsize=(7.2, 4.0), dpi=200)
     ax.plot(x, y, color=T.BLUE, marker="o", markersize=4,
             linewidth=T.LINE_WIDTH, zorder=3)
-    for r in c:
-        if r["batch"] in (1, 16, 64, 174, 325) or r is c[-1]:
-            ax.annotate(f"batch {r['batch']}", (r["tokens_per_s"], r["inter_token_ms"]),
-                        textcoords="offset points", xytext=(7, -3), fontsize=7.2,
-                        color=T.MUTED)
+    marked = [r for r in c
+              if r["batch"] in (1, 16, 64, 174, 325) or r is c[-1]]
 
     for b in d["budgets"]:
         ax.axhline(b["itl_budget_ms"], color=T.AMBER, linestyle=":", linewidth=1.1)
@@ -753,10 +801,19 @@ def fig_tradeoff(d: dict) -> None:
     last = c[-1]
     ax.annotate("the curve stops here because\nmemory runs out, not latency",
                 xy=(last["tokens_per_s"], last["inter_token_ms"]),
-                xytext=(last["tokens_per_s"] * 0.34, last["inter_token_ms"] * 2.3),
+                xytext=(last["tokens_per_s"] * 0.34, last["inter_token_ms"] * 2.6),
                 fontsize=7.2, color=T.INK,
                 arrowprops=dict(arrowstyle="->", lw=0.8, color=T.INK))
+    # Room on the right for the last point's label, which otherwise
+    # hangs outside the panel.
+    ax.set_xlim(min(x) / 1.25, max(x) * 1.55)
     T.style(ax)
+    # Placed after the budget lines and the callout, so it knows about
+    # them: at the left the curve is nearly flat and a fixed offset puts
+    # the label straight through it.
+    L.label_points(ax, [(r["tokens_per_s"], r["inter_token_ms"],
+                         f"batch {r['batch']}") for r in marked],
+                   fontsize=7.2, color=T.MUTED)
 
     save(fig, "ch05-tradeoff", d,
          alt=("Inter-token latency against throughput as the batch grows, both "
@@ -777,12 +834,18 @@ def fig_tail(d: dict) -> None:
 
     fig, ax = plt.subplots(figsize=(7.2, 3.6), dpi=200)
     ax.bar(centres, counts, width=width, color=T.BLUE)
-    for label, key, style, h in (("p50", "p50_ms", "-", 0.97),
-                                 ("p99", "p99_ms", "--", 0.80),
-                                 ("p99.9", "p999_ms", ":", 0.63)):
+    # A band above every bar, so no label is set over the distribution
+    # it is describing. The median's rule stands at the mode, where the
+    # bars are tallest and there is otherwise nowhere to put its label.
+    ax.set_ylim(0, max(counts) * 1.22)
+    for label, key, style, ha in (("p50", "p50_ms", "-", "left"),
+                                  ("p99", "p99_ms", "--", "right"),
+                                  ("p99.9", "p999_ms", ":", "left")):
         ax.axvline(m[key], color=T.AMBER, linestyle=style, linewidth=1.4)
-        ax.text(m[key], max(counts) * h, f" {label} {m[key]:.2f} ms",
-                fontsize=7.4, color=T.AMBER, va="top")
+        pad = (max(centres) - min(centres)) * 0.008
+        ax.text(m[key] + (pad if ha == "left" else -pad), max(counts) * 1.13,
+                f"{label} {m[key]:.2f} ms", fontsize=7.4, color=T.AMBER,
+                va="center", ha=ha)
 
     ax.set_xlabel("time for one decode step (ms)")
     ax.set_ylabel(f"steps (of {m['samples']:,})")
@@ -951,12 +1014,11 @@ def fig_roofline(d: dict) -> None:
         marker = "s" if p["kind"] == "model" else "o"
         ax.plot([p["intensity"]], [p["achieved_flops"] / 1e9], marker=marker,
                 markersize=6, color=colour, zorder=4)
-        ax.annotate(p["name"], (p["intensity"], p["achieved_flops"] / 1e9),
-                    textcoords="offset points", xytext=(7, -3), fontsize=6.8,
-                    color=T.INK)
 
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlim(lo, hi)
+    ax.set_ylim(min(p["achieved_flops"] for p in pts) / 1e9 / 2.5,
+                peak / 1e9 * 2.2)
     ax.set_xlabel("arithmetic per byte fetched (log)")
     ax.set_ylabel("rate achieved (GFLOP/s, log)")
     ax.set_title("Every operation sits under the roof", loc="left", fontsize=11)
@@ -965,6 +1027,11 @@ def fig_roofline(d: dict) -> None:
             color=T.MUTED)
     ax.legend(frameon=False, fontsize=7.8, loc="lower right")
     T.style(ax)
+    # Placed last, once the roof and the axis limits are final: three of
+    # these points sit within a hair of each other on the flat part of
+    # the roof, and a fixed offset stacks their labels.
+    L.label_points(ax, [(p["intensity"], p["achieved_flops"] / 1e9, p["name"])
+                        for p in pts], fontsize=6.8, color=T.INK)
 
     save(fig, "ch08-roofline", d,
          alt=("Measured rate against arithmetic per byte for eight operations, "
@@ -988,11 +1055,7 @@ def fig_batching_roof(d: dict) -> None:
     ax.plot([r["intensity"] for r in rows], [r["achieved_flops"] / 1e12 for r in rows],
             color=T.BLUE, marker="o", markersize=5, linewidth=T.LINE_WIDTH,
             zorder=4, label="decode, as the batch grows")
-    for r in rows:
-        if r["batch"] in (1, 32, 325):
-            ax.annotate(f"batch {r['batch']}", (r["intensity"], r["achieved_flops"] / 1e12),
-                        textcoords="offset points", xytext=(8, -4), fontsize=7.2,
-                        color=T.MUTED)
+    marked = [r for r in rows if r["batch"] in (1, 32, 325)]
 
     ceiling = a["intensity_ceiling"]
     ax.axvline(ceiling, color=T.AMBER, linestyle="--", linewidth=1.4)
@@ -1006,11 +1069,22 @@ def fig_batching_roof(d: dict) -> None:
     ax.set_ylabel("rate achieved (TFLOP/s, log)")
     ax.set_title("Batching climbs the slope but never tops it", loc="left",
                  fontsize=11)
-    ax.text(a["ridge_flop_per_byte"], peak / 1e12 * 1.3,
-            f" breaks even at {a['ridge_flop_per_byte']:.0f}", fontsize=7.4,
-            color=T.MUTED)
-    ax.legend(frameon=False, fontsize=7.8, loc="lower right")
+    # To the left of the rule, not the right: to the right there is only
+    # the edge of the panel.
+    ax.set_ylim(min(r["achieved_flops"] for r in rows) / 1e12 / 2.2,
+                peak / 1e12 * 2.4)
+    ax.text(a["ridge_flop_per_byte"] * 0.93, peak / 1e12 * 1.3,
+            f"breaks even at {a['ridge_flop_per_byte']:.0f}", fontsize=7.4,
+            color=T.MUTED, ha="right")
+    # Upper left: the panel below the slope is where the batch labels
+    # go, and the rule at the break-even point runs through the lower
+    # right corner where a legend would otherwise sit.
+    ax.legend(frameon=False, fontsize=7.8, loc="upper left",
+              bbox_to_anchor=(0.01, 0.94))
     T.style(ax)
+    L.label_points(ax, [(r["intensity"], r["achieved_flops"] / 1e12,
+                         f"batch {r['batch']}") for r in marked],
+                   fontsize=7.2, color=T.MUTED)
 
     save(fig, "ch08-batching", d,
          alt=("The accelerator's roofline with decoding placed on it as the "
@@ -1038,18 +1112,23 @@ def fig_framings(d: dict) -> None:
     ax.barh(range(len(rows)), values, color=colours, height=0.66)
     ax.axvline(honest, color=T.INK, linestyle=":", linewidth=1.4)
 
+    # Inside the bars, not past their ends: the reference line stands at
+    # the median, so three of the six bars end within a few points of
+    # it and their labels are struck through by it.
     for i, w in enumerate(rows):
-        ax.text(w["tokens_per_s"] + max(values) * 0.012, i,
+        ax.text(w["tokens_per_s"] - max(values) * 0.012, i,
                 f"{w['tokens_per_s']:,.0f}  ({w['relative_to_honest']:.2f}x)",
-                va="center", fontsize=7.4, color=T.MUTED)
+                va="center", ha="right", fontsize=7.4, color="#FFFFFF")
 
     ax.set_yticks(range(len(rows)), labels, fontsize=7.6)
-    ax.set_xlim(0, max(values) * 1.32)
+    ax.set_xlim(0, max(values) * 1.12)
+    ax.set_ylim(-0.75, len(rows) - 0.25)
     ax.set_xlabel("tokens per second reported")
     ax.set_title("One measurement, reported six defensible ways", loc="left",
                  fontsize=11)
-    ax.text(honest, len(rows) - 0.3, " what this book reports", fontsize=7.4,
-            color=T.INK)
+    # Below the top bar rather than above it, where the title is.
+    ax.text(honest + max(values) * 0.012, -0.62, "what this book reports",
+            fontsize=7.4, color=T.INK, va="center")
     T.style(ax, hide_left=True)
 
     save(fig, "ch09-framings", d,
@@ -1236,12 +1315,8 @@ def fig_blocksize(d: dict) -> None:
     ax.set_xscale("log", base=2)
     ax.set_xticks(x, [str(v) for v in x])
 
-    for r in rows:
-        if r["block_size"] in (1, d["default_block_size"], x[-1]):
-            ax.annotate(f"{r['admitted_paged']} sequences",
-                        (r["block_size"], r["utilization"] * 100),
-                        textcoords="offset points", xytext=(0, -16),
-                        ha="center", fontsize=7.2, color=T.MUTED)
+    marked = [r for r in rows
+              if r["block_size"] in (1, d["default_block_size"], x[-1])]
 
     default = d["at_default"]
     ax.axvline(default["block_size"], color=T.AMBER, linestyle=":", linewidth=1.2)
@@ -1253,7 +1328,16 @@ def fig_blocksize(d: dict) -> None:
     ax.set_ylabel("share of held memory in use (%)")
     ax.set_title("Bigger blocks waste more, and there is a lot of room",
                  loc="left", fontsize=11)
+    # Room on both sides: the first and last points carry labels, and at
+    # the edges of the panel there is nowhere for them to go.
+    ax.set_xlim(x[0] / 1.9, x[-1] * 2.6)
+    lo = min(r["utilization"] * 100 for r in rows)
+    hi = max(r["utilization"] * 100 for r in rows)
+    ax.set_ylim(lo - (hi - lo) * 0.16, hi + (hi - lo) * 0.14)
     T.style(ax)
+    L.label_points(ax, [(r["block_size"], r["utilization"] * 100,
+                         f"{r['admitted_paged']} sequences") for r in marked],
+                   fontsize=7.2, color=T.MUTED)
 
     save(fig, "ch14-blocksize", d,
          alt=("Share of held memory actually in use against block size, x axis "
@@ -1494,18 +1578,18 @@ def fig_batch_tradeoff(d: dict) -> None:
     ax2.plot([r["inter_token_ms"] for r in big["rows"]],
              [r["tokens_per_s"] for r in big["rows"]], color=T.BLUE,
              linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH)
-    for r in big["rows"]:
-        offsets = {1: (2, 12), 8: (10, -4), 64: (-6, -18)}
-        if r["batch"] in offsets:
-            ax2.annotate(f"batch {r['batch']}",
-                         (r["inter_token_ms"], r["tokens_per_s"]),
-                         textcoords="offset points", xytext=offsets[r["batch"]],
-                         ha="right" if r["batch"] == 64 else "left",
-                         fontsize=7.2, color=T.MUTED)
     ax2.set_xlabel("what one user waits between tokens (ms)")
     ax2.set_ylabel("tokens per second, whole server")
     ax2.set_title("and the user pays for it", loc="left", fontsize=10)
+    # Room at the top right, where the last point sits in the corner.
+    tps = [r["tokens_per_s"] for r in big["rows"]]
+    ax2.set_ylim(min(tps) - (max(tps) - min(tps)) * 0.12,
+                 max(tps) + (max(tps) - min(tps)) * 0.14)
     T.style(ax2)
+    L.label_points(ax2, [(r["inter_token_ms"], r["tokens_per_s"],
+                          f"batch {r['batch']}") for r in big["rows"]
+                         if r["batch"] in (1, 8, 64)],
+                   fontsize=7.2, color=T.MUTED)
 
     save(fig, "ch16-tradeoff", d,
          alt=("Two panels, for the model whose weights do not fit in cache. "
@@ -1704,9 +1788,11 @@ def fig_itl(d: dict) -> None:
             marker="o", markersize=4, linewidth=T.LINE_WIDTH,
             label="static, p99")
     ax.axhline(pure, color=T.INK, linewidth=0.9, alpha=0.55)
+    # Below the line: above it, and within a few points of it, runs the
+    # static p99 curve.
     ax.annotate(f"the decode step alone: {pure:.1f} ms", (x[-1], pure),
-                textcoords="offset points", xytext=(-4, 5), ha="right",
-                fontsize=7.2, color=T.INK)
+                textcoords="offset points", xytext=(-4, -5), ha="right",
+                va="top", fontsize=7.2, color=T.INK)
     ax.axhline(a["itl_budget_ms"], color=T.INK, linewidth=0.9, linestyle=":",
                alpha=0.7)
     ax.annotate(f"the budget: {a['itl_budget_ms']} ms", (x[-1], a["itl_budget_ms"]),
@@ -1759,8 +1845,10 @@ def fig_interference(d: dict) -> None:
                         arrowprops=dict(arrowstyle="-", lw=0))
     ax.set_xlabel("token of this user's reply")
     ax.set_ylabel("wait before that token (ms)")
-    ax.set_ylim(bottom=0)
-    ax.legend(frameon=False, fontsize=8, loc="upper right")
+    # Upper left, and with headroom: the spikes are on the right of the
+    # panel and the tallest of them reaches into a legend placed there.
+    ax.set_ylim(0, max(whole["victim_gaps_ms"]) * 1.30)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
     ax.set_title(f"{whole['interlopers']} prompts of "
                  f"{whole['interloper_prompt']:,} tokens land during one reply",
                  loc="left", fontsize=10.5)
@@ -1786,52 +1874,86 @@ def fig_budget(d: dict) -> None:
     base = next(r for r in d["budgets_high"] if not r["token_budget"])
     x = [r["token_budget"] for r in rows]
 
+    itl = [r["itl_p99_ms"] for r in rows]
+    ttft = [r["ttft_p99_ms"] for r in rows]
+    tps = [r["tokens_per_s"] for r in rows]
+
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.8, 3.6), dpi=200)
 
-    ax.plot(x, [r["itl_p99_ms"] for r in rows], color=T.BLUE, linestyle="--",
-            marker="s", markersize=4, linewidth=T.LINE_WIDTH,
-            label="between tokens, p99")
-    ax.plot(x, [r["ttft_p99_ms"] for r in rows], color=T.AMBER, linestyle="-",
-            marker="o", markersize=4, linewidth=T.LINE_WIDTH,
-            label="to the first token, p99")
+    # Left: two series, labelled where they run rather than in a legend
+    # box. A box here would sit over the amber curve's steep descent,
+    # which is the part of the picture that carries the argument.
+    ax.plot(x, itl, color=T.BLUE, linestyle="--", marker="s", markersize=4,
+            linewidth=T.LINE_WIDTH)
+    ax.plot(x, ttft, color=T.AMBER, linestyle="-", marker="o", markersize=4,
+            linewidth=T.LINE_WIDTH)
+    ax.set_yscale("log")
+    ax.set_ylim(min(itl) / 2.2, max(ttft) * 2.6)
+
+    ax.axhline(a["ttft_budget_ms"], color=T.AMBER, linewidth=0.8,
+               linestyle=":", alpha=0.8)
+    # Right-aligned: the amber curve crosses this line on the left of
+    # the panel, so a label anchored there is struck through by it.
+    ax.annotate(f"first-token budget: {a['ttft_budget_ms']:,} ms",
+                (x[-1], a["ttft_budget_ms"]), textcoords="offset points",
+                xytext=(0, 5), ha="right", fontsize=6.8, color=T.INK)
     ax.axhline(a["itl_budget_ms"], color=T.BLUE, linewidth=0.8, linestyle=":",
                alpha=0.8)
+    # Below the line and on the left, where both curves are far away.
     ax.annotate(f"between-token budget: {a['itl_budget_ms']} ms",
                 (x[0], a["itl_budget_ms"]), textcoords="offset points",
-                xytext=(0, 4), fontsize=6.8, color=T.INK)
-    ax.axhline(a["ttft_budget_ms"], color=T.AMBER, linewidth=0.8, linestyle=":",
-               alpha=0.8)
-    ax.annotate(f"first-token budget: {a['ttft_budget_ms']:,} ms",
-                (x[0], a["ttft_budget_ms"]), textcoords="offset points",
-                xytext=(0, 4), fontsize=6.8, color=T.INK)
+                xytext=(0, -5), va="top", fontsize=6.8, color=T.INK)
+
+    ax.annotate("to the first token, p99", (x[-1], ttft[-1]),
+                textcoords="offset points", xytext=(0, 13), ha="right",
+                fontsize=7.4, color=T.AMBER, fontweight="bold")
+    ax.annotate("between tokens, p99", (x[-1], itl[-1]),
+                textcoords="offset points", xytext=(0, -13), va="top",
+                ha="right", fontsize=7.4, color=T.BLUE, fontweight="bold")
+
     ax.axvline(d["chosen_budget"], color=T.INK, linewidth=0.9, alpha=0.4)
-    ax.annotate(f"{d['chosen_budget']:,}", (d["chosen_budget"], 8e3),
-                textcoords="offset points", xytext=(4, 0), fontsize=7.2,
-                color=T.INK)
-    ax.set_xscale("log", base=2); ax.set_xticks(x, [f"{v:,}" for v in x],
-                                                rotation=45, fontsize=7)
-    ax.set_yscale("log")
+    # High on the line, above where the amber curve has flattened and
+    # clear of both budget labels. The band between the curves, which
+    # looks empty, already holds the between-token budget label.
+    ax.annotate(f"chosen: {d['chosen_budget']:,}",
+                (d["chosen_budget"], a["ttft_budget_ms"] * 3),
+                textcoords="offset points", xytext=(5, 0), va="center",
+                fontsize=7.2, color=T.INK)
+
     ax.set_xlabel("token budget for one iteration")
     ax.set_ylabel("p99 latency (ms, log scale)")
-    ax.legend(frameon=False, fontsize=7.4, loc="upper right")
     ax.set_title("The two promises pull opposite ways", loc="left", fontsize=10)
+    _log2_ticks(ax, x)
     T.style(ax)
 
-    ax2.plot(x, [r["tokens_per_s"] for r in rows], color=T.BLUE,
-             linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH,
-             label="stall-free, this budget")
+    # Right: one series and one reference line, both labelled in place.
+    ax2.plot(x, tps, color=T.BLUE, linestyle="--", marker="s", markersize=4,
+             linewidth=T.LINE_WIDTH)
     ax2.axhline(base["tokens_per_s"], color=T.AMBER, linewidth=1.1,
                 linestyle="-", alpha=0.85)
+    ax2.set_ylim(0, max(tps) * 1.28)
+    # Well below the line, with a leader up to it: the blue curve sits
+    # just above the line for most of the range, so there is no room to
+    # label it in the gap between the two.
     ax2.annotate(f"prefill on its own iteration: {base['tokens_per_s']:,.0f}",
-                 (x[-1], base["tokens_per_s"]), textcoords="offset points",
-                 xytext=(-4, -12), ha="right", fontsize=7.2, color=T.INK)
+                 (x[-2], base["tokens_per_s"]),
+                 xytext=(x[-1], base["tokens_per_s"] * 0.55),
+                 ha="right", va="center", fontsize=7.2, color=T.INK,
+                 arrowprops=dict(arrowstyle="-", linewidth=0.7,
+                                 color=T.MUTED, shrinkA=3, shrinkB=1))
+    ax2.annotate("stall-free, this budget", (x[-1], tps[-1]),
+                 textcoords="offset points", xytext=(0, 12), ha="right",
+                 fontsize=7.4, color=T.BLUE, fontweight="bold")
     ax2.axvline(d["chosen_budget"], color=T.INK, linewidth=0.9, alpha=0.4)
-    ax2.set_xscale("log", base=2); ax2.set_xticks(x, [f"{v:,}" for v in x],
-                                                  rotation=45, fontsize=7)
-    ax2.set_ylim(bottom=0)
+    ax2.annotate(f"chosen: {d['chosen_budget']:,}",
+                 (d["chosen_budget"], max(tps) * 0.30),
+                 textcoords="offset points", xytext=(5, 0), va="center",
+                 fontsize=7.2, color=T.INK)
+
     ax2.set_xlabel("token budget for one iteration")
     ax2.set_ylabel("output tokens a second")
     ax2.set_title("and throughput barely notices", loc="left", fontsize=10)
+    _log2_ticks(ax2, x)
     T.style(ax2)
 
     save(fig, "ch18-budget", d,
@@ -1871,18 +1993,25 @@ def fig_policy(d: dict) -> None:
         ax_.bar(pos + width / 2, [r["slowdown_p99"] for r in sel], width,
                 color=T.AMBER, label="p99")
         for i, r in enumerate(sel):
-            ax_.annotate(f"{r['slowdown_p99']:.0f}x",
-                         (i + width / 2, r["slowdown_p99"]),
+            worst = r["slowdown_p99"]
+            ax_.annotate(f"{worst:.0f}x" if worst >= 10 else f"{worst:.1f}x",
+                         (i + width / 2, worst),
                          textcoords="offset points", xytext=(0, 3),
                          ha="center", fontsize=7, color=T.INK)
         ax_.set_xticks(pos, [n.replace("-", "-\n") for n in names], fontsize=7.6)
         ax_.set_yscale("log")
-        ax_.set_ylim(bottom=1)      # 1x is "no slowdown at all": the floor
         ax_.set_title(f"{title} ({sel[0]['pool_gb']:.0f} GB)"
                       if pool == "full" else
                       f"{title} ({sel[0]['pool_gb']:.1f} GB)",
                       loc="left", fontsize=9.5)
         T.style(ax_)
+    # Once, after both panels are drawn. Setting only the bottom inside
+    # the loop froze the shared axis at the left panel's autoscaled top,
+    # and the right panel -- which is the one with the argument in it --
+    # was drawn entirely above the visible area.
+    #
+    # 1x is "no slowdown at all", the floor by definition.
+    ax.set_ylim(1, max(r["slowdown_p99"] for r in rows) * 2.2)
     ax.set_ylabel("slowdown against running alone (log scale)")
     ax.legend(frameon=False, fontsize=7.6, loc="upper left")
 
@@ -1922,14 +2051,24 @@ def fig_transfer(d: dict) -> None:
                 label=f"moving it over {name}")
     ax.axhline(tr["decode_step_ms"], color=T.INK, linewidth=0.9,
                linestyle=":", alpha=0.7)
+    # In the right margin. Six curves cross this line at six different
+    # places; there is no room for its label inside the panel.
     ax.annotate(f"one decode step: {tr['decode_step_ms']:.1f} ms",
-                (x[0], tr["decode_step_ms"]), textcoords="offset points",
-                xytext=(2, -11), fontsize=7, color=T.INK)
-    ax.set_xscale("log", base=2); ax.set_xticks(x, [f"{v:,}" for v in x],
-                                                fontsize=7.4)
+                xy=(1.0, tr["decode_step_ms"]),
+                xycoords=("axes fraction", "data"),
+                textcoords="offset points", xytext=(4, 0), va="center",
+                ha="left", fontsize=7, color=T.INK)
+    # Rotated: 1,200 and 1,500 are a hair apart on a log axis and their
+    # labels run into one word when set horizontally.
+    _log2_ticks(ax, x)
     ax.set_yscale("log")
     ax.set_xlabel("tokens of context")
     ax.set_ylabel("milliseconds (log scale)")
+    # Headroom for a two-row legend above every curve, including the
+    # slowest link, which ends higher than anything else on the panel.
+    lows = [r["over"][links[0]] * 1e3 for r in rows]
+    highs = [r["over"][links[-1]] * 1e3 for r in rows]
+    ax.set_ylim(min(lows) / 3.0, max(highs) * 9.0)
     ax.legend(frameon=False, fontsize=7.2, loc="upper left", ncol=2)
     ax.set_title("A cache is cheap to move only on the links that cost money",
                  loc="left", fontsize=10.5)
@@ -1964,15 +2103,18 @@ def fig_split(d: dict) -> None:
             linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH,
             label="disaggregated, this split")
     ax.axhline(co["tokens_per_s"], color=T.AMBER, linewidth=1.3)
+    # Above the line, not below it: the blue curve's peak comes within a
+    # few per cent of this line, which is the whole point of the panel
+    # and leaves no room underneath it for a label.
     ax.annotate(f"all {a['fleet']} doing both phases: "
                 f"{co['tokens_per_s']:,.0f}",
                 (x[0], co["tokens_per_s"]), textcoords="offset points",
-                xytext=(2, -13), ha="left", fontsize=7.2, color=T.INK)
+                xytext=(2, 6), ha="left", fontsize=7.2, color=T.INK)
     ax.plot([best["prefill_workers"]], [best["tokens_per_s"]], marker="o",
             markersize=9, markerfacecolor="none", markeredgecolor=T.INK,
             linestyle="none")
     ax.set_xticks(x, [str(v) for v in x], fontsize=7.6)
-    ax.set_ylim(bottom=0)
+    ax.set_ylim(0, co["tokens_per_s"] * 1.18)
     ax.set_xlabel(f"prefill machines (the other {a['fleet']} minus this decode)")
     ax.set_ylabel("output tokens a second")
     ax.legend(frameon=False, fontsize=7.4, loc="lower center")
@@ -1987,15 +2129,31 @@ def fig_split(d: dict) -> None:
              label="between tokens, p99")
     ax2.axhline(a["ttft_budget_ms"], color=T.AMBER, linewidth=0.8,
                 linestyle=":", alpha=0.8)
-    ax2.annotate(f"first-token budget: {a['ttft_budget_ms']:,} ms",
-                 (x[0], a["ttft_budget_ms"]), textcoords="offset points",
-                 xytext=(0, 4), fontsize=6.8, color=T.INK)
-    ax2.axvline(best["prefill_workers"], color=T.INK, linewidth=0.9, alpha=0.4)
-    ax2.set_xticks(x, [str(v) for v in x], fontsize=7.6)
+    ttft = [r["ttft_p99_ms"] for r in rows]
+    itl = [r["itl_p99_ms"] for r in rows]
     ax2.set_yscale("log")
+    ax2.set_ylim(min(itl) / 2.0, max(ttft) * 2.4)
+    # The amber curve is a U, so it crosses this line on both sides of
+    # the panel. Above the line the arms are further apart than below
+    # it, which is the only place a label of this width fits between
+    # them.
+    mid = x[len(x) // 2]
+    ax2.annotate(f"first-token budget: {a['ttft_budget_ms']:,} ms",
+                 (mid, a["ttft_budget_ms"]), textcoords="offset points",
+                 xytext=(0, 5), ha="center", va="bottom", fontsize=6.8,
+                 color=T.INK)
+    # Stopped below the budget label and the legend. A full-height rule
+    # marks the best split where the curves are, and strikes through
+    # everything written in the empty space above them.
+    ax2.axvline(best["prefill_workers"], color=T.INK, linewidth=0.9,
+                alpha=0.4, ymax=0.55)
+    ax2.set_xticks(x, [str(v) for v in x], fontsize=7.6)
     ax2.set_xlabel("prefill machines")
     ax2.set_ylabel("p99 latency (ms, log scale)")
-    ax2.legend(frameon=False, fontsize=7.4, loc="upper right")
+    # Inside the arms of the U, which is the one part of this panel with
+    # nothing plotted in it.
+    ax2.legend(frameon=False, fontsize=7.4, loc="upper center",
+               bbox_to_anchor=(0.5, 0.97))
     ax2.set_title("and it moves both promises at once", loc="left", fontsize=10)
     T.style(ax2)
 
@@ -2102,6 +2260,15 @@ def main() -> None:
         d = json.loads(path.read_text())
         for fn in figs:
             fn(d)
+    L.REPORT.write()
+    if L.REPORT.problems:
+        print(f"\nLEGIBILITY: {len(L.REPORT.problems)} overlap(s) "
+              f"across {L.REPORT.figures} figures:")
+        for problem in L.REPORT.problems:
+            print(f"  - {problem}")
+    else:
+        print(f"\nlegibility: no overlapping labels in "
+              f"{L.REPORT.figures} figures")
 
 
 if __name__ == "__main__":

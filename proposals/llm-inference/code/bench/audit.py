@@ -11,6 +11,7 @@ every chapter carries the sections STANDARDS.md requires.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -172,6 +173,37 @@ def cross_chapter_consistency() -> list[str]:
     return problems
 
 
+def figures_are_legible() -> list[str]:
+    """Overlapping labels, from the report `make figures` writes.
+
+    A generated figure is never looked at unless somebody chooses to,
+    so a label that lands on a curve stays there through every rebuild.
+    `bench.legibility` measures every label against every curve and
+    every other label as each figure is drawn; this turns what it found
+    into an audit failure.
+
+    `figures/legibility-accepted.json` holds the ones that have been
+    looked at in the rendered PNG and judged right -- a value written
+    inside its own bar, a callout crossing a dotted guide -- each with
+    what was seen. Anything else fails, so a new overlap has to be
+    looked at rather than inherited.
+    """
+    report = Path("figures/legibility.json")
+    if not report.exists():
+        return ["no figures/legibility.json - run `make figures` first"]
+    found = json.loads(report.read_text())["problems"]
+    accepted = {}
+    path = Path("figures/legibility-accepted.json")
+    if path.exists():
+        accepted = {k: v for k, v in json.loads(path.read_text()).items()
+                    if not k.startswith("_")}
+    problems = [f"overlapping labels: {p}" for p in found if p not in accepted]
+    stale = [k for k in accepted if k not in found]
+    problems += [f"accepted overlap no longer happens, drop it: {k}"
+                 for k in stale]
+    return problems
+
+
 def main() -> int:
     problems: list[str] = []
     used_figs: set[str] = set()
@@ -238,6 +270,12 @@ def main() -> int:
     print("\ncross-chapter quantities")
     problems += cross_chapter_consistency()
 
+    legibility = figures_are_legible()
+    print(f"\nfigure legibility: "
+          + ("every label clear of every curve and every other label"
+             if not legibility else f"{len(legibility)} problem(s)"))
+    problems += legibility
+
     # Anything generated but never shown to a reader is dead weight.
     for f in sorted(FIGS.glob("*.svg")):
         if f.stem not in used_figs:
@@ -252,7 +290,8 @@ def main() -> int:
         for p in problems:
             print(f"  - {p}")
         return 1
-    print("audit passed: figures, tables, numbering and structure all consistent")
+    print("audit passed: figures, tables, labels, numbering and "
+          "structure all consistent")
     return 0
 
 

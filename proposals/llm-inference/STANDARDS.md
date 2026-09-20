@@ -192,6 +192,33 @@ are marked.
 9.2 One message per figure. A figure that needs a paragraph to explain
 is two figures.
 
+9.3 **Look at every figure.** A generated figure is drawn by code and
+written to a file, and nothing in that loop notices that a label has
+landed on a curve, that two labels have stacked on top of each other,
+that a legend covers the data, or that a panel's bars are drawn above
+its own axis limits and show nothing at all. All four of those shipped
+in this book before anyone opened the file. So: every figure is
+**opened and read** when it is first drawn and again whenever its data
+moves. Not the code that drew it -- the picture.
+
+9.4 **What the eye checks, the build checks too.** `bench/legibility`
+measures every label on every figure against every curve, every other
+label and the edge of the panel as the figure is drawn, and `make
+audit` fails on an overlap. Geometry cannot tell a value set
+deliberately inside its own bar from a label that has drifted onto a
+line, so a reviewed exception goes in
+`code/figures/legibility-accepted.json` with a sentence saying what was
+seen in the rendered image. An exception that stops happening is an
+audit failure too: the list may not rot.
+
+9.5 **Labels are placed, not offset.** A label written at a fixed
+offset from its point is correct until two points come close, which on
+a log axis they eventually do. `legibility.label_points` tries a label
+at a series of offsets and takes the first that hits nothing, adding a
+leader when it had to move. Reference lines are labelled beside the
+rule, never centred on it, and outside the panel when every place
+inside it is crossed.
+
 ## 10. Pedagogy: from the ground up
 
 The book assumes a reader who is new to the field and refuses to lose

@@ -19,6 +19,9 @@ it. Only then start the next one.
 - **Citations** — confirm the authors, the venue, and that it says what
   I claim.
 - **Code** — run it. Every listing comes from a file that executes.
+- **Figures** — open the rendered PNG and read it. Labels on curves,
+  labels on each other, legends over data and bars drawn off the top
+  of a panel are all invisible in the code that produced them.
 - **Terms** — the reader knows nothing. Explain every term on first
   use, intermediate ones included, then give its name. Add it to
   `GLOSSARY.md` and claim it with `<!-- defines: term -->`.

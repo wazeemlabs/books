@@ -1,0 +1,18 @@
+{
+ "_": [
+  "Overlaps that have been looked at in the rendered PNG and judged",
+  "correct. Every entry names the figure and says what was seen.",
+  "The geometry check cannot tell a label written deliberately on a",
+  "bar from a label that has landed on a curve by accident; a person",
+  "can. Anything not listed here fails `make audit`, so a new overlap",
+  "still has to be looked at rather than waved through.",
+  "Reviewed 2026-09-20."
+ ],
+ "ch03-timeline: text 'decode - 300 tokens, one at a time, 4.84 ms each' sits on a plotted line": "Set in white inside the bar it describes, which is the point: the bar is the decode phase. The 'line' is the per-token tick marks drawn across it.",
+ "ch05-tradeoff: text 'the curve stops here because memory runs out, not latency' sits on a plotted line": "Crosses a dotted latency-budget guide, not a data curve. The callout has its own arrow to the point it is about.",
+ "ch05-tradeoff: text 'batch 325' sits on a plotted line": "Placed automatically, with a leader to its point; the nearest curve passes a few points from the box on an axis where every other position is worse.",
+ "ch07-size: text 'a 16x16 multiply uses 2% of this machine' sits on a plotted line": "The curve's steep rise passes beside the last word, not through it, and the callout carries an arrow to the point it names.",
+ "ch11-waste: text '99.7% discarded' sits on a plotted line (arithmetic performed)": "Sits under the curve with an arrow to the top of it; the curve grazes the box corner.",
+ "ch12-per-step: text 'prefill: the same work for both' sits on a plotted line (Without a cache (Ch 11))": "Well above the curve at the x where it is written; the arrow, not the text, reaches the curve.",
+ "ch18-budget: text 'between-token budget: 50 ms' sits on a plotted line": "Directly beneath the dotted guide it labels, which is what it is for. Both data curves are far from it at that end of the panel."
+}
