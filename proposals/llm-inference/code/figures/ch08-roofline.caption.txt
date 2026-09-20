@@ -1,0 +1,2 @@
+ALT: Measured rate against arithmetic per byte for eight operations, both axes logarithmic, under a roofline that rises with intensity and then flattens at the machine's peak. Every measured point falls on or below the roof. Operations to the left are limited by memory, those to the right by arithmetic, and the two meet at 34 operations per byte.
+PROVENANCE: measured on Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU, NumPy 2.4.6 - peak 491 GFLOP/s, bandwidth 14.3 GB/s, ridge 34 FLOP/byte - accelerator figures are published specifications - commit a6acfc1, 2026-09-20T12:32:48Z

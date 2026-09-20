@@ -81,7 +81,8 @@ unless stated and are re-verified at each revision.
 | 8B model, BF16 weights | 16 GB | Fits one GPU with room for cache |
 | Decode floor, 8B, batch 1 | 16 GB / 3.35 TB/s ≈ 4.8 ms/token | ~210 tok/s, and the GPU is 99% idle |
 | KV cache, Llama-3-style 8B (32 layers, 8 KV heads, d=128, BF16) | 128 KiB per token | 1 GiB per 8K-token sequence |
-| Tokens in flight to reach the ridge, 8B | ~150 | The batch size that pays for the GPU |
+| Tokens in flight to reach the ridge *if the cache were free* | ~148 | The batch that would pay for the GPU |
+| Where decode's work-per-byte actually saturates (1,500-token context) | ~81 FLOP/byte | Batching alone never reaches the ridge |
 | Prefill, 8B, 1,000 tokens, ideal | 16 TFLOP / 990 TFLOP/s ≈ 16 ms | Real: 2–3× this |
 | Human reading speed | ~5 tokens/s | ITL below ~50 ms reads as instant |
 | H100 on-demand rental (Sep 2026) | median $3.25/hr; $1.5–7 by provider | The denominator of every cost figure |

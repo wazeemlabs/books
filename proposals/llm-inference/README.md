@@ -14,6 +14,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-05-DRAFT.md](CHAPTER-05-DRAFT.md) | **Generated.** Chapter 5, "Latency, Throughput, and the SLO" |
 | [CHAPTER-06-DRAFT.md](CHAPTER-06-DRAFT.md) | **Generated.** Chapter 6, "The Serving Landscape" |
 | [CHAPTER-07-DRAFT.md](CHAPTER-07-DRAFT.md) | **Generated.** Chapter 7, "Reading the GPU" |
+| [CHAPTER-08-DRAFT.md](CHAPTER-08-DRAFT.md) | **Generated.** Chapter 8, "Arithmetic Intensity and the Roofline" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -116,6 +117,13 @@ committed numbers.
   uses all of it, and four cores buy 2.6x the arithmetic but 0.90x the
   memory bandwidth. One memory system, however many processors — which
   is why every accelerator generation widens the gap.
+- Chapter 8 builds the roofline, tests it against eight measured
+  operations (none exceeds the bound), and finds the result the book
+  turns on: batching raises decode's work-per-byte 66x and then stops
+  at a ceiling of 81, against a break-even point of 296. Every sequence
+  brings its own cache, so the denominator grows with the batch.
+  **Decoding this workload is memory-bound at every batch size** — and
+  only halving both the cache and the context clears it.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

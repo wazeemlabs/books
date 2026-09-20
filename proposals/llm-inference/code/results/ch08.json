@@ -1,0 +1,192 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T12:34:08Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "a6acfc1"
+  },
+  "machine": {
+    "peak_flops": 466223889467.064,
+    "bandwidth_bytes_per_s": 13066238808.66783,
+    "ridge_flop_per_byte": 35.68156806974799
+  },
+  "points": [
+    {
+      "name": "16x16 multiply",
+      "kind": "matmul",
+      "flops": 8192,
+      "bytes": 3072,
+      "intensity": 2.6666666666666665,
+      "seconds": 1.178000275103841e-06,
+      "achieved_flops": 6954157968.492726,
+      "roofline_flops": 34843303489.780876,
+      "fraction_of_roof": 0.1995837728340626,
+      "predicted_bound_by": "memory"
+    },
+    {
+      "name": "64x64 multiply",
+      "kind": "matmul",
+      "flops": 524288,
+      "bytes": 49152,
+      "intensity": 10.666666666666666,
+      "seconds": 5.3910002861812245e-06,
+      "achieved_flops": 97252452637.39084,
+      "roofline_flops": 139373213959.1235,
+      "fraction_of_roof": 0.6977843867898018,
+      "predicted_bound_by": "memory"
+    },
+    {
+      "name": "256x256 multiply",
+      "kind": "matmul",
+      "flops": 33554432,
+      "bytes": 786432,
+      "intensity": 42.666666666666664,
+      "seconds": 0.00012461200003599515,
+      "achieved_flops": 269271273956.8223,
+      "roofline_flops": 466223889467.064,
+      "fraction_of_roof": 0.5775578644513983,
+      "predicted_bound_by": "compute"
+    },
+    {
+      "name": "1024x1024 multiply",
+      "kind": "matmul",
+      "flops": 2147483648,
+      "bytes": 12582912,
+      "intensity": 170.66666666666666,
+      "seconds": 0.004606121000051644,
+      "achieved_flops": 466223889467.064,
+      "roofline_flops": 466223889467.064,
+      "fraction_of_roof": 1.0,
+      "predicted_bound_by": "compute"
+    },
+    {
+      "name": "2048x2048 multiply",
+      "kind": "matmul",
+      "flops": 17179869184,
+      "bytes": 50331648,
+      "intensity": 341.3333333333333,
+      "seconds": 0.03719299900012629,
+      "achieved_flops": 461911371652.0054,
+      "roofline_flops": 466223889467.064,
+      "fraction_of_roof": 0.9907501140278585,
+      "predicted_bound_by": "compute"
+    },
+    {
+      "name": "streaming dot product",
+      "kind": "memory",
+      "flops": 268435456,
+      "bytes": 536870912,
+      "intensity": 0.5,
+      "seconds": 0.041088405000209605,
+      "achieved_flops": 6533119404.333915,
+      "roofline_flops": 6533119404.333915,
+      "fraction_of_roof": 1.0,
+      "predicted_bound_by": "memory"
+    },
+    {
+      "name": "tinyserve prefill",
+      "kind": "model",
+      "flops": 570425344,
+      "bytes": 3557888,
+      "intensity": 160.32695351849188,
+      "seconds": 0.0430850829998235,
+      "achieved_flops": 13239508996.70628,
+      "roofline_flops": 466223889467.064,
+      "fraction_of_roof": 0.028397320034029644,
+      "predicted_bound_by": "compute"
+    },
+    {
+      "name": "tinyserve decode",
+      "kind": "model",
+      "flops": 2248704,
+      "bytes": 4643328,
+      "intensity": 0.4842871319880913,
+      "seconds": 0.0005469354998695053,
+      "achieved_flops": 4111461041.6338377,
+      "roofline_flops": 6327811318.521238,
+      "fraction_of_roof": 0.6497445695954561,
+      "predicted_bound_by": "memory"
+    }
+  ],
+  "accelerator": {
+    "peak_flops": 990000000000000.0,
+    "bandwidth_bytes_per_s": 3350000000000.0,
+    "ridge_flop_per_byte": 295.5223880597015,
+    "decode_intensity": 0.9715621789115151,
+    "tokens_in_flight_if_cache_were_free": 147.76119402985074,
+    "intensity_ceiling": 81.40266666666666,
+    "ceiling_variants": [
+      {
+        "what": "as served here",
+        "factor": 1
+      },
+      {
+        "what": "KV cache in one byte instead of two",
+        "factor": 2
+      },
+      {
+        "what": "half the context length",
+        "factor": 2
+      },
+      {
+        "what": "both",
+        "factor": 4
+      }
+    ],
+    "params": 8002207744,
+    "batching": [
+      {
+        "batch": 1,
+        "intensity": 0.9878644704054885,
+        "achieved_flops": 3309345975858.386,
+        "bound_by": "memory"
+      },
+      {
+        "batch": 8,
+        "intensity": 7.284137684185408,
+        "achieved_flops": 24401861242021.117,
+        "bound_by": "memory"
+      },
+      {
+        "batch": 32,
+        "intensity": 22.970229976955274,
+        "achieved_flops": 76950270422800.17,
+        "bound_by": "memory"
+      },
+      {
+        "batch": 64,
+        "intensity": 35.82995268312365,
+        "achieved_flops": 120030341488464.23,
+        "bound_by": "memory"
+      },
+      {
+        "batch": 148,
+        "intensity": 52.51723897426359,
+        "achieved_flops": 175932750563783.03,
+        "bound_by": "memory"
+      },
+      {
+        "batch": 256,
+        "intensity": 61.763242337543275,
+        "achieved_flops": 206906861830769.97,
+        "bound_by": "memory"
+      },
+      {
+        "batch": 325,
+        "intensity": 65.09766996279552,
+        "achieved_flops": 218077194375365.0,
+        "bound_by": "memory"
+      }
+    ]
+  },
+  "note": "the byte counts are compulsory traffic; caches serve some of it, so points above the roof are cache effects, not errors"
+}

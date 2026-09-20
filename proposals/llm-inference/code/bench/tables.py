@@ -245,6 +245,37 @@ def ch07_scaling(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch08_points(d: dict) -> str:
+    out = ["| Operation | Arithmetic per byte | Rate achieved | Share of the bound | Limited by |",
+           "|---|---|---|---|---|"]
+    for p in d["points"]:
+        out.append(f"| {p['name']} | {p['intensity']:,.2f} | "
+                   f"{p['achieved_flops'] / 1e9:,.1f} GFLOP/s | "
+                   f"**{p['fraction_of_roof'] * 100:.0f}%** | "
+                   f"{p['predicted_bound_by']} |")
+    m = d["machine"]
+    out += ["", f"Peak {m['peak_flops'] / 1e9:,.0f} GFLOP/s and bandwidth "
+                f"{m['bandwidth_bytes_per_s'] / 1e9:.1f} GB/s are the largest values "
+                "measured here, so the two operations that define them reach "
+                "100% by construction. No operation exceeds the bound."]
+    return "\n".join(out)
+
+
+def ch08_ceiling(d: dict) -> str:
+    a = d["accelerator"]
+    base, ridge = a["intensity_ceiling"], a["ridge_flop_per_byte"]
+    out = ["| Change | Ceiling on arithmetic per byte | Reaches break-even? |",
+           "|---|---|---|"]
+    for v in a["ceiling_variants"]:
+        c = base * v["factor"]
+        verdict = (f"**no** — {ridge / c:.1f}x short" if c < ridge
+                   else "**yes**, just clears it")
+        out.append(f"| {v['what']} | {c:,.0f} | {verdict} |")
+    out += ["", f"However large the batch, decode's arithmetic per byte cannot "
+                f"pass these values, against a break-even point of {ridge:.0f}."]
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -288,6 +319,7 @@ def main() -> None:
         "ch05": (("ch05-percentiles", ch05_percentiles), ("ch05-budgets", ch05_budgets)),
         "ch06": (("ch06-breakeven", ch06_breakeven),),
         "ch07": (("ch07-sizes", ch07_sizes), ("ch07-scaling", ch07_scaling)),
+        "ch08": (("ch08-points", ch08_points), ("ch08-ceiling", ch08_ceiling)),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),

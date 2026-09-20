@@ -1,0 +1,292 @@
+# 8. Arithmetic Intensity and the Roofline
+
+*Written to [STANDARDS.md](STANDARDS.md). Generated from
+`chapters/ch08.md` and `code/results/ch08.json`; run `make ch08` in
+`code/` to re-measure and re-render.*
+
+**Depends on:** Chapter 7.
+**Tier 0** — a few minutes on a laptop CPU, free.
+
+## Objectives
+
+By the end of this chapter you can:
+
+1. Compute the arithmetic per byte of any operation, and say which
+   limit it will hit.
+2. Build a roofline for a machine from two measurements, and use it as
+   a bound on what is possible.
+3. Decide whether a proposed optimization can help *before* you
+   implement it.
+4. Explain why batching helps decoding enormously and still cannot
+   finish the job.
+
+## Why it matters
+
+The rest of this book proposes about twenty optimizations. Most take
+days to implement and some take weeks. You need a way to tell, in
+minutes and on paper, which of them could possibly help your workload —
+because the expensive mistake in this field is not choosing the second-
+best technique. It is spending a month on one that could never have
+worked.
+
+This chapter is that tool. It is one line on one chart, built from two
+numbers you can measure in a minute, and it has been the standard
+instrument for this since Williams, Waterman and Patterson published it
+in 2009.
+
+## Two numbers and a line
+
+A machine has a fastest rate it can do arithmetic, and a fastest rate
+it can fetch bytes. An operation has a fixed amount of arithmetic and a
+fixed number of bytes it must fetch. Put those together and the fastest
+that operation can possibly run is:
+
+> achievable rate = the smaller of
+> (the machine's peak arithmetic) and
+> (arithmetic per byte × the machine's bandwidth)
+
+That is the whole model. Plot it with arithmetic-per-byte across the
+bottom and rate up the side, and it is a rising line that flattens: a
+roof. Operations to the left cannot get enough bytes; operations to the
+right cannot get enough arithmetic. Where the two meet is the
+**break-even point**, and Chapter 3 has been quoting it
+since it introduced the idea.
+
+For this machine, measured: peak **466 GFLOP/s**, bandwidth
+**13.1 GB/s**, so it breaks even at **36** operations per
+byte.
+
+> **If you're new here: why "per byte" and not "in total"**
+>
+> The total amount of arithmetic tells you nothing on its own, because
+> the machine can only work on data it has. What decides the speed is
+> the *ratio*: how much work each fetched byte earns.
+>
+> Think of a chef and a delivery van. The chef's speed is the peak
+> arithmetic; the van's is the bandwidth. A dish needing one delivery
+> and an hour of chopping is limited by the chef. A dish needing fifty
+> deliveries and a minute of chopping is limited by the van, and hiring
+> a second chef changes nothing.
+>
+> Almost every disappointment in this field is hiring a second chef.
+
+## Does it hold?
+
+A model is worth nothing until it survives contact with measurement.
+Here are eight real operations — matrix multiplies of different sizes,
+a pure streaming read, and `tinyserve`'s two phases — each with its
+arithmetic per byte computed from first principles and its rate
+measured:
+
+<!-- include: tables/ch08-points.md -->
+| Operation | Arithmetic per byte | Rate achieved | Share of the bound | Limited by |
+|---|---|---|---|---|
+| 16x16 multiply | 2.67 | 7.0 GFLOP/s | **20%** | memory |
+| 64x64 multiply | 10.67 | 97.3 GFLOP/s | **70%** | memory |
+| 256x256 multiply | 42.67 | 269.3 GFLOP/s | **58%** | compute |
+| 1024x1024 multiply | 170.67 | 466.2 GFLOP/s | **100%** | compute |
+| 2048x2048 multiply | 341.33 | 461.9 GFLOP/s | **99%** | compute |
+| streaming dot product | 0.50 | 6.5 GFLOP/s | **100%** | memory |
+| tinyserve prefill | 160.33 | 13.2 GFLOP/s | **3%** | compute |
+| tinyserve decode | 0.48 | 4.1 GFLOP/s | **65%** | memory |
+
+Peak 466 GFLOP/s and bandwidth 13.1 GB/s are the largest values measured here, so the two operations that define them reach 100% by construction. No operation exceeds the bound.
+
+![Measured operations against the roofline](code/figures/ch08-roofline.svg)
+
+**Figure 8.1** — Every operation sits under the roof. *Provenance in
+`code/figures/ch08-roofline.caption.txt`.*
+
+**No point exceeds the bound**, which is the first thing to check and
+the thing that makes the model trustworthy. Two reach it exactly,
+because they are the operations that defined the two numbers.
+
+Now the interesting ones — the points that fall *far* below.
+
+A 16×16 multiply reaches 20% of its
+bound. `tinyserve`'s prefill reaches **3%**. Both are
+well under a limit that is supposed to bind.
+
+This is not the model failing. It is the model doing its job. **The
+roofline is an upper bound**, and an operation can fall short of it for
+reasons the roofline does not describe — chief among them the one
+Chapter 7 measured: work too small to fill a wide machine.
+`tinyserve`'s matrices are 128 numbers wide, so prefill is compute-
+bound *in principle* while using a few percent of the machine *in
+fact*.
+
+And that finally closes Chapter 3's open question. That
+chapter measured a prefill-to-decode gap of about three where the
+arithmetic suggested hundreds, and blamed the machine's balance and the
+model's size. Here is the same finding as a number: prefill sits at
+3% of its bound and decode at 65% of its
+own. Decode is close to its limit; prefill is nowhere near. The gap
+narrows because one side is underperforming, not because the physics is
+different.
+
+**A roofline tells you what is impossible, and where the headroom is.
+It does not promise you the headroom.**
+
+## Using it to decide
+
+Here is the payoff. Put any proposed optimization to this question:
+
+> **What does it do to arithmetic per byte?**
+
+- **Moves the operation right** — it helps memory-bound work.
+  Batching, quantization and speculative decoding all do this.
+- **Raises the roof** — it helps compute-bound work. Better kernels,
+  higher-throughput hardware, lower-precision arithmetic.
+- **Neither** — it cannot help, however elegant it is.
+
+For decoding, which lives far to the left, the second column is a trap.
+Buying a chip with twice the arithmetic raises a roof you are nowhere
+near. Chapter 4 argued this; the roofline shows it in one
+glance.
+
+## Batching, and the ceiling nobody mentions
+
+Batching is the technique that moves decode right, and it works because
+the weights are fetched once no matter how many sequences ride along.
+Double the batch and you double the arithmetic for almost the same
+bytes.
+
+Here is decoding on the accelerator's roofline as the batch grows:
+
+![Decode on the roofline as the batch grows](code/figures/ch08-batching.svg)
+
+**Figure 8.2** — Batching climbs the slope but never tops it.
+*Provenance in `code/figures/ch08-batching.caption.txt`.*
+
+From batch 1 to batch 325, arithmetic per byte rises from
+0.99 to 65 — **66x**
+more work per byte fetched, which is the whole economic case for
+batching restated in one number.
+
+And then it stops.
+
+The naive calculation says the break-even point of 296
+operations per byte would be reached at about **148 tokens in
+flight** — two operations per parameter, so half the break-even figure.
+That calculation quietly assumes each sequence's cached keys and values
+are free. They are not. Every sequence you add brings its own cache, so
+the **denominator grows with the batch as well as the numerator**, and
+arithmetic per byte approaches a ceiling instead of rising forever:
+
+> ceiling = 2 × parameters ÷ (context length × cache bytes per token)
+
+For the reference model at a 1,500-token context that
+ceiling is **81** operations per byte, against a break-even
+point of 296. **3.6x short — and no batch size
+whatsoever closes it.**
+
+This is one of the more consequential facts in the book, and it is
+rarely stated. *Decoding this workload is memory-bound at every batch
+size.* Batching buys you an enormous amount and then stops buying, and
+what it stops at is set by the size of the KV cache relative to the
+model.
+
+Which tells you exactly what to attack next:
+
+<!-- include: tables/ch08-ceiling.md -->
+| Change | Ceiling on arithmetic per byte | Reaches break-even? |
+|---|---|---|
+| as served here | 81 | **no** — 3.6x short |
+| KV cache in one byte instead of two | 163 | **no** — 1.8x short |
+| half the context length | 163 | **no** — 1.8x short |
+| both | 326 | **yes**, just clears it |
+
+However large the batch, decode's arithmetic per byte cannot pass these values, against a break-even point of 296.
+
+Halve the cache and you double the ceiling. Halve the context and you
+double it again. Only the last row clears the break-even point at all —
+and every one of those levers is a chapter of this book:
+Chapter 12 for what the cache is, Chapter 14 for
+holding less of it, Chapter 26 for storing it in one byte,
+Chapter 33 for what happens when the context grows instead.
+
+## Where this is soft
+
+**The byte counts are a model.** Each operation's bytes are its
+*compulsory* traffic — what must come from memory if nothing is cached.
+Caches serve some of it, which is why small operations can beat the
+naive bound. A cache-aware roofline is a more involved instrument; this
+one is a bound, and it is honest about being one.
+
+**Peak and bandwidth here are the best values measured, not datasheet
+values.** Two points therefore reach exactly 100% by construction. That
+is the right way round for a bound: a roof built from what the machine
+actually did cannot be beaten by what the machine actually does.
+
+**A single-number roofline hides the hierarchy.** Chapter 4
+showed bandwidth varying by more than three times depending on where
+the data sits. One line cannot represent that, and operations served
+from cache will beat it.
+
+**The ceiling is workload-specific.** It depends on context length and
+the cache's size per token. Shorter conversations, fewer key-value
+heads or a smaller cache all move it, which is the point of the table
+above.
+
+## In production
+
+- **Compute arithmetic per byte before you build.** It takes minutes
+  and it rules out most proposals.
+- **Know your break-even point** for the hardware you deploy on, from
+  the datasheet: peak arithmetic divided by memory bandwidth.
+- **Quote the bound alongside the measurement.** "We reach 60% of the
+  roofline" is a far more useful statement than a bare throughput
+  figure, because it says how much is left.
+- **Re-derive the ceiling when your context length changes.** A product
+  decision to support longer conversations lowers it, and can quietly
+  undo a quarter of batching work.
+
+## Numbers to remember
+
+| Quantity | Value |
+|---|---|
+| The bound | smaller of peak arithmetic, and intensity × bandwidth |
+| This machine | 466 GFLOP/s, 13.1 GB/s, break-even at 36 |
+| The accelerator | 990 TFLOP/s, 3.35 TB/s, break-even at 296 |
+| Batching's gain, batch 1 to 325 | 66x more arithmetic per byte |
+| Decode's ceiling, however large the batch | 81 — 3.6x short of break-even |
+| The ceiling's formula | 2 × parameters ÷ (context × cache bytes per token) |
+
+## Sources
+
+- Williams, Waterman and Patterson, "Roofline: An Insightful Visual
+  Performance Model for Multicore Architectures", Communications of the
+  ACM 52(4), April 2009, pp. 65–76 — the model this chapter builds and
+  tests.
+- Pope et al., "Efficiently Scaling Transformer Inference", MLSys 2023
+  — the same analysis applied to transformer decoding, including the
+  effect of batch size on arithmetic per byte.
+- NVIDIA H100 datasheet — the accelerator's peak and bandwidth,
+  recorded in `FACTS.md`.
+
+## Exercises
+
+**★ 8.1** An operation performs 4 billion arithmetic operations and
+must fetch 2 GB. What is its arithmetic per byte? On a machine that
+breaks even at 296, which limit will it hit?
+
+**★ 8.2** Using Figure 8.1, explain in two sentences why buying a
+machine with twice the peak arithmetic would not speed up
+`tinyserve`'s decode.
+
+**★★ 8.3** Derive the ceiling formula in the text from the definition
+of arithmetic per byte, by taking the batch to infinity. Then compute
+the ceiling for a model with 32 key-value heads instead of 8, and say
+what that tells you about grouped-query attention.
+
+**★★ 8.4** `tinyserve` prefill reaches 3% of its bound.
+Predict what would happen to that figure if `d_model` were 4,096
+instead of 128, using Chapter 7's measurements. Then check
+it by running `make ch08` with the larger model.
+
+**★★★ 8.5** Build the cache-aware roofline this chapter says it is not.
+Measure your machine's bandwidth at each level of its hierarchy (you
+did this in Chapter 4), draw a roof per level, and place
+the eight operations from Figure 8.1 on the result. Which points that
+appeared to beat the single-line bound now sit beneath a roof, and
+which still do not? Report with provenance.

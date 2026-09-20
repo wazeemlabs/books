@@ -87,6 +87,14 @@ def caption(d: dict) -> str:
                 f"NumPy {dev['numpy']} on {p['software']['blas']} - median of 5 "
                 f"runs - accelerator figures are published specifications, not "
                 f"measurements - commit {p['commit']}, {p['measured_utc']}")
+    if "points" in d and "machine" in d:  # Chapter 8: the roofline
+        mc = d["machine"]
+        return (f"measured on {p['hardware']['cpu']}, "
+                f"{p['hardware']['cores_available']} vCPU, NumPy "
+                f"{p['software']['numpy']} - peak {mc['peak_flops'] / 1e9:,.0f} GFLOP/s, "
+                f"bandwidth {mc['bandwidth_bytes_per_s'] / 1e9:.1f} GB/s, ridge "
+                f"{mc['ridge_flop_per_byte']:.0f} FLOP/byte - accelerator figures are "
+                f"published specifications - commit {p['commit']}, {p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -829,12 +837,112 @@ def fig_core_scaling(d: dict) -> None:
               "leaves the memory system where it was."))
 
 
+
+
+# --- Chapter 8: the roofline -------------------------------------------
+
+def _roof(ax, peak: float, bw: float, lo: float, hi: float, unit: float,
+          label: str) -> None:
+    xs = [lo, peak / bw, hi]
+    ax.plot(xs, [min(peak, x * bw) / unit for x in xs], color=T.INK,
+            linewidth=1.8, zorder=2, label=label)
+    ax.axvline(peak / bw, color=T.MUTED, linestyle=":", linewidth=1.0, zorder=1)
+
+
+def fig_roofline(d: dict) -> None:
+    """Measured operations against the bound that should contain them."""
+    m, pts = d["machine"], d["points"]
+    peak, bw = m["peak_flops"], m["bandwidth_bytes_per_s"]
+    lo = min(p["intensity"] for p in pts) / 3
+    hi = max(p["intensity"] for p in pts) * 3
+
+    fig, ax = plt.subplots(figsize=(7.4, 4.2), dpi=200)
+    _roof(ax, peak, bw, lo, hi, 1e9, "the bound: whichever limit binds first")
+
+    for p in pts:
+        colour = T.AMBER if p["kind"] == "model" else T.BLUE
+        marker = "s" if p["kind"] == "model" else "o"
+        ax.plot([p["intensity"]], [p["achieved_flops"] / 1e9], marker=marker,
+                markersize=6, color=colour, zorder=4)
+        ax.annotate(p["name"], (p["intensity"], p["achieved_flops"] / 1e9),
+                    textcoords="offset points", xytext=(7, -3), fontsize=6.8,
+                    color=T.INK)
+
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlim(lo, hi)
+    ax.set_xlabel("arithmetic per byte fetched (log)")
+    ax.set_ylabel("rate achieved (GFLOP/s, log)")
+    ax.set_title("Every operation sits under the roof", loc="left", fontsize=11)
+    ax.text(m["ridge_flop_per_byte"], peak / 1e9 * 1.35,
+            f" breaks even at {m['ridge_flop_per_byte']:.0f}", fontsize=7.4,
+            color=T.MUTED)
+    ax.legend(frameon=False, fontsize=7.8, loc="lower right")
+    T.style(ax)
+
+    save(fig, "ch08-roofline", d,
+         alt=("Measured rate against arithmetic per byte for eight operations, "
+              "both axes logarithmic, under a roofline that rises with "
+              "intensity and then flattens at the machine's peak. Every "
+              "measured point falls on or below the roof. Operations to the "
+              "left are limited by memory, those to the right by arithmetic, "
+              f"and the two meet at {m['ridge_flop_per_byte']:.0f} operations per byte."))
+
+
+def fig_batching_roof(d: dict) -> None:
+    """Batching climbs the slope, and still does not reach the top."""
+    a = d["accelerator"]
+    peak, bw = a["peak_flops"], a["bandwidth_bytes_per_s"]
+    rows = a["batching"]
+    lo, hi = 0.5, a["ridge_flop_per_byte"] * 4
+
+    fig, ax = plt.subplots(figsize=(7.4, 4.0), dpi=200)
+    _roof(ax, peak, bw, lo, hi, 1e12, "the bound")
+
+    ax.plot([r["intensity"] for r in rows], [r["achieved_flops"] / 1e12 for r in rows],
+            color=T.BLUE, marker="o", markersize=5, linewidth=T.LINE_WIDTH,
+            zorder=4, label="decode, as the batch grows")
+    for r in rows:
+        if r["batch"] in (1, 32, 325):
+            ax.annotate(f"batch {r['batch']}", (r["intensity"], r["achieved_flops"] / 1e12),
+                        textcoords="offset points", xytext=(8, -4), fontsize=7.2,
+                        color=T.MUTED)
+
+    ceiling = a["intensity_ceiling"]
+    ax.axvline(ceiling, color=T.AMBER, linestyle="--", linewidth=1.4)
+    ax.text(ceiling * 0.93, peak / 1e12 * 0.5,
+            f"however large the batch,\nit stops at {ceiling:.0f}",
+            fontsize=7.4, color=T.AMBER, ha="right")
+
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlim(lo, hi)
+    ax.set_xlabel("arithmetic per byte fetched (log)")
+    ax.set_ylabel("rate achieved (TFLOP/s, log)")
+    ax.set_title("Batching climbs the slope but never tops it", loc="left",
+                 fontsize=11)
+    ax.text(a["ridge_flop_per_byte"], peak / 1e12 * 1.3,
+            f" breaks even at {a['ridge_flop_per_byte']:.0f}", fontsize=7.4,
+            color=T.MUTED)
+    ax.legend(frameon=False, fontsize=7.8, loc="lower right")
+    T.style(ax)
+
+    save(fig, "ch08-batching", d,
+         alt=("The accelerator's roofline with decoding placed on it as the "
+              f"batch grows from 1 to {rows[-1]['batch']}. Each larger batch moves right "
+              "and up along the memory-bound slope, from "
+              f"{rows[0]['intensity']:.1f} to {rows[-1]['intensity']:.0f} operations per byte. "
+              f"A dashed line marks {ceiling:.0f}, the point beyond which no batch can "
+              f"go, which is still short of the break-even point at "
+              f"{a['ridge_flop_per_byte']:.0f}: batching alone cannot make this workload "
+              "limited by arithmetic."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
             "ch05": [fig_tradeoff, fig_tail],
             "ch06": [fig_breakeven],
-            "ch07": [fig_size, fig_core_scaling], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch07": [fig_size, fig_core_scaling],
+            "ch08": [fig_roofline, fig_batching_roof], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def _check_no_shared_figure_functions() -> None:

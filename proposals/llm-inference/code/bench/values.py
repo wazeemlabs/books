@@ -337,6 +337,34 @@ def ch07(d: dict) -> dict[str, str]:
     }
 
 
+def ch08(d: dict) -> dict[str, str]:
+    m, a = d["machine"], d["accelerator"]
+    by = {p["name"]: p for p in d["points"]}
+    pre, dec = by["tinyserve prefill"], by["tinyserve decode"]
+    small = by["16x16 multiply"]
+    rows = a["batching"]
+    return {
+        "peak": f"{m['peak_flops'] / 1e9:,.0f} GFLOP/s",
+        "bandwidth": f"{m['bandwidth_bytes_per_s'] / 1e9:.1f} GB/s",
+        "ridge": f"{m['ridge_flop_per_byte']:.0f}",
+        "prefill_intensity": f"{pre['intensity']:,.0f}",
+        "prefill_share": f"{pre['fraction_of_roof'] * 100:.0f}%",
+        "decode_intensity": f"{dec['intensity']:.2f}",
+        "decode_share": f"{dec['fraction_of_roof'] * 100:.0f}%",
+        "small_share": f"{small['fraction_of_roof'] * 100:.0f}%",
+        "acc_ridge": f"{a['ridge_flop_per_byte']:.0f}",
+        "acc_peak": f"{a['peak_flops'] / 1e12:.0f} TFLOP/s",
+        "acc_bw": f"{a['bandwidth_bytes_per_s'] / 1e12:.2f} TB/s",
+        "if_free": f"{a['tokens_in_flight_if_cache_were_free']:.0f}",
+        "ceiling": f"{a['intensity_ceiling']:.0f}",
+        "short_by": f"{a['ridge_flop_per_byte'] / a['intensity_ceiling']:.1f}x",
+        "batch1_intensity": f"{rows[0]['intensity']:.2f}",
+        "batchmax": str(rows[-1]["batch"]),
+        "batchmax_intensity": f"{rows[-1]['intensity']:.0f}",
+        "intensity_gain": f"{rows[-1]['intensity'] / rows[0]['intensity']:.0f}x",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -373,7 +401,7 @@ def ch13(d: dict) -> dict[str, str]:
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
-            "ch05": ch05, "ch06": ch06, "ch07": ch07,
+            "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
             "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
