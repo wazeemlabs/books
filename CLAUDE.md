@@ -23,6 +23,26 @@ citation — anything written here.
 If something cannot be verified, mark it `UNVERIFIED` and say so.
 Never ship a confident-sounding guess.
 
+## Finish a chapter before starting the next
+
+A chapter is not done when the prose is written. Before moving on:
+
+- Run `make check` in `proposals/llm-inference/code`. It runs the
+  cross-reference resolver, the code assertions, the whole-manuscript
+  audit and the drift check. All four must pass.
+- Re-read the chapter against the outline and the standards: is a
+  promised section missing, a figure generated but never shown, a
+  number quoted that nothing computes, a claim left unsourced?
+- Check the chapter's numbers against the chapters around it. The same
+  quantity must not have two answers in two places.
+- Say what you verified and what you changed. Only then start the next
+  chapter.
+
+Finding a mistake here is the system working. Fix the cause, not just
+the symptom: if a number could drift, make it generated; if a reference
+could go stale, make it symbolic; if a fact lived in four files, give
+it one home.
+
 ## Reporting
 
 State what was verified and how. If a check was skipped or failed, say

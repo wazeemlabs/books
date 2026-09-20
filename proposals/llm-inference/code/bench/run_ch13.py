@@ -25,6 +25,8 @@ import numpy as np
 from tinyserve.generate import cached
 from tinyserve.model import Config, KVCache, build
 
+from tinyserve.reference import (GPU_BYTES, KV_BYTES_PER_TOKEN, WEIGHT_BYTES)
+
 from .harness import pct, write
 
 # Case study: a customer-support assistant. See STANDARDS.md section 7.
@@ -37,9 +39,6 @@ MAX_MODEL_LEN = 8192   # the context the server advertises
 MAX_NEW = 1024         # the cap a client may request
 BLOCK = 16             # Chapter 14's page size, previewed here
 
-KV_BYTES_PER_TOKEN = 131_072  # Llama-3-style 8B in bf16; see FACTS.md
-GPU_BYTES = 80 * 1000**3
-WEIGHT_BYTES = 16 * 1000**3
 FREE_BYTES = GPU_BYTES - WEIGHT_BYTES
 
 

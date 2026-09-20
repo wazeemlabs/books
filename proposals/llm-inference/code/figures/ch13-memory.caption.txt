@@ -1,2 +1,2 @@
 ALT: KV cache held per sequence under four allocation policies, split into the part holding live data and the part held but idle. Reserving the full context uses 16% of what it holds and fits 59 sequences; 16-token pages use 90% and fit 325, within a percent of perfect foresight.
-PROVENANCE: 19,998 sampled requests, seed 0 - case-study traffic (STANDARDS.md section 7) - commit 9058658, computed 2026-09-20T11:15:03Z
+PROVENANCE: 19,998 sampled requests, seed 0 - case-study traffic (STANDARDS.md section 7) - commit 0a7a6e8, computed 2026-09-20T12:02:04Z

@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "measured_utc": "2026-09-20T11:36:29Z",
+    "measured_utc": "2026-09-20T12:02:04Z",
     "hardware": {
       "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
       "cores_available": 4,
@@ -12,7 +12,7 @@
       "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
       "blas": "scipy-openblas"
     },
-    "commit": "bd75e35"
+    "commit": "0a7a6e8"
   },
   "model_not_measurement": true,
   "note": "Arithmetic over published specs and prices; not a benchmark. Part VII measures the real thing.",
@@ -21,8 +21,8 @@
     "hbm_bytes_per_s": 3350000000000.0,
     "peak_bf16_flops": 990000000000000.0,
     "gpu_usd_per_hour": 3.25,
-    "params": 8000000000.0,
-    "weight_bytes": 16000000000.0,
+    "params": 8002207744,
+    "weight_bytes": 16004415488,
     "kv_bytes_per_token": 131072,
     "seq_len": 1500,
     "max_concurrent": 325,
@@ -36,100 +36,100 @@
   "batches": [
     {
       "batch": 1,
-      "tokens_per_s": 206.83343080230134,
-      "step_ms": 4.834808358208955,
+      "tokens_per_s": 206.77705963955452,
+      "step_ms": 4.836126414328358,
       "bound_by": "memory",
-      "usd_per_m_tokens": 4.364757545605307,
-      "flop_utilization": 0.0033427625180169913,
-      "weight_share_of_bytes": 0.9878611620408422
+      "usd_per_m_tokens": 4.365947457379768,
+      "flop_utilization": 0.0033427737129882685,
+      "weight_share_of_bytes": 0.9878644704054885
     },
     {
       "batch": 2,
-      "tokens_per_s": 408.7056499469048,
-      "step_ms": 4.893497313432836,
+      "tokens_per_s": 408.5955953396774,
+      "step_ms": 4.894815369552239,
       "bound_by": "memory",
-      "usd_per_m_tokens": 2.2088703150912106,
-      "flop_utilization": 0.006605343837525734,
-      "weight_share_of_bytes": 0.976013492410519
+      "usd_per_m_tokens": 2.209465270978441,
+      "flop_utilization": 0.00660538754988173,
+      "weight_share_of_bytes": 0.9760199514004348
     },
     {
       "batch": 4,
-      "tokens_per_s": 798.2637406209968,
-      "step_ms": 5.010875223880597,
+      "tokens_per_s": 798.0538212604603,
+      "step_ms": 5.01219328,
       "bound_by": "memory",
-      "usd_per_m_tokens": 1.1309266998341623,
-      "flop_utilization": 0.012901232171652474,
-      "weight_share_of_bytes": 0.9531507350698469
+      "usd_per_m_tokens": 1.1312241777777776,
+      "flop_utilization": 0.01290139892650353,
+      "weight_share_of_bytes": 0.9531630550177981
     },
     {
       "batch": 8,
-      "tokens_per_s": 1525.0786667443622,
-      "step_ms": 5.245631044776119,
+      "tokens_per_s": 1524.6955604418959,
+      "step_ms": 5.246949100895523,
       "bound_by": "memory",
-      "usd_per_m_tokens": 0.5919548922056385,
-      "flop_utilization": 0.024647736028191713,
-      "weight_share_of_bytes": 0.9104947264145447
+      "usd_per_m_tokens": 0.592103631177446,
+      "flop_utilization": 0.024648344688910216,
+      "weight_share_of_bytes": 0.910517210523176
     },
     {
       "batch": 16,
-      "tokens_per_s": 2799.5801465475743,
-      "step_ms": 5.715142686567164,
+      "tokens_per_s": 2798.9346415909217,
+      "step_ms": 5.716460742686567,
       "bound_by": "memory",
-      "usd_per_m_tokens": 0.3224689883913765,
-      "flop_utilization": 0.045245739742183017,
-      "weight_share_of_bytes": 0.8356955661336043
+      "usd_per_m_tokens": 0.3225433578772802,
+      "flop_utilization": 0.045247790836138856,
+      "weight_share_of_bytes": 0.8357334501451021
     },
     {
       "batch": 32,
-      "tokens_per_s": 4809.0174100785525,
-      "step_ms": 6.654165970149253,
+      "tokens_per_s": 4808.0650293349945,
+      "step_ms": 6.655484026268657,
       "bound_by": "memory",
-      "usd_per_m_tokens": 0.18772603648424543,
-      "flop_utilization": 0.07772149349621903,
-      "weight_share_of_bytes": 0.7177637925490377
+      "usd_per_m_tokens": 0.18776322122719735,
+      "flop_utilization": 0.07772754588161632,
+      "weight_share_of_bytes": 0.7178196867798523
     },
     {
       "batch": 64,
-      "tokens_per_s": 7500.985204026798,
-      "step_ms": 8.532212537313432,
+      "tokens_per_s": 7499.8266308733455,
+      "step_ms": 8.533530593432834,
       "bound_by": "memory",
-      "usd_per_m_tokens": 0.12035456053067992,
-      "flop_utilization": 0.1212280437014432,
-      "weight_share_of_bytes": 0.5597750152258805
+      "usd_per_m_tokens": 0.12037315290215587,
+      "flop_utilization": 0.12124276918026688,
+      "weight_share_of_bytes": 0.559843010673807
     },
     {
       "batch": 128,
-      "tokens_per_s": 10416.407552050943,
-      "step_ms": 12.288305671641792,
+      "tokens_per_s": 10415.290397447978,
+      "step_ms": 12.289623727761194,
       "bound_by": "memory",
-      "usd_per_m_tokens": 0.08666882255389718,
-      "flop_utilization": 0.16834598063920717,
-      "weight_share_of_bytes": 0.38867192358399044
+      "usd_per_m_tokens": 0.08667811873963516,
+      "flop_utilization": 0.16837437873629707,
+      "weight_share_of_bytes": 0.388737488220462
     },
     {
       "batch": 256,
-      "tokens_per_s": 12928.971702919245,
-      "step_ms": 19.80049194029851,
+      "tokens_per_s": 12928.11111945371,
+      "step_ms": 19.80180999641791,
       "bound_by": "memory",
-      "usd_per_m_tokens": 0.0698259535655058,
-      "flop_utilization": 0.20895307802697768,
-      "weight_share_of_bytes": 0.2412121586365531
+      "usd_per_m_tokens": 0.06983060165837479,
+      "flop_utilization": 0.20899683013209086,
+      "weight_share_of_bytes": 0.24126266538102842
     },
     {
       "batch": 325,
-      "tokens_per_s": 13626.817326177506,
-      "step_ms": 23.85002985074627,
+      "tokens_per_s": 13626.064290750122,
+      "step_ms": 23.851347906865673,
       "bound_by": "memory",
-      "usd_per_m_tokens": 0.06625008291873964,
-      "flop_utilization": 0.2202313911301415,
-      "weight_share_of_bytes": 0.20025632809996796
+      "usd_per_m_tokens": 0.06625374418573797,
+      "flop_utilization": 0.2202799943185505,
+      "weight_share_of_bytes": 0.20030052296244774
     }
   ],
   "spread": {
-    "worst_usd_per_m": 4.364757545605307,
-    "best_usd_per_m": 0.06625008291873964,
-    "ratio": 65.88305030438961,
-    "worst_vs_api": 87.29515091210612,
-    "best_vs_api": 1.3250016583747928
+    "worst_usd_per_m": 4.365947457379768,
+    "best_usd_per_m": 0.06625374418573797,
+    "ratio": 65.89736943983308,
+    "worst_vs_api": 87.31894914759536,
+    "best_vs_api": 1.3250748837147592
   }
 }

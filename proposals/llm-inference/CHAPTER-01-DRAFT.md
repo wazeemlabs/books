@@ -28,7 +28,7 @@ is 5.2 billion tokens of output a day.
 Here is the entire book in one comparison. Serving that traffic on a
 single rented H100 SXM 80GB, with an 8-billion-parameter open model:
 
-- Done badly, it costs **$22,627 a day**.
+- Done badly, it costs **$22,633 a day**.
 - Done well, it costs **$343 a day**.
 
 Same GPU. Same model. Same weights, the same answers, the same
@@ -92,7 +92,7 @@ read every one of those weights out of its memory. That memory delivers
 > 16 GB ÷ 3.35 TB/s ≈ 4.8 milliseconds
 
 which is about 209 tokens per second. At $3.25 an hour, that
-works out to about **$4.36 per million tokens**.
+works out to about **$4.37 per million tokens**.
 
 The table below says 207 rather than 209, and the two-token
 difference is worth a sentence. Reading the weights is not quite all
@@ -122,16 +122,16 @@ you decode together.
 <!-- include: tables/ch01-cost.md -->
 | Sequences at once | Throughput | Cost per 1M output tokens | Arithmetic used | Limited by |
 |---|---|---|---|---|
-| 1 | 207 tok/s | **$4.365** | 0.3% of peak | memory |
+| 1 | 207 tok/s | **$4.366** | 0.3% of peak | memory |
 | 2 | 409 tok/s | **$2.209** | 0.7% of peak | memory |
 | 4 | 798 tok/s | **$1.131** | 1.3% of peak | memory |
 | 8 | 1,525 tok/s | **$0.592** | 2.5% of peak | memory |
-| 16 | 2,800 tok/s | **$0.322** | 4.5% of peak | memory |
-| 32 | 4,809 tok/s | **$0.188** | 7.8% of peak | memory |
-| 64 | 7,501 tok/s | **$0.120** | 12.1% of peak | memory |
-| 128 | 10,416 tok/s | **$0.087** | 16.8% of peak | memory |
-| 256 | 12,929 tok/s | **$0.070** | 20.9% of peak | memory |
-| 325 | 13,627 tok/s | **$0.066** | 22.0% of peak | memory |
+| 16 | 2,799 tok/s | **$0.323** | 4.5% of peak | memory |
+| 32 | 4,808 tok/s | **$0.188** | 7.8% of peak | memory |
+| 64 | 7,500 tok/s | **$0.120** | 12.1% of peak | memory |
+| 128 | 10,415 tok/s | **$0.087** | 16.8% of peak | memory |
+| 256 | 12,928 tok/s | **$0.070** | 20.9% of peak | memory |
+| 325 | 13,626 tok/s | **$0.066** | 22.0% of peak | memory |
 
 A model, not a benchmark: H100 SXM 80GB, $3.25/GPU-hour, 8B parameters in bf16, 1,500-token sequences. For comparison, hosted Llama-3.1-8B, cheapest tracked provider is published at $0.05 per million output tokens.
 
@@ -227,7 +227,7 @@ Chapter 13 runs on a laptop.
 | Rented H100 SXM 80GB | $3.25 per hour (Sept 2026) |
 | 8B model in bf16 | 16 GB of weights, read once per token |
 | Decode floor, one sequence | ~4.8 ms per token, 207 tokens/s |
-| Cost range on one GPU | $4.36 to $0.066 per million tokens |
+| Cost range on one GPU | $4.37 to $0.066 per million tokens |
 | Arithmetic capacity used, one sequence | 0.3% |
 | Published API price, hosted 8B | $0.02 in / $0.05 out per million |
 

@@ -20,19 +20,19 @@ import numpy as np
 from tinyserve.cost import bytes_read, flops_forward, intensity
 from tinyserve.model import Config, KVCache, build, forward
 
+from tinyserve.reference import (CONTEXT_TOKENS as REF_CONTEXT,
+                                 ELEM_BYTES as REF_ELEM, HBM_BYTES_PER_S,
+                                 KV_BYTES_PER_TOKEN, MODEL as REF,
+                                 PARAMS as REF_PARAMS, PEAK_BF16_FLOPS,
+                                 PROMPT_TOKENS as REF_PROMPT,
+                                 RIDGE_FLOP_PER_BYTE as RIDGE)
+
 from .harness import Repeated, pct, write
 
 PROMPTS = [64, 128, 256, 512, 1024]
 DECODE_STEPS = 24
 WARMUP, RUNS = 1, 5
 
-# A production 8B in bf16, and the accelerator it runs on. FACTS.md.
-REF = Config(vocab_size=128_256, d_model=4096, n_layers=32, n_heads=32,
-             n_kv_heads=8, d_ff=14_336, max_seq=8192)
-REF_PARAMS, REF_ELEM = 8e9, 2
-REF_PROMPT, REF_CONTEXT = 1200, 1500
-HBM_BYTES_PER_S, PEAK_BF16_FLOPS = 3.35e12, 990e12
-RIDGE = PEAK_BF16_FLOPS / HBM_BYTES_PER_S  # FLOP/byte where the limit changes
 
 
 def time_prefill(model, cfg, p: int) -> float:
@@ -86,8 +86,7 @@ def main() -> None:
     # The same arithmetic for a production model, where it decides the design.
     def ref(t_new: int, t_total: int) -> dict:
         f = flops_forward(REF, t_new, t_total)
-        b = REF_PARAMS * REF_ELEM + max(0, t_total - t_new) * 2 * REF.n_layers \
-            * REF.n_kv_heads * REF.head_dim * REF_ELEM
+        b = REF_PARAMS * REF_ELEM + max(0, t_total - t_new) * KV_BYTES_PER_TOKEN
         t = max(f / PEAK_BF16_FLOPS, b / HBM_BYTES_PER_S)
         return {"flops": f, "bytes": b, "intensity": f / b, "seconds": t,
                 "bound_by": "compute" if f / b > RIDGE else "memory",

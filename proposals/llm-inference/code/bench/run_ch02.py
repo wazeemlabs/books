@@ -15,7 +15,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from tinyserve.cost import flops_forward
 from tinyserve.model import Config, KVCache, build, forward, softmax
+from tinyserve.reference import (CONTEXT_TOKENS, HBM_BYTES_PER_S,
+                                 KV_BYTES_PER_TOKEN, MODEL, PARAMS, WEIGHT_BYTES)
 
 from .harness import write
 
@@ -33,10 +36,6 @@ INDEX = {w: i for i, w in enumerate(WORDS)}
 PROMPT = ["the", "cat", "sat", "on", "the"]
 TOP_K = 10
 
-# For the "what this costs" comparison at the end of the chapter.
-REF_PARAMS, REF_WEIGHT_BYTES = 8e9, 16e9
-REF_KV_BYTES_PER_TOKEN = 131_072
-REF_HBM_BYTES_PER_S = 3.35e12  # H100 SXM; FACTS.md
 
 
 def _parameter_split(cfg: Config) -> dict:
@@ -126,12 +125,12 @@ def main() -> None:
                 "kv_bytes_per_token": bytes_per_token_kv,
             },
             "reference_8b": {
-                "params": REF_PARAMS,
-                "weight_bytes_read_per_token": REF_WEIGHT_BYTES,
-                "kv_bytes_per_token": REF_KV_BYTES_PER_TOKEN,
-                "flops_per_token": 2 * REF_PARAMS,
-                "hbm_bytes_per_s": REF_HBM_BYTES_PER_S,
-                "decode_floor_ms": REF_WEIGHT_BYTES / REF_HBM_BYTES_PER_S * 1e3,
+                "params": PARAMS,
+                "weight_bytes_read_per_token": WEIGHT_BYTES,
+                "kv_bytes_per_token": KV_BYTES_PER_TOKEN,
+                "flops_per_token": flops_forward(MODEL, 1, CONTEXT_TOKENS),
+                "hbm_bytes_per_s": HBM_BYTES_PER_S,
+                "decode_floor_ms": WEIGHT_BYTES / HBM_BYTES_PER_S * 1e3,
             },
         },
     }

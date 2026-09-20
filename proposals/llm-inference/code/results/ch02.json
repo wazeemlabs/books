@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "measured_utc": "2026-09-20T11:46:17Z",
+    "measured_utc": "2026-09-20T12:02:04Z",
     "hardware": {
       "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
       "cores_available": 4,
@@ -12,7 +12,7 @@
       "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
       "blas": "scipy-openblas"
     },
-    "commit": "c58d105"
+    "commit": "0a7a6e8"
   },
   "vocabulary": {
     "size": 48,
@@ -379,12 +379,12 @@
       "kv_bytes_per_token": 4096
     },
     "reference_8b": {
-      "params": 8000000000.0,
-      "weight_bytes_read_per_token": 16000000000.0,
+      "params": 8002207744,
+      "weight_bytes_read_per_token": 16004415488,
       "kv_bytes_per_token": 131072,
-      "flops_per_token": 16000000000.0,
+      "flops_per_token": 15740174336,
       "hbm_bytes_per_s": 3350000000000.0,
-      "decode_floor_ms": 4.776119402985075
+      "decode_floor_ms": 4.777437459104477
     }
   }
 }

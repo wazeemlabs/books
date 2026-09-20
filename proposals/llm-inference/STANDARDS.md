@@ -105,6 +105,23 @@ Every chapter uses the same skeleton, in this order:
 9. **Exercises** — ★ (answer in Appendix B), ★★ (answer in Appendix B),
    ★★★ (rubric in the instructor materials).
 
+### 5.1 Part I and walkthrough chapters
+
+Part I carries no code, and a walkthrough chapter (such as Chapter 2)
+follows one example through a mechanism rather than building and then
+measuring one thing. Both may replace **Build** with a section that
+derives the result by hand (*Work it out*) or narrates the path
+(*Step 1..n*), and both may distribute their evidence through the
+narrative instead of concentrating it under **Measure**.
+
+What does not change: the chapter still opens with **Objectives** and
+**Why it matters**, still carries a limitations section, **Numbers to
+remember**, **Sources** and **Exercises**, and every quantitative claim
+in it is still generated from a results file with provenance (§1). A
+chapter with no generated figure or table is not evidence-backed,
+whatever its headings say, and `make audit` enforces that rather than
+enforcing a heading word.
+
 Each Part ends with a **Design decision record** for the running case
 study (§7): the decision made, the options considered, the measured
 tradeoffs, and what would change the decision.

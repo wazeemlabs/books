@@ -11,21 +11,15 @@ rest of the book exists.
 
 from __future__ import annotations
 
+from tinyserve.reference import (GPU_BYTES, GPU_USD_PER_HOUR, HBM_BYTES_PER_S,
+                                 KV_BYTES_PER_TOKEN, PARAMS, PEAK_BF16_FLOPS,
+                                 WEIGHT_BYTES)
+from tinyserve.reference import CONTEXT_TOKENS as SEQ_LEN
+
 from .harness import write
 
-# Hardware and price: FACTS.md, verified September 2026.
-HBM_BYTES_PER_S = 3.35e12          # H100 SXM, HBM3
-PEAK_BF16_FLOPS = 990e12           # dense
-GPU_USD_PER_HOUR = 3.25            # on-demand median across providers
-GPU_BYTES = 80e9
-
-# Model: a dense 8B in bf16, Llama-3 shaped.
-PARAMS = 8e9
-WEIGHT_BYTES = PARAMS * 2
-KV_BYTES_PER_TOKEN = 131_072       # 2 * 32 layers * 8 KV heads * 128 dim * 2 B
-SEQ_LEN = 1500                     # the case study's typical conversation
-
 # Concurrency ceiling from Chapter 13's paged allocator on this card.
+# Checked against that chapter's results below, so the two cannot drift.
 MAX_CONCURRENT = 325
 BATCHES = [1, 2, 4, 8, 16, 32, 64, 128, 256, MAX_CONCURRENT]
 
@@ -57,7 +51,22 @@ def decode_step(batch: int, seq: int = SEQ_LEN) -> dict:
     }
 
 
+def _check_concurrency_matches_ch13() -> None:
+    """Chapter 1 quotes a ceiling Chapter 13 computes. Verify, do not assume."""
+    import json
+    from pathlib import Path
+    path = Path("results/ch13.json")
+    if not path.exists():
+        return
+    paged = next(r for r in json.loads(path.read_text())["policies"]
+                 if r["policy"] == "paged_16")
+    if paged["concurrent_seqs"] != MAX_CONCURRENT:
+        raise SystemExit(f"MAX_CONCURRENT={MAX_CONCURRENT} but Chapter 13 "
+                         f"computes {paged['concurrent_seqs']}; reconcile them")
+
+
 def main() -> None:
+    _check_concurrency_matches_ch13()
     rows = [decode_step(b) for b in BATCHES]
     cheapest, dearest = rows[-1], rows[0]
 

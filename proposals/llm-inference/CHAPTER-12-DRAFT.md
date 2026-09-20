@@ -226,6 +226,12 @@ problem.
 
 \* run-to-run spread exceeded 5%; see the note on the measuring machine.
 
+![Total time against tokens generated](code/figures/ch12-scaling.svg)
+
+**Figure 12.2** — The gap widens with every token generated. Total time
+against the number of tokens generated, both axes logarithmic.
+*Provenance in `code/figures/ch12-scaling.caption.txt`.*
+
 The speedup is not a constant. It grows with every token you generate,
 because the work you are avoiding grows with every token you generate.
 Fitted over this range, uncached total time grows as roughly

@@ -32,7 +32,7 @@ Put one request on a clock. A 1,200-token conversation, an
 ![Where one request's time goes](code/figures/ch03-timeline.svg)
 
 **Figure 3.1** — Reading the question is the cheap part. Reading the
-whole 1,200-token prompt takes **14 ms**. Writing the
+whole 1,200-token prompt takes **19 ms**. Writing the
 reply takes **1.45 seconds** — 99% of the request.
 *Provenance in `code/figures/ch03-timeline.caption.txt`.*
 
@@ -92,8 +92,8 @@ That is the whole story, and it is worth three orders of magnitude:
 <!-- include: tables/ch03-reference.md -->
 | Phase | Arithmetic | Bytes fetched | Work per byte | Limited by |
 |---|---|---|---|---|
-| Reading the prompt (prefill) | 14.3 TFLOP | 16.0 GB | **891.03** | compute |
-| Writing a token (decode) | 0.0 TFLOP | 16.2 GB | **0.74** | memory |
+| Reading the prompt (prefill) | 18.7 TFLOP | 16.0 GB | **1,168.39** | compute |
+| Writing a token (decode) | 0.0 TFLOP | 16.2 GB | **0.97** | memory |
 
 An 8B model in bf16 on an accelerator that breaks even at **296** operations per byte: below that it waits for memory, above it it waits for arithmetic. Prefill of a 1,200-token prompt; decode at a 1,500-token context. Arithmetic over published specs, not a measurement.
 
@@ -107,11 +107,11 @@ The vertical line is the accelerator's break-even point:
 finish early and sit waiting for memory. Above it, memory keeps up and
 arithmetic becomes the limit.
 
-Prefill lands at **891** operations per byte —
-3.0x above break-even, comfortably
-compute-bound. Decode lands at **0.74** —
-**398x below** break-even, deeply
-memory-bound. They are 1,199x apart.
+Prefill lands at **1,168** operations per byte —
+4.0x above break-even, comfortably
+compute-bound. Decode lands at **0.97** —
+**304x below** break-even, deeply
+memory-bound. They are 1,203x apart.
 
 This is why the two phases behave like different programs. They are the
 same weights and the same arithmetic; only the amount of work sharing
@@ -131,11 +131,11 @@ then writing tokens at each of those lengths.
 <!-- include: tables/ch03-measured.md -->
 | Prompt length | Reading the prompt | Writing tokens | A token costs this much more to write |
 |---|---|---|---|
-| 64 | 6,306 tok/s | 2,047 tok/s | **3.1x** |
-| 128 | 5,641 tok/s | 1,944 tok/s | **2.9x** |
-| 256 | 5,767 tok/s | 1,747 tok/s | **3.3x** |
-| 512 | 5,447 tok/s \* | 1,666 tok/s | **3.3x** |
-| 1,024 | 3,995 tok/s \* | 1,214 tok/s | **3.3x** |
+| 64 | 6,671 tok/s | 2,037 tok/s | **3.3x** |
+| 128 | 5,611 tok/s | 1,913 tok/s | **2.9x** |
+| 256 | 5,233 tok/s \* | 1,745 tok/s | **3.0x** |
+| 512 | 5,443 tok/s \* | 1,791 tok/s | **3.0x** |
+| 1,024 | 4,536 tok/s \* | 1,254 tok/s | **3.6x** |
 
 \* run-to-run spread exceeded 5%.
 
@@ -145,9 +145,9 @@ then writing tokens at each of those lengths.
 prompt length measured. *Provenance in
 `code/figures/ch03-per-token.caption.txt`.*
 
-The direction is right: writing a token costs 2.9x to 3.3x
+The direction is right: writing a token costs 2.9x to 3.6x
 more than reading one. But the size is wrong — the arithmetic predicted
-a difference of 1,199x, and we measured about three.
+a difference of 1,203x, and we measured about three.
 
 **That discrepancy is not an error, and it is worth more to you than a
 confirming result would have been.**
@@ -200,7 +200,7 @@ model: about $0.02 per million input tokens and $0.05 per million
 output tokens. Input tokens are prefill, shared 1,200 ways.
 Output tokens are decode, shared with nobody. The provider is not
 charging you more for output out of preference; they are passing on
-1,199x, softened by how well they batch.
+1,203x, softened by how well they batch.
 
 ## Where this is soft
 
@@ -234,9 +234,9 @@ heavy to an extreme. Chapter 33 covers both ends.
 
 | Quantity | Value |
 |---|---|
-| Work per byte, prefill of a 1,200-token prompt | 891 operations per byte |
-| Work per byte, decode | 0.74 operations per byte |
-| Ratio between the phases | 1,199x |
+| Work per byte, prefill of a 1,200-token prompt | 1,168 operations per byte |
+| Work per byte, decode | 0.97 operations per byte |
+| Ratio between the phases | 1,203x |
 | Where this accelerator breaks even | 296 operations per byte |
 | Share of one request's time spent decoding | 99% |
 | The one real cure for decode's problem | share each weight fetch across more tokens |
@@ -268,7 +268,7 @@ how much?
 fast at arithmetic, with unchanged memory bandwidth, would barely
 improve decode.
 
-**★★ 3.3** Work per byte for prefill was 891
+**★★ 3.3** Work per byte for prefill was 1,168
 operations per byte with a 1,200-token prompt. Recompute it
 for a 40-token prompt. Is prefill still compute-bound? What
 does your answer say about a chat service whose users send very short

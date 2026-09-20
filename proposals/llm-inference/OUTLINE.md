@@ -580,12 +580,17 @@ standards. It does, so that reason has expired.
 
 **Done:**
 
-1. **Chapter 9 and Appendix A** — the harness, which everything else
-   measures with.
-2. **Chapters 11–13** — the spine's first stretch: naive loop, KV
-   cache, and what the cache costs in memory. Chapters 12 and 13 are
-   drafted; Chapter 11 is implemented and awaits prose.
-3. **Chapter 1** — written once there were real numbers to open with.
+1. **The harness and figure pipeline** (Chapter 9's and Appendix A's
+   subject matter) — built and in use by every chapter below. The
+   *prose* of Chapter 9 is not yet written; only its code exists.
+2. **Chapters 12–13** — the spine's first stretch: the KV cache and
+   what it costs in memory. Chapter 11's naive loop is implemented and
+   measured, but its prose is not written.
+3. **Chapters 1–3** — the opening, written once there were real numbers
+   to open with.
+
+Drafted so far: **1, 2, 3, 12, 13**. Implemented but not yet written:
+**9, 11**.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of

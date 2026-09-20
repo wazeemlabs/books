@@ -48,6 +48,13 @@ track of by hand:
   a series colour, because the validator fails it as one (it reads as
   near-black grey). Sequential ramps are asserted monotonic in
   perceptual lightness, so they stay readable in greyscale.
+- **The manuscript cannot come apart.** `bench/audit.py` checks what
+  per-chapter verification cannot see: that every figure drawn is
+  actually shown, every figure cited exists, captions are numbered in
+  the order they appear, every generated table is included, every
+  chapter carries the sections STANDARDS.md requires, and — the one
+  that matters most — that a quantity appearing in several chapters has
+  the same value in all of them.
 - **Cross-references cannot go stale.** Chapters are referenced
   symbolically (`{{ch:paged-attention}}`), resolved against `OUTLINE.md`
   at render time. `bench/xref.py` rejects any literal "Chapter 14" in a

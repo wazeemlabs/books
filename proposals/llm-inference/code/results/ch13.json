@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "measured_utc": "2026-09-20T11:15:03Z",
+    "measured_utc": "2026-09-20T12:02:04Z",
     "hardware": {
       "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
       "cores_available": 4,
@@ -12,7 +12,7 @@
       "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
       "blas": "scipy-openblas"
     },
-    "commit": "9058658"
+    "commit": "0a7a6e8"
   },
   "experiment": {
     "n_requests": 19998,
@@ -36,8 +36,8 @@
   },
   "hardware": {
     "gpu_bytes": 80000000000,
-    "weight_bytes": 16000000000,
-    "free_bytes": 64000000000,
+    "weight_bytes": 16004415488,
+    "free_bytes": 63995584512,
     "kv_bytes_per_token": 131072
   },
   "policies": [
