@@ -25,6 +25,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-15-DRAFT.md](CHAPTER-15-DRAFT.md) | **Generated.** Chapter 15, "Prefix Caching" |
 | [CHAPTER-16-DRAFT.md](CHAPTER-16-DRAFT.md) | **Generated.** Chapter 16, "Batching" |
 | [CHAPTER-17-DRAFT.md](CHAPTER-17-DRAFT.md) | **Generated.** Chapter 17, "Continuous Batching" |
+| [CHAPTER-18-DRAFT.md](CHAPTER-18-DRAFT.md) | **Generated.** Chapter 18, "Chunked Prefill and Scheduling Policies" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 

@@ -325,7 +325,7 @@ you can plan against.
 >
 > That is why the table flags rows two ways: by whether the server took
 > more than 10% longer to drain than the requests took to arrive, and
-> by whether it met the p99 first-token budget. Either failure means
+> by whether it met the p99 promise for a first token. Either failure means
 > the row's other numbers describe a server already in trouble. A
 > saturated server's "average latency" is not a measurement; it is a
 > stopwatch on your test harness.
@@ -461,8 +461,11 @@ def _make_room(trace: Trace, pool: Pool, running: list[Request],
         victim = running.pop()
         pool.used -= victim.blocks(block_size)
         trace.recomputed_tokens += victim.generated
+        trace.recomputed_prompt_tokens += victim.prefilled
         victim.generated = 0
+        victim.prefilled = 0
         victim.first_token_s = None
+        victim.gaps_ms.clear()
         victim.gap_s = 0.0
         queue.insert(0, victim)
         evicted += 1
@@ -475,7 +478,8 @@ policy a flag, `--retraction-policy`, which also offers retracting by
 length (preferring requests with shorter outputs) or by priority.
 
 The alternative to recomputing is copying the evicted sequence's cache
-out to host memory and reading it back later — *swapping*. vLLM
+out to host memory and reading it back later — **swapping**
+<!-- defines: swapping -->. vLLM
 supported both; its documentation now says that "in vLLM V1, the
 default preemption mode is `RECOMPUTE` rather than `SWAP`, as
 recomputation has lower overhead in the V1 architecture", helped by

@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "measured_utc": "2026-09-20T14:33:41Z",
+    "measured_utc": "2026-09-20T14:51:15Z",
     "hardware": {
       "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
       "cores_available": 4,
@@ -12,7 +12,7 @@
       "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
       "blas": "scipy-openblas"
     },
-    "commit": "f75818a"
+    "commit": "1a77cfe"
   },
   "rows": [
     {
@@ -76,8 +76,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 1381,
-      "peak_pool_share": 0.04525643126331313,
+      "peak_blocks": 1379,
+      "peak_pool_share": 0.045190889726364085,
       "meets_ttft": true,
       "meets_itl": true
     },
@@ -142,8 +142,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 2354,
-      "peak_pool_share": 0.07714238898902179,
+      "peak_blocks": 2352,
+      "peak_pool_share": 0.07707684745207274,
       "meets_ttft": true,
       "meets_itl": true
     },
@@ -208,8 +208,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 3958,
-      "peak_pool_share": 0.12970670162215303,
+      "peak_blocks": 3954,
+      "peak_pool_share": 0.12957561854825494,
       "meets_ttft": true,
       "meets_itl": true
     },
@@ -274,8 +274,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 5662,
-      "peak_pool_share": 0.18554809110273635,
+      "peak_blocks": 5660,
+      "peak_pool_share": 0.18548254956578733,
       "meets_ttft": true,
       "meets_itl": false
     },
@@ -340,8 +340,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 8640,
-      "peak_pool_share": 0.2831394396198591,
+      "peak_blocks": 8635,
+      "peak_pool_share": 0.2829755857774865,
       "meets_ttft": true,
       "meets_itl": false
     },
@@ -406,8 +406,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 13568,
-      "peak_pool_share": 0.44463378666229725,
+      "peak_blocks": 13557,
+      "peak_pool_share": 0.4442733082090775,
       "meets_ttft": true,
       "meets_itl": false
     },
@@ -472,8 +472,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 20582,
-      "peak_pool_share": 0.6744879567425857,
+      "peak_blocks": 20560,
+      "peak_pool_share": 0.6737669998361462,
       "meets_ttft": true,
       "meets_itl": false
     },
@@ -538,8 +538,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 22038,
-      "peak_pool_share": 0.7222021956414878,
+      "peak_blocks": 22020,
+      "peak_pool_share": 0.7216123218089464,
       "meets_ttft": false,
       "meets_itl": false
     }
@@ -606,8 +606,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 3958,
-      "peak_pool_share": 0.12970670162215303,
+      "peak_blocks": 3954,
+      "peak_pool_share": 0.12957561854825494,
       "meets_ttft": true,
       "meets_itl": true
     }
@@ -841,8 +841,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 3958,
-      "peak_pool_share": 0.12970670162215303,
+      "peak_blocks": 3954,
+      "peak_pool_share": 0.12957561854825494,
       "meets_ttft": true,
       "meets_itl": true,
       "pool_share": 1.0,
@@ -878,8 +878,8 @@
       "prefill_iterations": 600,
       "preemptions": 0,
       "recomputed_tokens": 0,
-      "peak_blocks": 3958,
-      "peak_pool_share": 0.5188778185631883,
+      "peak_blocks": 3954,
+      "peak_pool_share": 0.5183534347142108,
       "meets_ttft": true,
       "meets_itl": true,
       "pool_share": 0.25,
@@ -915,8 +915,8 @@
       "prefill_iterations": 603,
       "preemptions": 3,
       "recomputed_tokens": 71,
-      "peak_blocks": 3055,
-      "peak_pool_share": 1.0013110455588332,
+      "peak_blocks": 3051,
+      "peak_pool_share": 1.0,
       "meets_ttft": true,
       "meets_itl": true,
       "pool_share": 0.1,
@@ -952,8 +952,8 @@
       "prefill_iterations": 682,
       "preemptions": 82,
       "recomputed_tokens": 2664,
-      "peak_blocks": 1529,
-      "peak_pool_share": 1.0026229508196722,
+      "peak_blocks": 1525,
+      "peak_pool_share": 1.0,
       "meets_ttft": false,
       "meets_itl": true,
       "pool_share": 0.05,
@@ -989,8 +989,8 @@
       "prefill_iterations": 698,
       "preemptions": 98,
       "recomputed_tokens": 3770,
-      "peak_blocks": 919,
-      "peak_pool_share": 1.0043715846994536,
+      "peak_blocks": 915,
+      "peak_pool_share": 1.0,
       "meets_ttft": false,
       "meets_itl": true,
       "pool_share": 0.03,
@@ -1026,8 +1026,8 @@
       "prefill_iterations": 716,
       "preemptions": 116,
       "recomputed_tokens": 5378,
-      "peak_blocks": 613,
-      "peak_pool_share": 1.0049180327868852,
+      "peak_blocks": 610,
+      "peak_pool_share": 1.0,
       "meets_ttft": false,
       "meets_itl": true,
       "pool_share": 0.02,

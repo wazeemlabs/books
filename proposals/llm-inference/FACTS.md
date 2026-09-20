@@ -111,6 +111,16 @@ Format: claim · value · source · last verified.
 | SGLang `--schedule-conservativeness` | "How conservative the schedule policy is. A larger value means more conservative scheduling. Use a larger value if you see requests being retracted frequently."; default `1.0` | same | 2026-09 |
 | SGLang `--retraction-policy` | chooses which requests are removed when the KV cache fills: `length` prefers retracting requests with shorter outputs, `priority` retracts lower-priority ones first | same | 2026-09 |
 
+## Chunked prefill and scheduling policies
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| Sarathi-Serve's mechanism | "Sarathi-Serve introduces chunked-prefills which splits a prefill request into near equal sized chunks" and "creates stall-free schedules that adds new requests in a batch without pausing ongoing decodes" | Agrawal, Kedia, Panwar, Mohan, Kwatra, Gulavani, Tumanov and Ramjee, OSDI 2024, pp. 117-134 (usenix.org/conference/osdi24/presentation/agrawal) | 2026-09 |
+| Sarathi-Serve's headline result | "For Mistral-7B on single A100 GPUs, we achieve 2.6x higher serving capacity and up to 3.7x higher serving capacity for the Yi-34B model on two A100 GPUs as compared to vLLM"; "up to 5.6x gain in the end-to-end serving capacity" with pipeline parallelism on Falcon-180B | same | 2026-09 |
+| vLLM chunked prefill default | "In V1, chunked prefill is enabled by default whenever possible." | vLLM docs, `configuration/optimization` | 2026-09 |
+| vLLM's scheduling order | the policy "prioritizes decode requests": it "batches all pending decode requests before scheduling any prefill operations", then fills the remaining token budget with prefills, chunking those that do not fit | same | 2026-09 |
+| The token-budget trade-off | "Smaller values (e.g., 2048) achieve better ITL because there are fewer prefills slowing down decodes"; "Higher values achieve better time to first token (TTFT) as you can process more prefill tokens in a batch"; "For optimal throughput, we recommend setting `max_num_batched_tokens > 8192` especially for smaller models on large GPUs" | same | 2026-09 |
+
 ## Prefix caching
 
 | Claim | Value | Source | Verified |

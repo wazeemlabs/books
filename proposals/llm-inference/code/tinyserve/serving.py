@@ -49,6 +49,80 @@ class Step:
         return (usd_per_hour / 3600) / self.tokens_per_s * 1e6
 
 
+def mixed_step(batch: int, seq: int, chunk: int = 0, chunk_cached: int = 0,
+               bytes_per_weight: int = 2) -> Step:
+    """One iteration that advances `batch` sequences *and* reads a prompt chunk.
+
+    This is what a stall-free schedule actually runs (Chapter 18). A
+    single forward pass carries two kinds of work at once:
+
+      * `batch` sequences each producing one token, over caches `seq`
+        tokens long -- the decode step of Chapter 16;
+      * `chunk` tokens of somebody's prompt, with `chunk_cached` tokens
+        of that same prompt already processed in earlier iterations.
+
+    The weights are fetched once for all of it, which is the entire
+    reason mixing is worth doing. The arithmetic adds up: two
+    operations per parameter per decoded token, plus a forward pass
+    over the chunk attending back over everything before it.
+
+    With `chunk=0` this is exactly `decode_step`; with `batch=0` it is
+    exactly `prefill_step`. Both are defined in terms of it, and
+    `test_the_two_steps_are_one_step` asserts that they agree.
+    """
+    scale = bytes_per_weight / 2
+    cached = batch * seq + chunk_cached
+    bytes_read = int(WEIGHT_BYTES * scale + cached * KV_BYTES_PER_TOKEN * scale)
+    flops = 2 * PARAMS * batch + flops_forward(MODEL, chunk, chunk_cached + chunk)
+    t_memory = bytes_read / HBM_BYTES_PER_S
+    t_compute = flops / PEAK_BF16_FLOPS
+    return Step(batch=batch, seq=seq, seconds=max(t_memory, t_compute),
+                bytes_read=bytes_read, flops=flops,
+                bound_by="memory" if t_memory >= t_compute else "compute")
+
+
+def test_the_two_steps_are_one_step() -> None:
+    """A mixed step with nothing mixed in must be the step it came from.
+
+    Chapters 1, 5, 16 and 17 all quote `decode_step` and `prefill_step`.
+    Chapter 18 needs a step that does both at once, and the only safe
+    way to add one is to define the old two in terms of the new one --
+    then check that nothing moved.
+    """
+    for batch, seq in ((1, 1500), (8, 2000), (64, 1500), (256, 8192)):
+        a, b = decode_step(batch, seq), mixed_step(batch, seq)
+        assert (a.seconds, a.bytes_read, a.flops) == (b.seconds, b.bytes_read,
+                                                      b.flops)
+    for tokens in (1, 128, 1200, 8192):
+        a, b = prefill_step(tokens), mixed_step(0, 0, chunk=tokens)
+        assert (a.seconds, a.bytes_read, a.flops) == (b.seconds, b.bytes_read,
+                                                      b.flops)
+    # Splitting a prompt must not change what it costs to read it.
+    # It does move slightly, because `flops_forward` charges attention
+    # as a full t_new x t_total rectangle rather than the causal half,
+    # and the rectangle shrinks when the prompt is split. At the case
+    # study's prompt length attention is a few per cent of a prefill,
+    # so the drift is small -- but it is checked rather than assumed.
+    import math
+    whole = flops_forward(MODEL, 1200, 1200)
+    for budget in (128, 256, 512, 1024):
+        n = math.ceil(1200 / budget)
+        split = sum(mixed_step(0, 0, min(budget, 1200 - k * budget),
+                               k * budget).flops for k in range(n))
+        assert abs(split - whole) / whole < 0.02, (
+            f"chunking at {budget} moved the arithmetic by "
+            f"{abs(split - whole) / whole:.1%}, which is too much to ignore")
+
+    # The real cost of a small chunk: the weights are re-read for it,
+    # and with nothing else in the step there is nothing to share them
+    # with, so it stops being compute-bound.
+    assert mixed_step(0, 0, chunk=64).bound_by == "memory"
+    assert mixed_step(0, 0, chunk=4096).bound_by == "compute"
+    # Unless there is decode work riding along on the same fetch.
+    assert mixed_step(64, 1500, chunk=64).bytes_read < (
+        mixed_step(64, 1500).bytes_read + mixed_step(0, 0, 64).bytes_read)
+
+
 def decode_step(batch: int, seq: int, bytes_per_weight: int = 2) -> Step:
     """Model one decode step under the roofline.
 
@@ -60,14 +134,7 @@ def decode_step(batch: int, seq: int, bytes_per_weight: int = 2) -> Step:
     it halves what must be fetched, which is the whole of Part V's
     argument; the arithmetic is unchanged.
     """
-    scale = bytes_per_weight / 2
-    bytes_read = int(WEIGHT_BYTES * scale + batch * seq * KV_BYTES_PER_TOKEN * scale)
-    flops = 2 * PARAMS * batch
-    t_memory = bytes_read / HBM_BYTES_PER_S
-    t_compute = flops / PEAK_BF16_FLOPS
-    return Step(batch=batch, seq=seq, seconds=max(t_memory, t_compute),
-                bytes_read=bytes_read, flops=flops,
-                bound_by="memory" if t_memory >= t_compute else "compute")
+    return mixed_step(batch, seq, bytes_per_weight=bytes_per_weight)
 
 
 def largest_batch_within(itl_ms: float, seq: int, ceiling: int) -> int:
@@ -98,14 +165,10 @@ def prefill_step(tokens: int, bytes_per_weight: int = 2) -> Step:
     scheduler: it never under-states how long a prompt will stall
     everyone else.
     """
-    scale = bytes_per_weight / 2
-    bytes_read = int(WEIGHT_BYTES * scale)
-    flops = flops_forward(MODEL, tokens, tokens)
-    t_memory = bytes_read / HBM_BYTES_PER_S
-    t_compute = flops / PEAK_BF16_FLOPS
-    return Step(batch=1, seq=tokens, seconds=max(t_memory, t_compute),
-                bytes_read=bytes_read, flops=flops,
-                bound_by="memory" if t_memory >= t_compute else "compute")
+    step = mixed_step(0, 0, chunk=tokens, bytes_per_weight=bytes_per_weight)
+    return Step(batch=1, seq=tokens, seconds=step.seconds,
+                bytes_read=step.bytes_read, flops=step.flops,
+                bound_by=step.bound_by)
 
 
 def test_prefill_is_compute_bound_and_decode_is_not() -> None:

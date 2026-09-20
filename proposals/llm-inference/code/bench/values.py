@@ -763,13 +763,144 @@ def ch17(d: dict) -> dict[str, str]:
     }
 
 
+def ch18(d: dict) -> dict[str, str]:
+    a = d["assumptions"]
+    iv, chosen = d["interference"], d["chosen_budget"]
+    whole, chunked = iv["whole"], iv["chunked"]
+    low = {r["token_budget"]: r for r in d["budgets"]}
+    high = {r["token_budget"]: r for r in d["budgets_high"]}
+    base_low, base_high = low[0], high[0]          # Chapter 17's scheduler
+    pick = high[chosen]
+    smallest = high[min(k for k in high if k)]
+    largest = high[max(high)]
+    pol = {(r["pool"], r["policy"]): r for r in d["policies"]}
+    sq = lambda name: pol[("squeezed", name)]
+    fu = lambda name: pol[("full", name)]
+    pre = {r["mode"]: r for r in d["preemption"]}
+    rec = pre["recompute"]
+    swap = pre["swap over PCIe 5.0 x16"]
+    arith = d["swap_arithmetic"]
+    at_context = next(r for r in arith["rows"] if r["tokens"] == a["context"])
+    longest = arith["rows"][-1]
+    ms = lambda x: f"{x:,.0f} ms"
+    s_ = lambda x: f"{x:,.1f} s"
+    return {
+        "rate": str(a["rate"]),
+        "rate_high": str(a["rate_high"]),
+        "requests": f"{a['n_requests']:,}",
+        "block": str(a["block"]),
+        "max_batch": str(a["max_batch"]),
+        "pool_gb": f"{a['pool_bytes'] / 1e9:.0f} GB",
+        "prompt_mean": f"{a['prompt_mean']:,}",
+        "output_mean": str(a["output_mean"]),
+        "ttft_budget": ms(a["ttft_budget_ms"]),
+        "itl_budget": f"{a['itl_budget_ms']:,.0f} ms",
+        "pure_itl": f"{d['pure_decode_itl_ms']:.1f} ms",
+        "whole_prefill": f"{d['whole_prefill_ms']:.0f} ms",
+        "long_prefill": f"{d['long_prefill_ms']:.0f} ms",
+        # one reply, with long prompts landing in it
+        "iv_interlopers": str(whole["interlopers"]),
+        "iv_prompt": f"{whole['interloper_prompt']:,}",
+        "iv_output": str(whole["victim_output"]),
+        "iv_budget": f"{chunked['budget']:,}",
+        "iv_whole_p50": f"{whole['median_ms']:.1f} ms",
+        "iv_whole_p99": f"{whole['p99_ms']:.0f} ms",
+        "iv_whole_max": f"{whole['max_ms']:.0f} ms",
+        "iv_whole_over": str(whole["over_budget"]),
+        "iv_chunked_p50": f"{chunked['median_ms']:.1f} ms",
+        "iv_chunked_p99": f"{chunked['p99_ms']:.1f} ms",
+        "iv_chunked_max": f"{chunked['max_ms']:.1f} ms",
+        "iv_chunked_over": str(chunked["over_budget"]),
+        "iv_gain": f"{whole['max_ms'] / chunked['max_ms']:.0f}x",
+        "iv_whole_finish": f"{whole['victim_finish_s']:.2f} s",
+        "iv_chunked_finish": f"{chunked['victim_finish_s']:.2f} s",
+        # the budget, at the rate where it binds
+        "chosen": f"{chosen:,}",
+        "smallest_budget": f"{min(k for k in high if k):,}",
+        "largest_budget": f"{max(high):,}",
+        "base_tok": f"{base_high['tokens_per_s']:,.0f}",
+        "base_itl99": f"{base_high['itl_p99_ms']:.0f} ms",
+        "base_ttft99": ms(base_high["ttft_p99_ms"]),
+        "base_low_itl99": f"{base_low['itl_p99_ms']:.1f} ms",
+        "base_low_tok": f"{base_low['tokens_per_s']:,.0f}",
+        "pick_tok": f"{pick['tokens_per_s']:,.0f}",
+        "pick_itl50": f"{pick['itl_p50_ms']:.1f} ms",
+        "pick_itl99": f"{pick['itl_p99_ms']:.1f} ms",
+        "pick_ttft50": ms(pick["ttft_p50_ms"]),
+        "pick_ttft99": ms(pick["ttft_p99_ms"]),
+        "pick_mixed": f"{pick['mixed_share'] * 100:.0f}%",
+        "pick_tok_gain": f"{pick['tokens_per_s'] / base_high['tokens_per_s']:.2f}x",
+        "pick_itl_gain": f"{base_high['itl_p99_ms'] / pick['itl_p99_ms']:.0f}x",
+        "small_ttft99": s_(smallest["ttft_p99_ms"] / 1e3),
+        "small_tok": f"{smallest['tokens_per_s']:,.0f}",
+        "small_itl99": f"{smallest['itl_p99_ms']:.1f} ms",
+        "small_mixed": f"{smallest['mixed_share'] * 100:.0f}%",
+        "large_itl99": f"{largest['itl_p99_ms']:.1f} ms",
+        "large_tok": f"{largest['tokens_per_s']:,.0f}",
+        "large_ttft99": ms(largest["ttft_p99_ms"]),
+        "low_pick_itl99": f"{low[chosen]['itl_p99_ms']:.1f} ms",
+        "low_pick_tok": f"{low[chosen]['tokens_per_s']:,.0f}",
+        # queue order
+        "pol_pool_gb": f"{sq('fcfs')['pool_gb']:.1f} GB",
+        "pol_pool_share": f"{a['swap_pool_share'] * 100:.0f}%",
+        "full_fcfs_p50": s_(fu("fcfs")["total_p50_s"]),
+        "full_spread": f"{max(fu(p)['total_p50_s'] for p in ('fcfs', 'shortest-output', 'longest-output')) / min(fu(p)['total_p50_s'] for p in ('fcfs', 'shortest-output', 'longest-output')) - 1:.1%}",
+        "sq_fcfs_p50": s_(sq("fcfs")["total_p50_s"]),
+        "sq_fcfs_p99": s_(sq("fcfs")["total_p99_s"]),
+        "sq_sjf_p50": s_(sq("shortest-output")["total_p50_s"]),
+        "sq_sjf_p99": s_(sq("shortest-output")["total_p99_s"]),
+        "sq_sjf_gain": f"{sq('fcfs')['total_p50_s'] / sq('shortest-output')['total_p50_s']:.0f}x",
+        "sq_sjf_p99_cost": f"{sq('shortest-output')['total_p99_s'] / sq('fcfs')['total_p99_s']:.1f}x",
+        "sq_fcfs_slow99": f"{sq('fcfs')['slowdown_p99']:.0f}",
+        "sq_fcfs_slowmax": f"{sq('fcfs')['slowdown_max']:.0f}",
+        "sq_sjf_slow99": f"{sq('shortest-output')['slowdown_p99']:.0f}",
+        "sq_sjf_slowmax": f"{sq('shortest-output')['slowdown_max']:.0f}",
+        "sq_ljf_p50": s_(sq("longest-output")["total_p50_s"]),
+        "sq_ljf_slowmax": f"{sq('longest-output')['slowdown_max']:.0f}",
+        "sq_sjf_tok": f"{sq('shortest-output')['tokens_per_s']:,.0f}",
+        "sq_fcfs_tok": f"{sq('fcfs')['tokens_per_s']:,.0f}",
+        # the two ways out of a full pool
+        "rec_tok": f"{rec['tokens_per_s']:,.0f}",
+        "rec_preempt": f"{rec['preemptions']:,}",
+        "rec_reread": f"{rec['prompt_reread']:.2f}x",
+        "rec_ttft99": s_(rec["ttft_p99_ms"] / 1e3),
+        "rec_batch": f"{rec['mean_batch']:.1f}",
+        "swap_tok": f"{swap['tokens_per_s']:,.0f}",
+        "swap_preempt": f"{swap['preemptions']:,}",
+        "swap_gb": f"{swap['swapped_bytes'] / 1e9:,.0f} GB",
+        "swap_s": f"{swap['swap_s']:.1f} s",
+        "swap_ttft99": s_(swap["ttft_p99_ms"] / 1e3),
+        "swap_batch": f"{swap['mean_batch']:.1f}",
+        "swap_batch_gap": f"{rec['mean_batch'] / swap['mean_batch']:.1f}x",
+        "rec_over_swap": f"{rec['tokens_per_s'] / swap['tokens_per_s']:.2f}x",
+        "swap_ttft_cost": f"{swap['ttft_p99_ms'] / rec['ttft_p99_ms']:.1f}x",
+        # the arithmetic behind the choice
+        "arith_tokens": f"{at_context['tokens']:,}",
+        "arith_recompute": f"{at_context['recompute_s'] * 1e3:.0f} ms",
+        "arith_pcie5": f"{at_context['swap_s']['PCIe 5.0 x16'] * 1e3:.1f} ms",
+        "arith_nvlink": f"{at_context['swap_s']['NVLink (H100)'] * 1e3:.1f} ms",
+        "arith_breakeven": f"{at_context['breakeven_bytes_per_s'] / 1e9:.0f} GB/s",
+        "arith_pcie_speed": f"{arith['links']['PCIe 5.0 x16'] / 1e9:.0f} GB/s",
+        "arith_long": f"{longest['tokens']:,}",
+        "arith_long_recompute": f"{longest['recompute_s'] * 1e3:.0f} ms",
+        "arith_long_pcie5": f"{longest['swap_s']['PCIe 5.0 x16'] * 1e3:.0f} ms",
+        "arith_long_breakeven": f"{longest['breakeven_bytes_per_s'] / 1e9:.0f} GB/s",
+        # what the arithmetic model's attention convention does to this
+        "attn_share": f"{d['attention_share'][str(a['prompt_mean'])]['attention_share'] * 100:.0f}%",
+        "attn_drift": f"{abs(d['attention_share'][str(a['prompt_mean'])]['worst_drift']) * 100:.1f}%",
+        "attn_share_long": f"{d['attention_share']['8192']['attention_share'] * 100:.0f}%",
+        "attn_drift_long": f"{abs(d['attention_share']['8192']['worst_drift']) * 100:.0f}%",
+    }
+
+
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
             "ch09": ch09, "ch10": ch10, "ch11": ch11,
             "ch12": ch12, "ch13": ch13, "ch14": ch14,
-            "ch15": ch15, "ch16": ch16, "ch17": ch17}[chapter](d)
+            "ch15": ch15, "ch16": ch16, "ch17": ch17,
+            "ch18": ch18}[chapter](d)
 
 
 if __name__ == "__main__":

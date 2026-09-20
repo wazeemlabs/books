@@ -642,6 +642,100 @@ def ch17_pool(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch18_budget(d: dict) -> str:
+    a = d["assumptions"]
+    out = ["| Token budget | Tokens/s | TTFT p50 | TTFT p99 | Between tokens, p50 | "
+           "Between tokens, p99 | Iterations carrying prefill | Keeps |",
+           "|---|---|---|---|---|---|---|---|"]
+    for r in d["budgets_high"]:
+        name = (f"**{r['token_budget']:,}**" if r["token_budget"] == d["chosen_budget"]
+                else f"{r['token_budget']:,}" if r["token_budget"]
+                else "_prefill alone_")
+        met = ("both" if r["meets_ttft"] and r["meets_itl"] else
+               "TTFT only" if r["meets_ttft"] else
+               "between-token only" if r["meets_itl"] else "**neither**")
+        ttft = (f"{r['ttft_p50_ms'] / 1e3:,.1f} s" if r["ttft_p50_ms"] >= 1000
+                else f"{r['ttft_p50_ms']:,.0f} ms")
+        ttft99 = (f"{r['ttft_p99_ms'] / 1e3:,.1f} s" if r["ttft_p99_ms"] >= 1000
+                  else f"{r['ttft_p99_ms']:,.0f} ms")
+        out.append(f"| {name} | {r['tokens_per_s']:,.0f} | {ttft} | {ttft99} | "
+                   f"{r['itl_p50_ms']:.1f} ms | {r['itl_p99_ms']:.1f} ms | "
+                   f"{r['mixed_share'] * 100:.0f}% | {met} |")
+    out += ["", f"{a['n_requests']} requests at a rate of {a['rate_high']} a second "
+                f"(seed {a['seed']}), the rate at which the previous chapter's "
+                f"scheduler stopped keeping its promise. The first row is that "
+                f"scheduler: a prefill gets an iteration to itself. Every row "
+                f"below mixes prefill into the same iteration as the decodes, "
+                f"splitting it when it does not fit in the budget. "
+                f"\"Keeps\" is against the case study's p99 promises: "
+                f"{a['ttft_budget_ms']:,} ms to the first token and "
+                f"{a['itl_budget_ms']} ms between them."]
+    return "\n".join(out)
+
+
+def ch18_policy(d: dict) -> str:
+    a = d["assumptions"]
+    out = ["| Block pool | Queue order | End to end p50 | End to end p99 | "
+           "Slowdown p50 | Slowdown p99 | Worst slowdown | Tokens/s |",
+           "|---|---|---|---|---|---|---|---|"]
+    for r in d["policies"]:
+        pool = (f"{r['pool_gb']:.0f} GB" if r["pool"] == "full"
+                else f"{r['pool_gb']:.1f} GB")
+        out.append(f"| {pool} ({r['pool']}) | `{r['policy']}` | "
+                   f"{r['total_p50_s']:.2f} s | {r['total_p99_s']:.2f} s | "
+                   f"**{r['slowdown_p50']:.1f}x** | {r['slowdown_p99']:.0f}x | "
+                   f"{r['slowdown_max']:.0f}x | {r['tokens_per_s']:,.0f} |")
+    out += ["", f"The same {a['n_requests']} requests at {a['rate_high']} a "
+                f"second through three queue orders, twice: once with the whole "
+                f"block pool and once with it squeezed to "
+                f"{a['swap_pool_share'] * 100:.0f}% of it. Slowdown is how much "
+                "longer a request took than it would have taken alone on an "
+                "idle server -- the fairness number, and the one that moves. "
+                "`shortest-output` and `longest-output` sort by the true reply "
+                "length, which a real server does not know; they are the best "
+                "and worst a perfect oracle could do."]
+    return "\n".join(out)
+
+
+def ch18_preemption(d: dict) -> str:
+    a = d["assumptions"]
+    out = ["| Way out of a full pool | Tokens/s | Sequences in flight | "
+           "Preemptions | Prompt tokens read | Copied | Time copying | TTFT p99 |",
+           "|---|---|---|---|---|---|---|---|"]
+    for r in d["preemption"]:
+        out.append(f"| {r['mode']} | **{r['tokens_per_s']:,.0f}** | "
+                   f"{r['mean_batch']:.1f} | {r['preemptions']:,} | "
+                   f"{r['prompt_reread']:.2f}x over | "
+                   f"{r['swapped_bytes'] / 1e9:,.0f} GB | "
+                   f"{r['swap_s']:.2f} s | {r['ttft_p99_ms'] / 1e3:,.1f} s |")
+    out += ["", f"A {d['preemption'][0]['pool_gb']:.1f} GB pool "
+                f"({a['swap_pool_share'] * 100:.0f}% of the accelerator's free "
+                f"memory) at {a['rate']} requests a second, small enough that "
+                "the server has to take sequences back out of the batch. "
+                "Recomputing throws the evicted cache away; swapping copies it "
+                "to host memory and back across the named link."]
+    return "\n".join(out)
+
+
+def ch18_swap(d: dict) -> str:
+    arith = d["swap_arithmetic"]
+    links = list(arith["links"])
+    out = ["| Context | Recompute it | " + " | ".join(f"Copy it over {n}" for n in links)
+           + " | Link speed at which they tie |",
+           "|---|---|" + "---|" * (len(links) + 1)]
+    for r in arith["rows"]:
+        out.append(f"| {r['tokens']:,} tokens | {r['recompute_s'] * 1e3:.1f} ms | "
+                   + " | ".join(f"{r['swap_s'][n] * 1e3:.1f} ms" for n in links)
+                   + f" | **{r['breakeven_bytes_per_s'] / 1e9:.0f} GB/s** |")
+    out += ["", "One preempted sequence, both ways. Recomputing re-reads its "
+                "context: arithmetic, growing faster than the length. Copying "
+                "moves its keys and values out and back: "
+                f"{d['assumptions']['kv_bytes_per_token'] / 1024:.0f} KiB a "
+                "token each way, growing linearly. The last column is the link "
+                "speed at which the two cost the same."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -666,6 +760,8 @@ def main() -> None:
                  ("ch16-waste", ch16_waste)),
         "ch17": (("ch17-head-to-head", ch17_head_to_head),
                  ("ch17-load", ch17_load), ("ch17-pool", ch17_pool)),
+        "ch18": (("ch18-budget", ch18_budget), ("ch18-policy", ch18_policy),
+                 ("ch18-preemption", ch18_preemption), ("ch18-swap", ch18_swap)),
     }
     for chapter, entries in specs.items():
         path = RESULTS / f"{chapter}.json"

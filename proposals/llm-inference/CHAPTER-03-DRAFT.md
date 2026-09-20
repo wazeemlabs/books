@@ -213,7 +213,7 @@ navigational fact in the book:
 | Speculative decoding (Chapter 29) | decode | gets several tokens from one fetch |
 | **Prefix caching** (Chapter 15) — a prompt's **prefix** is however much of its start another prompt also had | prefill | skips prompt work already done for someone else | <!-- defines: prefix, prefix caching -->
 | Attention kernels (Chapter 20) — a **kernel** is one program that runs on the accelerator | prefill mostly | prefill is where attention's cost concentrates | <!-- defines: kernel -->
-| Chunked prefill (Chapter 18) | both, by arbitrating | stops a long prompt stalling everyone's decode |
+| **Chunked prefill** (Chapter 18) — reading a long prompt a few hundred tokens at a time rather than all at once | both, by arbitrating | stops a long prompt stalling everyone's decode | <!-- defines: chunked prefill -->
 
 Notice how one-sided that list is. Decode is where the money goes, so
 decode is where the book goes.

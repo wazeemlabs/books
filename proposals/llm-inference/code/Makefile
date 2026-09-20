@@ -1,14 +1,14 @@
 # Regenerate everything the manuscript includes, from measurement to figure.
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make lock   - refresh environment.lock
-.PHONY: all ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18
 
 ch01:
 	python3 -m bench.run_ch01
@@ -78,6 +78,10 @@ ch17:
 	python3 -m bench.run_ch17
 	$(MAKE) figures tables manuscript
 
+ch18:
+	python3 -m bench.run_ch18
+	$(MAKE) figures tables manuscript
+
 figures:
 	python3 -m bench.figures
 
@@ -112,7 +116,11 @@ from tinyserve.scheduler import test_every_request_is_served_exactly_once as i; 
 from tinyserve.scheduler import test_continuous_finishes_short_requests_first as j; j(); \
 from tinyserve.scheduler import test_a_small_pool_preempts_and_still_finishes_everyone as k; k(); \
 from tinyserve.serving import test_prefill_is_compute_bound_and_decode_is_not as l; l(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling')"
+from tinyserve.serving import test_the_two_steps_are_one_step as m; m(); \
+from tinyserve.scheduler import test_chunking_reads_every_prompt_token_exactly_once as n; n(); \
+from tinyserve.scheduler import test_a_smaller_budget_smooths_the_gap_between_tokens as o; o(); \
+from tinyserve.scheduler import test_swapping_keeps_the_tokens_that_recomputing_throws_away as q; q(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill')"
 
 lock:
 	python3 -m pip freeze > environment.lock

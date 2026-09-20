@@ -35,6 +35,18 @@ def style(ax) -> None:
 
 def caption(d: dict) -> str:
     p = d["provenance"]
+    if "budgets" in d and "swap_arithmetic" in d:  # Chapter 18: policies
+        a = d["assumptions"]
+        return (f"SIMULATION, not a measurement: {a['n_requests']} requests "
+                f"arriving as a Poisson process, prompt and output lengths "
+                f"from the case study (means {a['prompt_mean']:,} and "
+                f"{a['output_mean']}, seed {a['seed']}), driven through the "
+                f"schedulers in tinyserve/scheduler.py - what a mixed "
+                f"iteration costs is arithmetic over the reference model and "
+                f"published hardware specifications, not a timing run - block "
+                f"pool {a['pool_bytes'] / 1e9:.0f} GB, {a['blocks']:,} blocks "
+                f"of {a['block']} tokens; interconnect speeds from FACTS.md - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     if "head_to_head" in d and "pool_sweep" in d:  # Chapter 17: the scheduler
         a = d["assumptions"]
         return (f"SIMULATION, not a measurement: {a['n_requests']} requests "
@@ -1709,6 +1721,174 @@ def fig_itl(d: dict) -> None:
               "batch has nothing to interrupt it."))
 
 
+# --- Chapter 18: a prompt read a chunk at a time -----------------------
+
+def fig_interference(d: dict) -> None:
+    """One reply, and the holes that other people's prompts punch in it."""
+    a = d["assumptions"]
+    whole, chunked = d["interference"]["whole"], d["interference"]["chunked"]
+    budget = a["itl_budget_ms"]
+
+    fig, ax = plt.subplots(figsize=(7.4, 3.8), dpi=200)
+    x = range(1, len(whole["victim_gaps_ms"]) + 1)
+    ax.plot(x, whole["victim_gaps_ms"], color=T.AMBER, linestyle="-",
+            linewidth=T.LINE_WIDTH, marker="", label="prompt read whole")
+    ax.plot(x, chunked["victim_gaps_ms"], color=T.BLUE, linestyle="--",
+            linewidth=T.LINE_WIDTH, marker="",
+            label=f"prompt read {chunked['budget']:,} tokens at a time")
+    ax.axhline(budget, color=T.INK, linewidth=0.9, linestyle=":", alpha=0.7)
+    ax.annotate(f"the budget: {budget} ms", (len(list(x)), budget),
+                textcoords="offset points", xytext=(-4, 5), ha="right",
+                fontsize=7.2, color=T.INK)
+    for g, gap in enumerate(whole["victim_gaps_ms"], start=1):
+        if gap > budget:
+            ax.annotate("", xy=(g, gap), xytext=(g, gap * 1.06),
+                        arrowprops=dict(arrowstyle="-", lw=0))
+    ax.set_xlabel("token of this user's reply")
+    ax.set_ylabel("wait before that token (ms)")
+    ax.set_ylim(bottom=0)
+    ax.legend(frameon=False, fontsize=8, loc="upper right")
+    ax.set_title(f"{whole['interlopers']} prompts of "
+                 f"{whole['interloper_prompt']:,} tokens land during one reply",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+
+    save(fig, "ch18-interference", d,
+         alt=("The wait before each token of one user's reply while "
+              f"{whole['interlopers']} long prompts arrive. Read whole, each "
+              f"prompt stops the reply for about {whole['max_ms']:.0f} "
+              "milliseconds, so the line has "
+              f"{whole['over_budget']} spikes far above the "
+              f"{budget} millisecond budget. Read "
+              f"{chunked['budget']:,} tokens at a time, the same work raises "
+              f"the wait only to {chunked['max_ms']:.1f} milliseconds and "
+              "never crosses the budget: the interruptions are still there, "
+              "but each is a fraction of the size."))
+
+
+def fig_budget(d: dict) -> None:
+    """The trade a token budget makes, and where it stops being a trade."""
+    a = d["assumptions"]
+    rows = [r for r in d["budgets_high"] if r["token_budget"]]
+    base = next(r for r in d["budgets_high"] if not r["token_budget"])
+    x = [r["token_budget"] for r in rows]
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.8, 3.6), dpi=200)
+
+    ax.plot(x, [r["itl_p99_ms"] for r in rows], color=T.BLUE, linestyle="--",
+            marker="s", markersize=4, linewidth=T.LINE_WIDTH,
+            label="between tokens, p99")
+    ax.plot(x, [r["ttft_p99_ms"] for r in rows], color=T.AMBER, linestyle="-",
+            marker="o", markersize=4, linewidth=T.LINE_WIDTH,
+            label="to the first token, p99")
+    ax.axhline(a["itl_budget_ms"], color=T.BLUE, linewidth=0.8, linestyle=":",
+               alpha=0.8)
+    ax.annotate(f"between-token budget: {a['itl_budget_ms']} ms",
+                (x[0], a["itl_budget_ms"]), textcoords="offset points",
+                xytext=(0, 4), fontsize=6.8, color=T.INK)
+    ax.axhline(a["ttft_budget_ms"], color=T.AMBER, linewidth=0.8, linestyle=":",
+               alpha=0.8)
+    ax.annotate(f"first-token budget: {a['ttft_budget_ms']:,} ms",
+                (x[0], a["ttft_budget_ms"]), textcoords="offset points",
+                xytext=(0, 4), fontsize=6.8, color=T.INK)
+    ax.axvline(d["chosen_budget"], color=T.INK, linewidth=0.9, alpha=0.4)
+    ax.annotate(f"{d['chosen_budget']:,}", (d["chosen_budget"], 8e3),
+                textcoords="offset points", xytext=(4, 0), fontsize=7.2,
+                color=T.INK)
+    ax.set_xscale("log", base=2); ax.set_xticks(x, [f"{v:,}" for v in x],
+                                                rotation=45, fontsize=7)
+    ax.set_yscale("log")
+    ax.set_xlabel("token budget for one iteration")
+    ax.set_ylabel("p99 latency (ms, log scale)")
+    ax.legend(frameon=False, fontsize=7.4, loc="upper right")
+    ax.set_title("The two promises pull opposite ways", loc="left", fontsize=10)
+    T.style(ax)
+
+    ax2.plot(x, [r["tokens_per_s"] for r in rows], color=T.BLUE,
+             linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH,
+             label="stall-free, this budget")
+    ax2.axhline(base["tokens_per_s"], color=T.AMBER, linewidth=1.1,
+                linestyle="-", alpha=0.85)
+    ax2.annotate(f"prefill on its own iteration: {base['tokens_per_s']:,.0f}",
+                 (x[-1], base["tokens_per_s"]), textcoords="offset points",
+                 xytext=(-4, -12), ha="right", fontsize=7.2, color=T.INK)
+    ax2.axvline(d["chosen_budget"], color=T.INK, linewidth=0.9, alpha=0.4)
+    ax2.set_xscale("log", base=2); ax2.set_xticks(x, [f"{v:,}" for v in x],
+                                                  rotation=45, fontsize=7)
+    ax2.set_ylim(bottom=0)
+    ax2.set_xlabel("token budget for one iteration")
+    ax2.set_ylabel("output tokens a second")
+    ax2.set_title("and throughput barely notices", loc="left", fontsize=10)
+    T.style(ax2)
+
+    save(fig, "ch18-budget", d,
+         alt=("Two panels against the per-iteration token budget, at "
+              f"{a['rate_high']} requests a second. Left, on log axes: the p99 "
+              f"wait between tokens rises from {rows[0]['itl_p99_ms']:.1f} to "
+              f"{rows[-1]['itl_p99_ms']:.1f} milliseconds as the budget grows, "
+              "while the p99 wait for a first token falls from "
+              f"{rows[0]['ttft_p99_ms'] / 1e3:.1f} seconds to "
+              f"{rows[-1]['ttft_p99_ms']:.0f} milliseconds. They cross a range "
+              f"where both promises are kept, and {d['chosen_budget']:,} is "
+              "the best point in it. Right: throughput over the same range, "
+              f"between {min(r['tokens_per_s'] for r in rows):,.0f} and "
+              f"{max(r['tokens_per_s'] for r in rows):,.0f} tokens a second "
+              "except at the smallest budget, against the "
+              f"{base['tokens_per_s']:,.0f} of the previous chapter's "
+              "scheduler."))
+
+
+def fig_policy(d: dict) -> None:
+    """Who goes first, and how much it matters when anybody is waiting."""
+    import numpy as np
+
+    rows = d["policies"]
+    names = [r["policy"] for r in rows if r["pool"] == "full"]
+    pos = np.arange(len(names))
+    width = 0.36
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.8, 3.6), dpi=200,
+                                  sharey=True)
+    for ax_, pool, title in ((ax, "full", "The whole pool: nobody is waiting"),
+                             (ax2, "squeezed",
+                              "Squeezed: now there is a queue")):
+        sel = [r for r in rows if r["pool"] == pool]
+        ax_.bar(pos - width / 2, [r["slowdown_p50"] for r in sel], width,
+                color=T.BLUE, label="p50")
+        ax_.bar(pos + width / 2, [r["slowdown_p99"] for r in sel], width,
+                color=T.AMBER, label="p99")
+        for i, r in enumerate(sel):
+            ax_.annotate(f"{r['slowdown_p99']:.0f}x",
+                         (i + width / 2, r["slowdown_p99"]),
+                         textcoords="offset points", xytext=(0, 3),
+                         ha="center", fontsize=7, color=T.INK)
+        ax_.set_xticks(pos, [n.replace("-", "-\n") for n in names], fontsize=7.6)
+        ax_.set_yscale("log")
+        ax_.set_ylim(bottom=1)      # 1x is "no slowdown at all": the floor
+        ax_.set_title(f"{title} ({sel[0]['pool_gb']:.0f} GB)"
+                      if pool == "full" else
+                      f"{title} ({sel[0]['pool_gb']:.1f} GB)",
+                      loc="left", fontsize=9.5)
+        T.style(ax_)
+    ax.set_ylabel("slowdown against running alone (log scale)")
+    ax.legend(frameon=False, fontsize=7.6, loc="upper left")
+
+    sq = {r["policy"]: r for r in rows if r["pool"] == "squeezed"}
+    save(fig, "ch18-policy", d,
+         alt=("Slowdown -- how much longer a request took than it would have "
+              "taken alone -- under three queue orders, on a log scale, with "
+              "the block pool whole and then squeezed. With the whole pool "
+              "all three are identical near "
+              f"{rows[0]['slowdown_p50']:.1f}x, because the server admits "
+              "almost everyone on arrival and there is no queue to order. "
+              "Squeezed, first-come-first-served reaches "
+              f"{sq['fcfs']['slowdown_p99']:.0f}x at the 99th percentile, "
+              "shortest-output-first "
+              f"{sq['shortest-output']['slowdown_p99']:.0f}x, and "
+              "longest-output-first "
+              f"{sq['longest-output']['slowdown_p99']:.0f}x."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -1721,7 +1901,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch11": [fig_waste], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory], "ch14": [fig_blocktable, fig_blocksize],
             "ch15": [fig_prefixtree, fig_prefill, fig_hitrate],
             "ch16": [fig_matmul, fig_batch_tradeoff, fig_static_batch],
-            "ch17": [fig_scheduler_timeline, fig_load, fig_itl]}
+            "ch17": [fig_scheduler_timeline, fig_load, fig_itl],
+            "ch18": [fig_interference, fig_budget, fig_policy]}
 
 
 def _check_no_shared_figure_functions() -> None:

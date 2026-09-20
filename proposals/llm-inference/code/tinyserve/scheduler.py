@@ -36,7 +36,8 @@ import math
 from dataclasses import dataclass, field
 
 from .paged import BLOCK_SIZE
-from .serving import decode_step, prefill_step
+from .reference import KV_BYTES_PER_TOKEN
+from .serving import decode_step, mixed_step, prefill_step
 
 
 @dataclass
@@ -49,15 +50,26 @@ class Request:
     output_tokens: int
 
     generated: int = 0
+    prefilled: int = 0           # prompt tokens whose keys and values are held
     first_token_s: float | None = None
     finish_s: float | None = None
     prefills: int = 0            # more than one means it was preempted
+    swapped: bool = False        # its cache is in host memory, not the pool
+    out_since: float = 0.0       # when it left the batch, if it is swapped out
     waiting_since: float = 0.0
     gap_s: float = 0.0           # time accumulating since its last token
+    gaps_ms: list[float] = field(default_factory=list)   # this one's own waits
 
     @property
     def context(self) -> int:
-        return self.prompt_tokens + self.generated
+        """Tokens this sequence holds keys and values for, right now.
+
+        For a sequence that was admitted in one go this is its whole
+        prompt plus what it has generated. For one whose prompt is
+        being read a chunk at a time (Chapter 18) it is however much of
+        that prompt has been read so far.
+        """
+        return self.prefilled + self.generated
 
     @property
     def done(self) -> bool:
@@ -80,6 +92,10 @@ class Trace:
     prefill_iterations: int = 0
     preemptions: int = 0
     recomputed_tokens: int = 0   # generated once, thrown away, generated again
+    recomputed_prompt_tokens: int = 0    # and the prompt behind them, re-read
+    swapped_bytes: int = 0       # cache copied out to host memory and back
+    swap_s: float = 0.0          # time spent doing that copying
+    chunk_tokens: int = 0        # prompt tokens read, counting every chunk
     peak_blocks: int = 0
     batch_steps: int = 0          # sum of batch sizes over decode iterations
     slots: int = 0                # sum of slots held over decode iterations
@@ -137,6 +153,7 @@ def _emit(trace: Trace, r: Request, clock: float) -> None:
         r.first_token_s = clock
     else:
         trace.gaps_ms.append(r.gap_s * 1e3)
+        r.gaps_ms.append(r.gap_s * 1e3)
     r.gap_s = 0.0
     if r.done:
         r.finish_s = clock
@@ -176,6 +193,7 @@ def serve_continuous(requests: list[Request], max_batch: int, blocks: int,
             _advance(trace, running, seconds)
             clock += seconds
             head.prefills += 1
+            head.prefilled = head.prompt_tokens     # read in one iteration
             before = math.ceil(head.prompt_tokens / block_size)
             pool.used += before
             _emit(trace, head, clock)
@@ -211,13 +229,15 @@ def serve_continuous(requests: list[Request], max_batch: int, blocks: int,
             _emit(trace, r, clock)
             needed += r.blocks(block_size) - before
         pool.used += needed
-        trace.peak_blocks = max(trace.peak_blocks, pool.used)
         for r in list(running):
             if r.done:
                 pool.used -= r.blocks(block_size)
                 running.remove(r)
         if pool.free < 0:
             trace.preemptions += _make_room(trace, pool, running, queue, block_size)
+        # After eviction, not before: an allocator that overshoots and
+        # then evicts never actually held the overshoot.
+        trace.peak_blocks = max(trace.peak_blocks, pool.used)
 
     trace.makespan_s = clock
     return trace
@@ -238,8 +258,11 @@ def _make_room(trace: Trace, pool: Pool, running: list[Request],
         victim = running.pop()
         pool.used -= victim.blocks(block_size)
         trace.recomputed_tokens += victim.generated
+        trace.recomputed_prompt_tokens += victim.prefilled
         victim.generated = 0
+        victim.prefilled = 0
         victim.first_token_s = None
+        victim.gaps_ms.clear()
         victim.gap_s = 0.0
         queue.insert(0, victim)
         evicted += 1
@@ -289,6 +312,7 @@ def serve_static(requests: list[Request], max_batch: int, blocks: int,
         clock += seconds
         for r in running:
             r.prefills += 1
+            r.prefilled = r.prompt_tokens
             _emit(trace, r, clock)
         trace.prefill_s += seconds
         trace.iterations += 1
@@ -356,3 +380,245 @@ def test_a_small_pool_preempts_and_still_finishes_everyone() -> None:
     assert trace.recomputed_tokens > 0
     assert all(r.generated == r.output_tokens for r in reqs)
     assert all(r.finish_s is not None for r in reqs)
+
+
+# --- Chapter 18: a prompt read a chunk at a time ------------------------
+
+POLICIES = ("fcfs", "shortest-output", "longest-output")
+
+
+def _order(queue: list[Request], policy: str) -> None:
+    """Decide who is at the front. The whole of a scheduling policy."""
+    if policy == "fcfs":
+        queue.sort(key=lambda r: r.arrival_s)
+    elif policy == "shortest-output":            # oracle shortest-job-first
+        queue.sort(key=lambda r: (r.output_tokens, r.arrival_s))
+    elif policy == "longest-output":             # the same oracle, reversed
+        queue.sort(key=lambda r: (-r.output_tokens, r.arrival_s))
+    else:
+        raise ValueError(f"unknown policy {policy!r}; try one of {POLICIES}")
+
+
+def _evict(trace: Trace, pool: Pool, decoding: list[Request],
+           restart: list[Request], block_size: int,
+           swap_bytes_per_s: float | None, clock: float) -> tuple[int, float]:
+    """The pool is full: take the newest sequence out of the batch.
+
+    Two ways to do it, and the chapter measures both.
+
+    *Recompute* throws the sequence's cache away. Getting it back means
+    reading its prompt again and generating its tokens again, which is
+    free of any transfer and costs whatever that work costs.
+
+    *Swap* copies the cache out to host memory and back. It costs no
+    arithmetic at all, only two trips across the interconnect -- and
+    the interconnect is roughly fifty times slower than the memory the
+    cache lives in, which is what makes the choice interesting.
+    """
+    evicted, seconds = 0, 0.0
+    while pool.free < 0 and decoding:
+        victim = decoding.pop()
+        pool.used -= victim.blocks(block_size)
+        if swap_bytes_per_s:
+            bytes_moved = victim.context * KV_BYTES_PER_TOKEN
+            seconds += bytes_moved / swap_bytes_per_s
+            trace.swapped_bytes += bytes_moved
+            victim.swapped = True            # its tokens are kept, elsewhere
+            victim.out_since = clock         # and its user is still waiting
+        else:
+            trace.recomputed_tokens += victim.generated
+            trace.recomputed_prompt_tokens += victim.prefilled
+            victim.generated = 0
+            victim.prefilled = 0
+            victim.first_token_s = None
+            victim.gaps_ms.clear()
+        victim.gap_s = 0.0
+        restart.insert(0, victim)
+        evicted += 1
+    return evicted, seconds
+
+
+def serve_chunked(requests: list[Request], max_batch: int, blocks: int,
+                  token_budget: int, block_size: int = BLOCK_SIZE,
+                  policy: str = "fcfs",
+                  swap_bytes_per_s: float | None = None) -> Trace:
+    """Stall-free batching: decodes first, then as much prefill as fits.
+
+    Chapter 17's scheduler ran a whole prompt in one iteration, and
+    every sequence already decoding waited through all of it. This one
+    gives the iteration a *token budget*. The sequences that are
+    decoding take one token each and have first claim on that budget;
+    whatever is left is spent reading part of somebody's prompt.
+
+    A prompt too long for the remainder is split and finished over
+    several iterations. Nobody's decoding ever stops, which is what
+    Sarathi-Serve means by a stall-free schedule, and it is what vLLM
+    V1 does by default: it "batches all pending decode requests before
+    scheduling any prefill operations", then chunks the prefills that
+    do not fit.
+
+    Reference: Agrawal, Kedia, Panwar, Mohan, Kwatra, Gulavani,
+    Tumanov and Ramjee, "Taming Throughput-Latency Tradeoff in LLM
+    Inference with Sarathi-Serve", OSDI 2024.
+    """
+    waiting = sorted(requests, key=lambda r: r.arrival_s)
+    queue: list[Request] = []       # arrived, never started
+    restart: list[Request] = []     # taken out of the batch; go back in first
+    prefilling: list[Request] = []  # prompt partly read
+    decoding: list[Request] = []    # producing tokens
+    pool = Pool(blocks, block_size)
+    trace = Trace(requests=requests)
+    clock, i = 0.0, 0
+
+    def next_up() -> Request | None:
+        if restart:
+            return restart[0]
+        return queue[0] if queue else None
+
+    while i < len(waiting) or queue or restart or prefilling or decoding:
+        arrived = False
+        while i < len(waiting) and waiting[i].arrival_s <= clock:
+            queue.append(waiting[i]); i += 1; arrived = True
+        if arrived:
+            _order(queue, policy)
+
+        if not (queue or restart or prefilling or decoding):
+            nxt = waiting[i].arrival_s
+            trace.idle_s += nxt - clock
+            clock = nxt
+            continue
+
+        # The decodes have first claim on the iteration.
+        budget = max(0, token_budget - len(decoding))
+
+        # Bring in one more prompt if nothing is mid-prompt, there is
+        # budget left for it, and the pool can hold what it needs.
+        if not prefilling and budget > 0 and len(decoding) < max_batch:
+            head = next_up()
+            if head is not None:
+                need = (head.context if head.swapped
+                        else min(budget, head.prompt_tokens))
+                if pool.room_for(need) or (not decoding and pool.free >=
+                                           math.ceil(need / block_size)):
+                    (restart if restart and restart[0] is head else queue).pop(0)
+                    if head.swapped:            # its cache comes back whole
+                        head.swapped = False
+                        # The whole outage counts against this user's
+                        # wait for their next token: they were mid-reply.
+                        head.gap_s += clock - head.out_since
+                        seconds = (head.context * KV_BYTES_PER_TOKEN
+                                   / swap_bytes_per_s) if swap_bytes_per_s else 0.0
+                        _advance(trace, decoding, seconds)
+                        clock += seconds
+                        trace.swap_s += seconds
+                        pool.used += head.blocks(block_size)
+                        trace.peak_blocks = max(trace.peak_blocks, pool.used)
+                        decoding.append(head)
+                    else:
+                        head.prefills += 1
+                        prefilling.append(head)
+
+        chunk_req = prefilling[0] if prefilling else None
+        chunk = (min(budget, chunk_req.prompt_tokens - chunk_req.prefilled)
+                 if chunk_req is not None and budget > 0 else 0)
+
+        if not decoding and chunk == 0:
+            raise RuntimeError(
+                f"the pool holds {pool.total} blocks and nothing is running: "
+                "the server would have to refuse the request at the front")
+
+        context = (sum(r.context for r in decoding) // len(decoding)
+                   if decoding else 0)
+        cached = chunk_req.prefilled if chunk_req is not None else 0
+        seconds = mixed_step(len(decoding), context, chunk, cached).seconds
+        _advance(trace, decoding, seconds)
+        clock += seconds
+        trace.iterations += 1
+        trace.decode_s += seconds if chunk == 0 else 0.0
+        trace.prefill_s += seconds if chunk else 0.0
+        trace.prefill_iterations += 1 if chunk else 0
+        trace.chunk_tokens += chunk
+        if decoding:
+            trace.batch_steps += len(decoding)
+            trace.slots += len(decoding) + len(prefilling)
+            trace.batch_sizes.append(len(decoding))
+
+        needed = 0
+        for r in decoding:
+            before = r.blocks(block_size)
+            _emit(trace, r, clock)
+            needed += r.blocks(block_size) - before
+        if chunk:
+            before = chunk_req.blocks(block_size)
+            chunk_req.prefilled += chunk
+            if chunk_req.prefilled >= chunk_req.prompt_tokens:
+                _emit(trace, chunk_req, clock)     # the last chunk emits a token
+                prefilling.remove(chunk_req)
+                decoding.append(chunk_req)
+            needed += chunk_req.blocks(block_size) - before
+        pool.used += needed
+
+        for r in list(decoding):
+            if r.done:
+                pool.used -= r.blocks(block_size)
+                decoding.remove(r)
+        if pool.free < 0:
+            n, secs = _evict(trace, pool, decoding, restart, block_size,
+                             swap_bytes_per_s, clock)
+            trace.preemptions += n
+            _advance(trace, decoding, secs)
+            clock += secs
+            trace.swap_s += secs
+        trace.peak_blocks = max(trace.peak_blocks, pool.used)
+
+    trace.makespan_s = clock
+    return trace
+
+
+def test_chunking_reads_every_prompt_token_exactly_once() -> None:
+    """Splitting a prompt must not lose or repeat any of it."""
+    total = 0
+    for budget in (32, 64, 256, 4096):
+        reqs = [Request(id=n, arrival_s=n * 0.01, prompt_tokens=300 + 37 * n,
+                        output_tokens=6 + n) for n in range(10)]
+        trace = serve_chunked(reqs, max_batch=8, blocks=100_000,
+                              token_budget=budget)
+        total = sum(r.prompt_tokens for r in reqs)
+        assert trace.chunk_tokens == total, (budget, trace.chunk_tokens, total)
+        assert trace.preemptions == 0
+        assert all(r.generated == r.output_tokens for r in reqs)
+        assert all(r.prefilled == r.prompt_tokens for r in reqs)
+
+
+def test_a_smaller_budget_smooths_the_gap_between_tokens() -> None:
+    """The chapter's claim, asserted rather than asserted-in-prose.
+
+    A long prompt admitted whole stalls everyone already decoding for
+    as long as it takes to read. Split into chunks, it cannot.
+    """
+    def gaps(budget: int) -> float:
+        reqs = [Request(id=0, arrival_s=0.0, prompt_tokens=64, output_tokens=200)]
+        reqs += [Request(id=n, arrival_s=0.2 * n, prompt_tokens=8192,
+                         output_tokens=20) for n in range(1, 5)]
+        trace = serve_chunked(reqs, max_batch=8, blocks=100_000,
+                              token_budget=budget)
+        return max(trace.gaps_ms)
+
+    assert gaps(512) < gaps(8192), (gaps(512), gaps(8192))
+
+
+def test_swapping_keeps_the_tokens_that_recomputing_throws_away() -> None:
+    """The two ways out of a full pool, told apart by what survives."""
+    def run(bw: float | None) -> Trace:
+        reqs = [Request(id=n, arrival_s=n * 0.001, prompt_tokens=400,
+                        output_tokens=120) for n in range(8)]
+        return serve_chunked(reqs, max_batch=8, blocks=60, token_budget=512,
+                             swap_bytes_per_s=bw)
+
+    recompute, swap = run(None), run(64e9)      # PCIe 5.0 x16, FACTS.md
+    assert recompute.preemptions > 0 and swap.preemptions > 0
+    assert recompute.recomputed_tokens > 0 and recompute.swapped_bytes == 0
+    assert swap.swapped_bytes > 0 and swap.recomputed_tokens == 0
+    assert swap.swap_s > 0 and recompute.swap_s == 0
+    assert swap.chunk_tokens < recompute.chunk_tokens, (
+        "a swapped sequence should not have to read its prompt again")

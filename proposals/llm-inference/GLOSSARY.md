@@ -104,3 +104,8 @@ explanation.
 | admission control | 17 | The decision about when to let new work into a system, as distinct from what to do with the work already in it. For a serving engine: when to start a waiting request's prefill. |
 | head-of-line blocking | 17 | Work stuck behind unrelated work in front of it, purely because of the order the two were put in. A static batch is head-of-line blocking by design. |
 | watermark | 17 | Memory a scheduler keeps free rather than handing out, so that the blocks freed by an eviction cannot immediately be spent re-admitting the sequence that was evicted. |
+| chunked prefill | 3 | Reading a prompt over several iterations instead of one, so that it never stops the sequences already decoding for longer than one chunk takes. |
+| stall-free batching | 18 | A schedule in which decoding never pauses: every running sequence takes its token first, and prefill gets whatever is left of the iteration's token budget. |
+| token budget | 18 | The cap on how many token positions one iteration may carry, across decodes and prefill chunks together. The knob that decides the wait between tokens. |
+| shortest-job-first | 18 | Serving the shortest waiting work first. It minimises the average wait and lengthens the longest one, which is the whole of the fairness argument. |
+| swapping | 17 | Making room by copying a sequence's cache to host memory and back, rather than discarding it and computing it again. |
