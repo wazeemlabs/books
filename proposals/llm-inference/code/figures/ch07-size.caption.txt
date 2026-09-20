@@ -1,0 +1,2 @@
+ALT: Share of the machine's best arithmetic rate against the size of the matrix multiplied, x axis logarithmic. A 16-by-16 multiply reaches only 2% of what the machine can do; the rate climbs with size and reaches 100% around 1024. The curve is not perfectly smooth, because some sizes suit the library's blocking better than others.
+PROVENANCE: measured on Intel(R) Xeon(R) Processor @ 2.10GHz (4 cores), NumPy 2.4.6 on scipy-openblas - median of 5 runs - accelerator figures are published specifications, not measurements - commit 487f71d, 2026-09-20T12:29:58Z

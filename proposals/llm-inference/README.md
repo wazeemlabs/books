@@ -13,6 +13,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-04-DRAFT.md](CHAPTER-04-DRAFT.md) | **Generated.** Chapter 4, "The Memory Wall" |
 | [CHAPTER-05-DRAFT.md](CHAPTER-05-DRAFT.md) | **Generated.** Chapter 5, "Latency, Throughput, and the SLO" |
 | [CHAPTER-06-DRAFT.md](CHAPTER-06-DRAFT.md) | **Generated.** Chapter 6, "The Serving Landscape" |
+| [CHAPTER-07-DRAFT.md](CHAPTER-07-DRAFT.md) | **Generated.** Chapter 7, "Reading the GPU" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -110,6 +111,11 @@ committed numbers.
   utilization. It would need 133% of a machine that has 100%. Only two
   of four configurations can win, and the techniques in this book are
   what separate them.
+- Chapter 7 opens Part II by measuring the two shape facts that Part I
+  asserted: a 16x16 multiply uses 2% of this machine while a 1024x1024
+  uses all of it, and four cores buy 2.6x the arithmetic but 0.90x the
+  memory bandwidth. One memory system, however many processors — which
+  is why every accelerator generation widens the gap.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

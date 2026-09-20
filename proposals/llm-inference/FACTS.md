@@ -74,6 +74,15 @@ Format: claim · value · source · last verified.
 | LLM fine-tuning and inference, broader | $220K-$350K total comp | same | 2026-09 |
 | CUDA / GPU optimization | $300K-$500K+ | same | 2026-09 |
 
+## Monitoring
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| `nvidia-smi` GPU-Util | fraction of *time* one or more kernels ran, not fraction of the machine used | NVIDIA docs and analyses | 2026-09 |
+| Consequence | a kernel on 1 SM of an H100 reports 100% while SM efficiency is 1/132 = 0.7% | same | 2026-09 |
+| H100 streaming multiprocessors | 132 | NVIDIA H100 whitepaper | 2026-09 |
+| Better metrics | `DCGM_FI_PROF_SM_ACTIVE` (cycles with a warp resident), `DCGM_FI_PROF_SM_OCCUPANCY` | NVIDIA DCGM docs | 2026-09 |
+
 ## Build versus buy
 
 | Claim | Value | Source | Verified |

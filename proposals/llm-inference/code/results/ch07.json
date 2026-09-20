@@ -1,0 +1,137 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T12:29:58Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "487f71d"
+  },
+  "device": {
+    "name": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cores_visible": 4,
+    "threads_configured": null,
+    "caches": [
+      {
+        "level": 1,
+        "kib": 48,
+        "shared_cpu_list": "0"
+      },
+      {
+        "level": 2,
+        "kib": 2048,
+        "shared_cpu_list": "0"
+      },
+      {
+        "level": 3,
+        "kib": 266240,
+        "shared_cpu_list": "0-3"
+      }
+    ],
+    "numpy": "2.4.6",
+    "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39"
+  },
+  "sizes": [
+    {
+      "n": 16,
+      "gflops": 7.992198089564402,
+      "work_flop": 8192,
+      "bytes_touched": 3072,
+      "share_of_peak": 0.01671252801454757
+    },
+    {
+      "n": 32,
+      "gflops": 40.32984378683793,
+      "work_flop": 65536,
+      "bytes_touched": 12288,
+      "share_of_peak": 0.08433395125552896
+    },
+    {
+      "n": 64,
+      "gflops": 112.41165793200601,
+      "work_flop": 524288,
+      "bytes_touched": 49152,
+      "share_of_peak": 0.23506461692978162
+    },
+    {
+      "n": 128,
+      "gflops": 122.83441705313989,
+      "work_flop": 4194304,
+      "bytes_touched": 196608,
+      "share_of_peak": 0.2568597040696106
+    },
+    {
+      "n": 256,
+      "gflops": 292.5688777542349,
+      "work_flop": 33554432,
+      "bytes_touched": 786432,
+      "share_of_peak": 0.6117923393361349
+    },
+    {
+      "n": 512,
+      "gflops": 315.2438014406913,
+      "work_flop": 268435456,
+      "bytes_touched": 3145728,
+      "share_of_peak": 0.6592079930888166
+    },
+    {
+      "n": 1024,
+      "gflops": 457.1177009778369,
+      "work_flop": 2147483648,
+      "bytes_touched": 12582912,
+      "share_of_peak": 0.9558812604398368
+    },
+    {
+      "n": 2048,
+      "gflops": 478.215987587726,
+      "work_flop": 17179869184,
+      "bytes_touched": 50331648,
+      "share_of_peak": 1.0
+    }
+  ],
+  "peak_gflops": 478.215987587726,
+  "scaling": [
+    {
+      "threads": 1,
+      "gflops": 120.04491743154249,
+      "bandwidth_gb_s": 13.076676049856433,
+      "gflops_speedup": 1.0,
+      "bandwidth_speedup": 1.0
+    },
+    {
+      "threads": 2,
+      "gflops": 247.71693772409012,
+      "bandwidth_gb_s": 13.153298844291704,
+      "gflops_speedup": 2.0635354084470476,
+      "bandwidth_speedup": 1.005859500850456
+    },
+    {
+      "threads": 4,
+      "gflops": 453.8525449131381,
+      "bandwidth_gb_s": 13.36721750929473,
+      "gflops_speedup": 3.780689383804647,
+      "bandwidth_speedup": 1.0222182960203778
+    }
+  ],
+  "decode_shape": {
+    "description": "one token through one projection of the reference model",
+    "m": 1,
+    "k": 4096,
+    "n": 4096,
+    "comparison": "the same projection during prefill of a 1,200-token prompt is 1,200 rows instead of 1"
+  },
+  "accelerator": {
+    "peak_bf16_flops": 990000000000000.0,
+    "ridge_flop_per_byte": 295.5223880597015,
+    "streaming_multiprocessors": 132,
+    "one_sm_share": 0.007575757575757576
+  },
+  "smallest_share": 0.01671252801454757
+}

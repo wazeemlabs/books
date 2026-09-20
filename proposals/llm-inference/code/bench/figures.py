@@ -81,6 +81,12 @@ def caption(d: dict) -> str:
                 f"batch {a['batch']}, {a['context']:,}-token context, GPU prices "
                 f"and the ${d['api']['usd_per_m_output']:.2f}/M API price verified "
                 f"September 2026 (FACTS.md) - commit {p['commit']}")
+    if "sizes" in d and "scaling" in d:  # Chapter 7: what this machine can do
+        dev = d["device"]
+        return (f"measured on {dev['name']} ({dev['cores_visible']} cores), "
+                f"NumPy {dev['numpy']} on {p['software']['blas']} - median of 5 "
+                f"runs - accelerator figures are published specifications, not "
+                f"measurements - commit {p['commit']}, {p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -745,14 +751,107 @@ def fig_breakeven(d: dict) -> None:
               "configuration never crosses it at all."))
 
 
+
+
+# --- Chapter 7: wide hardware needs wide work ---------------------------
+
+def fig_size(d: dict) -> None:
+    rows = d["sizes"]
+    x = [r["n"] for r in rows]
+    y = [r["share_of_peak"] * 100 for r in rows]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.8), dpi=200)
+    ax.plot(x, y, color=T.BLUE, marker="o", markersize=4.5,
+            linewidth=T.LINE_WIDTH)
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(x, [str(v) for v in x], fontsize=7.5)
+    ax.set_ylim(0, 108)
+
+    small = rows[0]
+    ax.annotate(f"a {small['n']}x{small['n']} multiply uses\n"
+                f"{small['share_of_peak'] * 100:.0f}% of this machine",
+                xy=(small["n"], small["share_of_peak"] * 100),
+                xytext=(small["n"] * 1.5, 34), fontsize=7.6, color=T.INK,
+                arrowprops=dict(arrowstyle="->", lw=0.8, color=T.INK))
+    ax.axhline(100, color=T.MUTED, linestyle=":", linewidth=1.0)
+    ax.text(x[-1], 102, "everything this machine has", fontsize=7.4,
+            color=T.MUTED, ha="right")
+
+    ax.set_xlabel("size of the matrix multiplied (n x n)")
+    ax.set_ylabel("share of this machine's best rate (%)")
+    ax.set_title("Small work leaves most of the machine idle", loc="left",
+                 fontsize=11)
+    T.style(ax)
+
+    save(fig, "ch07-size", d,
+         alt=("Share of the machine's best arithmetic rate against the size of "
+              f"the matrix multiplied, x axis logarithmic. A {small['n']}-by-"
+              f"{small['n']} multiply reaches only {small['share_of_peak'] * 100:.0f}% of "
+              "what the machine can do; the rate climbs with size and reaches "
+              "100% around 1024. The curve is not perfectly smooth, because "
+              "some sizes suit the library's blocking better than others."))
+
+
+def fig_core_scaling(d: dict) -> None:
+    rows = d["scaling"]
+    x = [r["threads"] for r in rows]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.6), dpi=200)
+    ax.plot(x, [r["gflops_speedup"] for r in rows], label="arithmetic",
+            color=T.BLUE, marker="o", markersize=5, linewidth=T.LINE_WIDTH)
+    ax.plot(x, [r["bandwidth_speedup"] for r in rows], label="memory bandwidth",
+            color=T.AMBER, linestyle="--", marker="s", markersize=5,
+            linewidth=T.LINE_WIDTH)
+    ax.axhline(1.0, color=T.MUTED, linestyle=":", linewidth=1.0)
+
+    last = rows[-1]
+    ax.annotate(f"{last['gflops_speedup']:.1f}x", (last["threads"], last["gflops_speedup"]),
+                textcoords="offset points", xytext=(-4, 8), fontsize=8,
+                color=T.BLUE, ha="right")
+    ax.annotate(f"{last['bandwidth_speedup']:.2f}x", (last["threads"], last["bandwidth_speedup"]),
+                textcoords="offset points", xytext=(-4, -14), fontsize=8,
+                color=T.AMBER, ha="right")
+
+    ax.set_xticks(x, [str(v) for v in x])
+    ax.set_xlabel("cores allowed to work")
+    ax.set_ylabel("speed relative to one core")
+    ax.set_title("More cores buy arithmetic, not memory", loc="left", fontsize=11)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    T.style(ax)
+
+    save(fig, "ch07-scaling", d,
+         alt=("Speed relative to one core against the number of cores allowed, "
+              "for an operation limited by arithmetic and one limited by memory. "
+              f"Arithmetic reaches {last['gflops_speedup']:.1f} times faster on "
+              f"{last['threads']} cores; memory bandwidth reaches "
+              f"{last['bandwidth_speedup']:.2f} times, which is to say it does not "
+              "improve at all. Adding processing multiplies arithmetic and "
+              "leaves the memory system where it was."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
             "ch05": [fig_tradeoff, fig_tail],
-            "ch06": [fig_breakeven], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch06": [fig_breakeven],
+            "ch07": [fig_size, fig_core_scaling], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+
+
+def _check_no_shared_figure_functions() -> None:
+    """A function defined twice silently rebinds, and one chapter then draws
+    another's figure. Names are checked rather than trusted."""
+    seen: dict[int, str] = {}
+    for chapter, figs in CHAPTERS.items():
+        for fn in figs:
+            if id(fn) in seen:
+                raise RuntimeError(
+                    f"{fn.__name__} is used by both {seen[id(fn)]} and {chapter}; "
+                    "a duplicate definition has rebound it")
+            seen[id(fn)] = chapter
 
 
 def main() -> None:
+    _check_no_shared_figure_functions()
     for chapter, figs in CHAPTERS.items():
         path = RESULTS / f"{chapter}.json"
         if not path.exists():

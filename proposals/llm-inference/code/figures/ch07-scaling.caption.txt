@@ -1,0 +1,2 @@
+ALT: Speed relative to one core against the number of cores allowed, for an operation limited by arithmetic and one limited by memory. Arithmetic reaches 3.8 times faster on 4 cores; memory bandwidth reaches 1.02 times, which is to say it does not improve at all. Adding processing multiplies arithmetic and leaves the memory system where it was.
+PROVENANCE: measured on Intel(R) Xeon(R) Processor @ 2.10GHz (4 cores), NumPy 2.4.6 on scipy-openblas - median of 5 runs - accelerator figures are published specifications, not measurements - commit 487f71d, 2026-09-20T12:29:58Z

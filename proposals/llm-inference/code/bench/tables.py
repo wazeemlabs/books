@@ -222,6 +222,29 @@ def ch06_breakeven(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch07_sizes(d: dict) -> str:
+    out = ["| Matrix multiplied | Rate achieved | Share of this machine's best |",
+           "|---|---|---|"]
+    for r in d["sizes"]:
+        out.append(f"| {r['n']} x {r['n']} | {r['gflops']:,.0f} GFLOP/s | "
+                   f"**{r['share_of_peak'] * 100:.0f}%** |")
+    dev = d["device"]
+    out += ["", f"Measured on {dev['name']}, {dev['cores_visible']} cores, median "
+                "of 5 runs. The curve is not perfectly smooth: some sizes suit the "
+                "library's internal blocking better than others."]
+    return "\n".join(out)
+
+
+def ch07_scaling(d: dict) -> str:
+    out = ["| Cores allowed | Arithmetic | Memory bandwidth |", "|---|---|---|"]
+    for r in d["scaling"]:
+        out.append(f"| {r['threads']} | {r['gflops']:,.0f} GFLOP/s "
+                   f"(**{r['gflops_speedup']:.2f}x**) | "
+                   f"{r['bandwidth_gb_s']:.1f} GB/s "
+                   f"(**{r['bandwidth_speedup']:.2f}x**) |")
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -264,6 +287,7 @@ def main() -> None:
         "ch04": (("ch04-machine", ch04_machine), ("ch04-wall", ch04_wall)),
         "ch05": (("ch05-percentiles", ch05_percentiles), ("ch05-budgets", ch05_budgets)),
         "ch06": (("ch06-breakeven", ch06_breakeven),),
+        "ch07": (("ch07-sizes", ch07_sizes), ("ch07-scaling", ch07_scaling)),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),

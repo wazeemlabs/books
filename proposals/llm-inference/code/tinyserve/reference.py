@@ -21,6 +21,7 @@ HBM_BYTES_PER_S = 3.35e12
 PEAK_BF16_FLOPS = 990e12
 GPU_BYTES = 80 * 1000**3
 GPU_USD_PER_HOUR = 3.25          # on-demand median across providers
+STREAMING_MULTIPROCESSORS = 132  # how wide the card is
 RIDGE_FLOP_PER_BYTE = PEAK_BF16_FLOPS / HBM_BYTES_PER_S
 
 # --- the model: a Llama-3-style dense 8B served in bf16.

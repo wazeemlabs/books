@@ -314,6 +314,29 @@ def ch06(d: dict) -> dict[str, str]:
     }
 
 
+def ch07(d: dict) -> dict[str, str]:
+    dev, sizes, sc = d["device"], d["sizes"], d["scaling"]
+    small, big = sizes[0], max(sizes, key=lambda r: r["share_of_peak"])
+    last = sc[-1]
+    return {
+        "cpu": dev["name"],
+        "cores": str(dev["cores_visible"]),
+        "small_n": str(small["n"]),
+        "small_share": f"{small['share_of_peak'] * 100:.0f}%",
+        "small_gflops": f"{small['gflops']:,.0f}",
+        "big_n": str(big["n"]),
+        "peak_gflops": f"{d['peak_gflops']:,.0f}",
+        "threads": str(last["threads"]),
+        "arith_speedup": f"{last['gflops_speedup']:.1f}x",
+        "mem_speedup": f"{last['bandwidth_speedup']:.2f}x",
+        "d_model": f"{d['decode_shape']['k']:,}",
+        "acc_flops": f"{d['accelerator']['peak_bf16_flops'] / 1e12:.0f} TFLOP/s",
+        "acc_ridge": f"{d['accelerator']['ridge_flop_per_byte']:.0f}",
+        "sms": str(d["accelerator"]["streaming_multiprocessors"]),
+        "one_sm_share": f"{d['accelerator']['one_sm_share'] * 100:.1f}%",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -350,7 +373,8 @@ def ch13(d: dict) -> dict[str, str]:
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
-            "ch05": ch05, "ch06": ch06, "ch12": ch12, "ch13": ch13}[chapter](d)
+            "ch05": ch05, "ch06": ch06, "ch07": ch07,
+            "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":
