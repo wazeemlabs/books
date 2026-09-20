@@ -114,6 +114,17 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "api" in d and "duty_cycle" in d:  # Chapter 42: what it costs
+        a = d["assumptions"]
+        return (f"ARITHMETIC over published prices, not a measurement: the "
+                f"fleet is the {d['fleet']['machines']} machines Chapter 41 "
+                f"sized for {a['requests_per_s']} requests a second - GPU "
+                f"prices and the per-token price of "
+                f"{d['api']['api_model']} are recorded in FACTS.md with the "
+                f"page each came from and the date it was checked, and every "
+                f"figure here is swept over price, utilization and "
+                f"engineering overhead rather than stated at one of them - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     if "sizing" in d and "theory" in d:  # Chapter 41: capacity planning
         a = d["assumptions"]
         return (f"SIMULATION, not a measurement: {a['n_requests']:,} requests "
@@ -3076,6 +3087,140 @@ def fig_sizing(d: dict) -> None:
               f"thumb buys {counts[1] - counts[2]} machines nobody needs."))
 
 
+# --- Chapter 42: what a million tokens costs --------------------------
+
+def fig_price_spread(d: dict) -> None:
+    """The same hardware, the same tokens, six prices."""
+    rows = sorted(d["full_tilt"]["rows"], key=lambda r: r["usd_per_gpu_hour"])
+    names = [r["price_name"] for r in rows]
+    costs = [r["usd_per_m_tokens"] for r in rows]
+    pos = list(range(len(rows)))
+    book = d["assumptions"]["gpu_usd_per_hour"]
+    colours = [T.BLUE if r["usd_per_gpu_hour"] == book else T.RULE
+               for r in rows]
+
+    fig, ax = plt.subplots(figsize=(7.0, 3.9), dpi=200)
+    ax.barh(pos, costs, height=0.62, color=colours)
+    ax.set_yticks(pos, [f"{n}\n${r['usd_per_gpu_hour']:.2f} a GPU-hour"
+                        for n, r in zip(names, rows)], fontsize=7.2)
+    ax.invert_yaxis()
+    ax.set_xlabel("dollars per million output tokens")
+    ax.set_xlim(0, max(costs) * 1.30)
+    ax.set_title("The same fleet, the same tokens, six prices",
+                 loc="left", fontsize=10.5)
+    T.style(ax, hide_left=True)
+    for y, c in zip(pos, costs):
+        ax.text(c * 1.03, y, f"${c:.3f}", va="center", ha="left",
+                fontsize=7.6, color=T.INK)
+
+    f = d["full_tilt"]
+    save(fig, "ch42-price-spread", d,
+         alt=("Cost per million output tokens for the same fleet serving the "
+              "same traffic, at six published prices for the same "
+              f"accelerator. It ranges from ${min(costs):.3f} to "
+              f"${max(costs):.3f}, a factor of {f['spread']:.1f}, with "
+              "nothing changed but the invoice. The cheapest is "
+              f"{f['cheapest']} and the dearest {f['dearest']}. Before any "
+              "engineering, choosing where to rent moves the cost per token "
+              "more than most of the techniques in this book."))
+
+
+def fig_duty(d: dict) -> None:
+    """Sized for the peak, paid for the day."""
+    rows = d["duty_cycle"]["rows"]
+    hours = d["duty_cycle"]["hours"]
+    show = [r for r in rows if r["peak_to_trough"] in (2, 4, 8)]
+    shades = [0.4, 0.6, 0.85]
+
+    fig, ax = plt.subplots(figsize=(6.9, 4.0), dpi=200)
+    ends = []
+    for r, shade in zip(show, shades):
+        colour = T.SEQUENTIAL(shade)
+        ax.plot(hours, [v * 100 for v in r["shape"]], linewidth=T.LINE_WIDTH,
+                color=colour)
+        ends.append((hours[-1], r["shape"][-1] * 100,
+                     f"peak/trough {r['peak_to_trough']}", colour))
+    ax.axhline(100, color=T.AMBER, linewidth=1.1, linestyle="--")
+    ax.set_xlim(0, 31)
+    ax.set_xticks([0, 6, 12, 18, 23], ["00", "06", "12", "18", "23"])
+    ax.set_ylim(0, 118)
+    ax.set_xlabel("hour of the day")
+    ax.set_ylabel("load, as a % of the peak the fleet is sized for")
+    ax.set_title("The fleet is bought for the top line and paid for all day",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+    for x, y, text, colour in ends:
+        ax.annotate(text, (x, y), textcoords="offset points", xytext=(8, 0),
+                    fontsize=7.2, color=colour, va="center", ha="left")
+
+    worst = min(rows, key=lambda r: r["mean_over_peak"])
+    mild = next(r for r in rows if r["peak_to_trough"] == 2)
+    save(fig, "ch42-duty", d,
+         alt=("Load through a day for three peak-to-trough ratios, as a "
+              "percentage of the peak the fleet was sized for. The dashed "
+              "line at 100% is the capacity that is paid for every hour. "
+              f"Even a mild two-to-one day averages "
+              f"{mild['mean_over_peak'] * 100:.0f}% of peak; at "
+              f"{worst['peak_to_trough']}-to-one it averages "
+              f"{worst['mean_over_peak'] * 100:.0f}%. The gap between the "
+              "curve and the dashed line is hardware that is rented and "
+              "idle, and it is most of what a serving bill is."))
+
+
+def fig_own_or_rent(d: dict) -> None:
+    """Own it or rent it, against how busy it is."""
+    api = d["api"]
+    rows = api["rows"]
+    overheads = []
+    for r in rows:
+        if r["overhead"] not in overheads:
+            overheads.append(r["overhead"])
+    us = sorted({r["utilization"] for r in rows})
+    rent = [next(r["api_usd_per_hour"] for r in rows
+                 if r["utilization"] == u and r["overhead"] == overheads[0])
+            for u in us]
+
+    fig, ax = plt.subplots(figsize=(6.9, 4.3), dpi=200)
+    ax.plot([u * 100 for u in us], rent, linewidth=T.LINE_WIDTH,
+            color=T.AMBER, label="rent it, billed per token")
+    shades = [0.4, 0.62, 0.85]
+    for name, shade in zip(overheads, shades):
+        own = [next(r["own_usd_per_hour"] for r in rows
+                    if r["utilization"] == u and r["overhead"] == name)
+               for u in us]
+        ax.plot([u * 100 for u in us], own, linewidth=T.LINE_WIDTH,
+                color=T.SEQUENTIAL(shade), linestyle="--",
+                label=f"own it, {name}")
+        b = api["breakeven"][name]
+        if b:
+            ax.plot([b["utilization"] * 100],
+                    [own[0]], marker="o", markersize=7,
+                    markerfacecolor="#FFFFFF",
+                    markeredgecolor=T.SEQUENTIAL(shade), markeredgewidth=1.8,
+                    zorder=5)
+    ax.set_xlabel("how busy the fleet is (% of the peak it was sized for)")
+    ax.set_ylabel("dollars an hour")
+    ax.set_title("Owning is flat; renting is not", loc="left", fontsize=10.5)
+    # Lower right: the only corner none of the four lines passes through.
+    ax.legend(frameon=False, fontsize=7.4, loc="lower right")
+    T.style(ax)
+
+    hw = api["breakeven"]["hardware only"]
+    save(fig, "ch42-own-or-rent", d,
+         alt=("Dollars an hour against how busy the fleet is. Renting rises "
+              "with use because it is billed per token; owning is a flat "
+              "line because the machines are paid for whether or not they "
+              "are working. The lines cross where owning starts to pay: at "
+              f"{hw['utilization'] * 100:.0f}% of peak counting hardware "
+              "alone, and later for each multiple of engineering cost "
+              "added. At the full peak, owning costs "
+              f"${api['at_peak_own_usd_per_hour']:,.0f} an hour against "
+              f"${api['at_peak_api_usd_per_hour']:,.0f} to rent -- "
+              f"{api['at_peak_ratio']:.1f} times -- because this service "
+              f"sends {api['input_over_output']:.0f} times as many tokens in "
+              "as it takes out and a provider charges for both."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -3095,7 +3240,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch22": [fig_bits, fig_accumulation, fig_range],
             "ch24": [fig_grid, fig_outlier, fig_margin],
             "ch29": [fig_rule, fig_exactness, fig_speculative_speedup],
-            "ch41": [fig_little, fig_utilization, fig_sizing]}
+            "ch41": [fig_little, fig_utilization, fig_sizing],
+            "ch42": [fig_price_spread, fig_duty, fig_own_or_rent]}
 
 
 def _check_no_shared_figure_functions() -> None:

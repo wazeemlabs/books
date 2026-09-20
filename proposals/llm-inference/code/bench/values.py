@@ -1443,6 +1443,65 @@ def ch41(d: dict) -> dict[str, str]:
     }
 
 
+def ch42(d: dict) -> dict[str, str]:
+    a, fleet, full = d["assumptions"], d["fleet"], d["full_tilt"]
+    duty, api, comm = d["duty_cycle"], d["api"], d["committed"]
+    prices = {r["price_name"]: r for r in full["rows"]}
+    days = {r["peak_to_trough"]: r for r in duty["rows"]}
+    book = prices["the book's median"]
+    cheap = min(full["rows"], key=lambda r: r["usd_per_m_tokens"])
+    dear = max(full["rows"], key=lambda r: r["usd_per_m_tokens"])
+    hw = api["breakeven"]["hardware only"]
+    eng3 = api["breakeven"]["with 3x engineering"]
+    eng5 = api["breakeven"]["with 5x engineering"]
+    money = lambda x: f"${x:,.2f}"
+    return {
+        "machines": str(fleet["machines"]),
+        "demand": str(fleet["demand_requests_per_s"]),
+        "peak_tokens": f"{fleet['peak_tokens_per_s']:,.0f}",
+        "prompt_tokens": f"{fleet['prompt_tokens']:,}",
+        "output_tokens": str(fleet["output_tokens"]),
+        # the price alone
+        "usd_per_m": f"${book['usd_per_m_tokens']:.3f}",
+        "fleet_hour": money(book["usd_per_hour"]),
+        "fleet_month": f"${book['usd_per_month']:,.0f}",
+        "gpu_hour": f"${book['usd_per_gpu_hour']:.2f}",
+        "cheapest_usd_per_m": f"${cheap['usd_per_m_tokens']:.3f}",
+        "dearest_usd_per_m": f"${dear['usd_per_m_tokens']:.3f}",
+        "cheapest_name": cheap["price_name"],
+        "dearest_name": dear["price_name"],
+        "price_spread": f"{full['spread']:.1f}x",
+        "lambda_sxm": f"${prices['Lambda, H100 SXM (8-GPU)']['usd_per_gpu_hour']:.2f}",
+        "lambda_pcie": f"${prices['Lambda, H100 PCIe']['usd_per_gpu_hour']:.2f}",
+        # the day
+        "mild_mean": f"{days[2]['mean_over_peak'] * 100:.0f}%",
+        "mild_cost": f"${api['at_full_tilt'] / days[2]['mean_over_peak']:.3f}",
+        "steep_ratio": str(max(days)),
+        "steep_mean": f"{days[max(days)]['mean_over_peak'] * 100:.0f}%",
+        "steep_cost": f"${api['at_full_tilt'] / days[max(days)]['mean_over_peak']:.3f}",
+        "mild_hours_busy": str(days[2]["hours_above_80pct"]),
+        # own or rent
+        "api_model": api["api_model"],
+        "api_out": f"${api['api_usd_per_m_output']:.2f}",
+        "api_in": f"${api['api_usd_per_m_input']:.2f}",
+        "in_over_out": f"{api['input_over_output']:.0f}x",
+        "own_hour": money(api["at_peak_own_usd_per_hour"]),
+        "rent_hour": money(api["at_peak_api_usd_per_hour"]),
+        "own_ratio": f"{api['at_peak_ratio']:.1f}x",
+        "breakeven_hw": f"{hw['utilization'] * 100:.0f}%",
+        "breakeven_hw_tokens": f"{hw['billed_tokens_per_day'] / 1e6:,.0f}M",
+        "breakeven_3x": f"{eng3['utilization'] * 100:.0f}%",
+        "breakeven_5x": f"{eng5['utilization'] * 100:.0f}%",
+        "breakeven_5x_tokens": f"{eng5['billed_tokens_per_day'] / 1e6:,.0f}M",
+        # commitments
+        "committed_on_demand": f"${comm['on_demand']:.2f}",
+        "committed_cluster": f"${comm['cluster']:.2f}",
+        "committed_ratio": f"{comm['ratio']:.2f}x",
+        "committed_direction": ("cheaper" if comm["cluster_is_cheaper"]
+                                else "more expensive"),
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -1562,7 +1621,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
             "ch20": ch20, "ch22": ch22,
-            "ch24": ch24, "ch29": ch29, "ch41": ch41,
+            "ch24": ch24, "ch29": ch29, "ch41": ch41, "ch42": ch42,
             "ddr1": ddr1}[chapter](d)
 
 

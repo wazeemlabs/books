@@ -33,6 +33,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-24-DRAFT.md](CHAPTER-24-DRAFT.md) | **Generated.** Chapter 24, "Quantization from the Ground Up" |
 | [CHAPTER-29-DRAFT.md](CHAPTER-29-DRAFT.md) | **Generated.** Chapter 29, "Speculative Decoding" |
 | [CHAPTER-41-DRAFT.md](CHAPTER-41-DRAFT.md) | **Generated.** Chapter 41, "Capacity Planning" |
+| [CHAPTER-42-DRAFT.md](CHAPTER-42-DRAFT.md) | **Generated.** Chapter 42, "GPU FinOps" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 

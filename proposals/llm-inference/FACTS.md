@@ -230,3 +230,21 @@ Format: claim · value · source · last verified.
 |---|---|---|---|
 | Little's law, original | John D. C. Little, "A Proof for the Queuing Formula: L = λW", *Operations Research* 9(3), 1961, pp. 383-387, doi:10.1287/opre.9.3.383 | INFORMS listing and abstract | 2026-09-21 |
 | What it assumes | "if the three means are finite and the corresponding stochastic processes strictly stationary, and, if the arrival process is metrically transitive with nonzero mean, then L = λW" -- nothing about the service discipline, but stationarity is required | Little 1961, abstract | 2026-09-21 |
+
+## Prices, primary sources (Chapter 42)
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| Lambda H100 SXM on-demand | $3.99/GPU/hr (8-GPU), rising to $4.29 for a single GPU; "plus applicable sales tax/VAT/GST" | lambda.ai/pricing | 2026-09-21 |
+| Lambda H100 PCIe on-demand | $3.29/GPU/hr, 1-GPU only | lambda.ai/pricing | 2026-09-21 |
+| Lambda B200 SXM6 on-demand | $6.69/GPU/hr (8-GPU) to $6.99 (1-GPU) | lambda.ai/pricing | 2026-09-21 |
+| Lambda H100 1-Click Cluster | $6.16/GPU/hr (16 GPUs), $5.85 (64), $5.54 (256), for "2 weeks - 1 year" -- **more** per GPU-hour than on-demand, because a cluster is dedicated interconnected capacity rather than a discount | lambda.ai/pricing | 2026-09-21 |
+| Lambda spot instances | none offered; no mention on the pricing page | lambda.ai/pricing | 2026-09-21 |
+| Lambda reserved | "Contact us for reserved capacity at our lowest prices" -- no published figures | lambda.ai/pricing | 2026-09-21 |
+| Together, 8B-class open model | "Llama 3 8B Instruct Lite": $0.14 per 1M input, $0.14 per 1M output | together.ai/pricing | 2026-09-21 |
+| Together, frontier models | "Kimi K3" $3.00 in / $15.00 out per 1M; "DeepSeek V4 Pro 0813" $1.32 in / $3.96 out | together.ai/pricing | 2026-09-21 |
+
+Note: the aggregator-sourced API figures recorded earlier in this file
+($0.02 input / $0.05 output for a hosted 8B) are well below what a
+named provider's own page charges today. Chapter 42 uses the primary
+figures above and sweeps the price, rather than relying on either.

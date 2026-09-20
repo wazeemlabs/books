@@ -1323,6 +1323,80 @@ def ch41_sizing(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch42_prices(d: dict) -> str:
+    """The same fleet at six published prices."""
+    f = d["full_tilt"]
+    fleet = d["fleet"]
+    out = ["| Where you rent it | A GPU-hour | The fleet, an hour | "
+           "A month | Per million output tokens |", "|---|---|---|---|---|"]
+    for r in sorted(f["rows"], key=lambda r: r["usd_per_gpu_hour"]):
+        name = r["price_name"]
+        if r["usd_per_gpu_hour"] == d["assumptions"]["gpu_usd_per_hour"]:
+            name = f"**{name}**"
+        out.append(f"| {name} | ${r['usd_per_gpu_hour']:.2f} "
+                   f"| ${r['usd_per_hour']:,.2f} "
+                   f"| ${r['usd_per_month']:,.0f} "
+                   f"| ${r['usd_per_m_tokens']:.3f} |")
+    out += ["", f"{fleet['machines']} machines serving "
+                f"{fleet['peak_tokens_per_s']:,.0f} output tokens a second, "
+                "which is the fleet Chapter 41 sized and the peak it was "
+                f"sized for. The spread from cheapest to dearest is "
+                f"{f['spread']:.1f}x, for identical hardware doing identical "
+                "work. Named prices are from each provider's own page on the "
+                "date in FACTS.md; the bold row is the cross-provider median "
+                "the rest of this book uses."]
+    return "\n".join(out)
+
+
+def ch42_duty(d: dict) -> str:
+    """What a diurnal day does to the average."""
+    out = ["| Peak to trough | Average load, as a share of peak | "
+           "Hours a day above 80% | What that does to the cost a token |",
+           "|---|---|---|---|"]
+    base = d["api"]["at_full_tilt"]
+    for r in d["duty_cycle"]["rows"]:
+        mean = r["mean_over_peak"]
+        out.append(f"| {r['peak_to_trough']}:1 | {mean * 100:.0f}% "
+                   f"| {r['hours_above_80pct']} "
+                   f"| ${base / mean:.3f} per million |")
+    out += ["", "A day shaped as a sine between its trough and its peak. "
+                "The fleet is sized for the peak and paid for every hour, so "
+                "the cost of a token is the full-tilt cost divided by the "
+                "average load. Even a gentle two-to-one day adds a third to "
+                "the cost of every token; a working-hours service with a "
+                "quiet night adds more."]
+    return "\n".join(out)
+
+
+def ch42_own_or_rent(d: dict) -> str:
+    """Where owning starts to pay."""
+    api = d["api"]
+    fleet = d["fleet"]
+    out = ["| What you count | Owning, an hour | Breaks even at | "
+           "Billed tokens a day there |", "|---|---|---|---|"]
+    for name, b in api["breakeven"].items():
+        own = next(r["own_usd_per_hour"] for r in api["rows"]
+                   if r["overhead"] == name)
+        if b is None:
+            out.append(f"| {name} | ${own:,.2f} | never | -- |")
+        else:
+            out.append(f"| {name} | ${own:,.2f} "
+                       f"| **{b['utilization'] * 100:.0f}%** of peak "
+                       f"| {b['billed_tokens_per_day'] / 1e6:,.0f}M |")
+    out += ["", f"Against {api['api_model']} at "
+                f"${api['api_usd_per_m_output']:.2f} per million output "
+                f"tokens and ${api['api_usd_per_m_input']:.2f} per million "
+                f"input. Both sides are dollars an hour for the same "
+                f"traffic, which is the only comparison that holds when one "
+                f"is billed per token and the other per machine-hour. This "
+                f"service sends {api['input_over_output']:.0f} times as many "
+                f"tokens in as it takes out -- {fleet['prompt_tokens']:,} of "
+                f"prompt against {fleet['output_tokens']} of reply -- and a "
+                "provider charges for both, which is why comparing on output "
+                "alone gets the answer wrong."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -1365,6 +1439,8 @@ def main() -> None:
                  ("ch29-reference", ch29_reference)),
         "ch41": (("ch41-load", ch41_load), ("ch41-theory", ch41_theory),
                  ("ch41-sizing", ch41_sizing)),
+        "ch42": (("ch42-prices", ch42_prices), ("ch42-duty", ch42_duty),
+                 ("ch42-own-or-rent", ch42_own_or_rent)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),
