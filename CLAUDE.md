@@ -19,6 +19,9 @@ it. Only then start the next one.
 - **Citations** — confirm the authors, the venue, and that it says what
   I claim.
 - **Code** — run it. Every listing comes from a file that executes.
+- **Terms** — the reader knows nothing. Explain every term on first
+  use, intermediate ones included, then give its name. Add it to
+  `GLOSSARY.md` and claim it with `<!-- defines: term -->`.
 
 Cannot verify it? Mark it `UNVERIFIED` and say so.
 

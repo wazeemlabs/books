@@ -6,6 +6,7 @@ Working materials for the third *from the Ground Up* book.
 |---|---|
 | [OUTLINE.md](OUTLINE.md) | The book: 8 parts, 46 chapters, per-chapter objectives and primary sources |
 | [STANDARDS.md](STANDARDS.md) | The bar every chapter is held to — evidence, sourcing, reproducibility, pedagogy, currency |
+| [GLOSSARY.md](GLOSSARY.md) | Every term in plain words, with the chapter that introduces it — Appendix I, and an enforced contract |
 | [FACTS.md](FACTS.md) | The facts register: every time-sensitive claim with its source and verification date |
 | [CHAPTER-01-DRAFT.md](CHAPTER-01-DRAFT.md) | **Generated.** Chapter 1, "The Cost of a Token" |
 | [CHAPTER-02-DRAFT.md](CHAPTER-02-DRAFT.md) | **Generated.** Chapter 2, "What a Model Does When It Answers" |
@@ -64,6 +65,13 @@ track of by hand:
   chapter carries the sections STANDARDS.md requires, and — the one
   that matters most — that a quantity appearing in several chapters has
   the same value in all of them.
+- **No term can be used before it is explained.** `GLOSSARY.md` gives
+  every term in plain words with the chapter that introduces it, and
+  that chapter claims it with a `<!-- defines: term -->` marker beside
+  the explanation. `bench/terms.py` fails the build if a term appears
+  in an earlier chapter than the one that explains it. The reader is
+  assumed to know nothing, and the check is what keeps that true as
+  chapters are edited.
 - **Cross-references cannot go stale.** Chapters are referenced
   symbolically (`{{ch:paged-attention}}`), resolved against `OUTLINE.md`
   at render time. `bench/xref.py` rejects any literal "Chapter 14" in a

@@ -164,8 +164,10 @@ assume.
 You now have every concept Part I can give you. From here:
 
 - **Part II (Chapter 7–Chapter 10)** —
-  how to measure honestly. The roofline that predicts whether an idea
-  can work, and the harness that every number in this book comes from.
+  how to measure honestly. The **roofline** — a chart that bounds what
+  a machine can achieve for a given arithmetic-per-byte, and so
+  predicts whether an idea can work before you build it —
+  <!-- defines: roofline --> and the harness that every number in this book comes from.
 - **Part III (Chapter 11–Chapter 19)** —
   build a serving engine, one mechanism at a time, and watch each one
   pay for itself.

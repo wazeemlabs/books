@@ -63,8 +63,9 @@ Each of these is a way to report a true number that will not reproduce.
 For each, the fix is a property of the harness, not a matter of
 intention.
 
-**1. No warmup.** The first run allocates buffers, faults in pages and
-finds nothing in cache. Reporting it costs 1.46x here.
+**1. No warmup.** <!-- defines: warmup -->**Warmup** means running the
+work a few times before timing it. The first run allocates buffers,
+faults in pages and finds nothing in cache. Reporting it costs 1.46x here.
 *Fix:* the harness always runs the work before it starts timing, and
 never reports a cold result.
 
@@ -87,8 +88,9 @@ in flight is unfalsifiable — you can always raise it by batching harder
 and hurting latency. *Fix:* throughput is reported at a stated
 concurrency, against a stated latency budget.
 
-**6. Mismatched units.** Two systems counting tokens with different
-tokenizers are not comparable, and neither are two counting
+**6. Mismatched units.** <!-- defines: tokenizer -->A **tokenizer** is
+the program that cuts text into tokens, and two systems counting tokens
+with different tokenizers are not comparable, and neither are two counting
 input-plus-output against output alone. *Fix:* the model, its revision
 and what is being counted are recorded with the result.
 
@@ -154,6 +156,11 @@ And every result file opens with where it came from:
 }
 ```
 
+<!-- defines: blas -->
+`blas` there is the Basic Linear Algebra Subprograms library — the
+standard matrix routines nearly every numerical program relies on, and
+a common cause of two machines disagreeing.
+
 That block is written by the harness, not by the author, which is the
 only arrangement that survives a deadline.
 
@@ -162,13 +169,13 @@ only arrangement that survives a deadline.
 The harness above times an operation. Measuring a *server* needs
 something more, and the difference matters enough to name.
 
-- **Closed loop.** A fixed number of clients, each sending the next
-  request when the last one returns. Easy to build, and it has a
+- **Closed loop.** <!-- defines: closed loop -->A fixed number of
+  clients, each sending the next request when the last one returns. Easy to build, and it has a
   serious flaw: when the server slows down, the clients slow down too,
   so the offered load falls and the queue never grows. A closed-loop
   test cannot show you overload.
-- **Open loop.** Requests arrive at a fixed rate regardless of whether
-  the server is keeping up. This is how real traffic behaves, and it is
+- **Open loop.** <!-- defines: open loop -->Requests arrive at a fixed
+  rate regardless of whether the server is keeping up. This is how real traffic behaves, and it is
   the only way to find the load at which a service falls over.
 
 Use closed-loop to measure an operation, open-loop to measure a
@@ -199,7 +206,9 @@ system that real users are using.
 - **Make provenance automatic.** If recording the machine is a step
   someone has to remember, it will be missing from the measurement that
   matters most.
-- **Re-run the baseline every time.** Comparing today's optimized run
+- **Re-run the baseline every time.** A **baseline** is the recorded
+  "before" measurement, with its provenance, that later work is
+  compared against. <!-- defines: baseline --> Comparing today's optimized run
   against last month's baseline compares two machines, two driver
   versions and two levels of background load.
 - **When reading someone else's benchmark**, ask: how many runs, warm

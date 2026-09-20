@@ -36,8 +36,11 @@ had to be one unbroken run of memory, committed before anyone knew how
 long the answer would be. Operating systems solved the same problem
 half a century ago, and the solution is the one used here.
 
+<!-- defines: block, block table, indirection -->
 Cut the memory into fixed-size **blocks**. Give each sequence a
-**block table** — a list of the blocks it owns, in order. The sequence
+**block table** — a list of the blocks it owns, in order. Reaching the
+data through that table rather than directly is called
+**indirection**. The sequence
 sees one unbroken run of tokens; the blocks themselves can be anywhere,
 belonging to anyone, in any order.
 

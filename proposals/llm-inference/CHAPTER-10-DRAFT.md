@@ -78,7 +78,9 @@ model catches anything that accumulates per layer.
 > attention divides by the wrong constant, my test would assert the
 > wrong constant.
 >
-> An independent implementation does not share them. This is
+> <!-- defines: differential testing -->
+> An independent implementation does not share them. Checking one
+> implementation against another written independently is called
 > **differential testing**, and it is the cheapest strong check
 > available for numerical code. Whenever you can get a second opinion
 > from something you did not write, take it.

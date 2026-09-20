@@ -1,7 +1,7 @@
 # Regenerate everything the manuscript includes, from measurement to figure.
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make lock   - refresh environment.lock
-.PHONY: all ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 figures tables manuscript check xref audit tests lock clean
+.PHONY: all ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
@@ -75,7 +75,7 @@ tables:
 manuscript:
 	python3 -m bench.manuscript
 
-check: xref tests audit
+check: xref tests audit terms
 	python3 -m bench.manuscript --check
 
 xref:
@@ -83,6 +83,9 @@ xref:
 
 audit:
 	python3 -m bench.audit
+
+terms:
+	python3 -m bench.terms
 
 tests:
 	@python3 -c "from bench.theme import test_theme_ramp_is_monotonic as a; a(); \

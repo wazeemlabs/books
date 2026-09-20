@@ -222,6 +222,32 @@ territory a newcomer may lack (what a tensor is, what a process is,
 what a percentile is), a short box explains it in place. Nobody is
 sent away to read something else first.
 
+10.7.1 **Every term is explained before it is used — including the
+intermediate ones.** The reader is assumed to know nothing. Not only
+the hard words: *parameter*, *bandwidth*, *utilization*, *allocator*,
+*percentile*, *kernel*, *driver* and their like are explained on first
+use too, because the reader who needs them is exactly the reader who
+will not ask.
+
+Every such term lives in `GLOSSARY.md` with the chapter that
+introduces it, and that chapter claims it with a marker beside the
+explanation:
+
+    <!-- defines: arithmetic intensity, memory-bound -->
+
+`make check` fails if a term is used in an earlier chapter than the one
+that claims it, if a glossary term is never claimed, or if a chapter
+claims something the glossary does not list. Terms whose bare form is
+ordinary English ("a block of numbers", a column headed "Value") are
+still defined but exempt from the ordering check, and are listed
+explicitly in `bench/terms.py`.
+
+10.7.2 **Explain, then name.** The plain explanation comes first and
+the standard term second — "the raw scores have a name: **logits**" —
+so the reader understands the thing before being asked to carry a
+label for it. A name introduced without its explanation is a term the
+reader will skip.
+
 10.8 **Book 1 is a deeper path, not a prerequisite.** Chapter 2 gives
 everything about the model that this book needs. Pointers to *Large
 Language Models from the Ground Up* are offered for depth and never

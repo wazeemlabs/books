@@ -282,7 +282,9 @@ For our model: 2 arrays (keys and values) × 4 layers ×
 **128 KiB per token. 1.0 GiB per 8,192-token sequence.** An
 H100 holds 80 GB; an 8B model in bf16 takes 16 GB of
 that, leaving about 64 GB. That is room for roughly
-59 sequences of 8K tokens — before any fragmentation, and
+59 sequences of 8K tokens — before any **fragmentation**,
+memory that is held but cannot be used, and
+<!-- defines: fragmentation -->
 before anything else needs memory. Your serving capacity is a memory
 question, not a compute question. Chapter 13 measures how much of that
 64 GB a naive allocator actually wastes, and Chapter 14 gets it
@@ -332,8 +334,11 @@ what they do about the memory bill.
 - **Prefix sharing.** Two requests with the same system prompt compute
   and store identical keys and values. Chapter 15's prefix cache stores
   them once.
-- **Eviction.** Your cache assumes a sequence runs to completion with
-  its memory reserved. A real server runs out, and must decide whose
+- **Eviction and preemption.** <!-- defines: eviction, preemption -->
+  Your cache assumes a sequence runs to completion with its memory
+  reserved. A real server runs out, and must **evict** somebody —
+  taking memory back from a running sequence and recomputing or
+  restoring it later, which is **preemption**. It must decide whose
   cache to drop and whether to recompute it or swap it out. That is
   Chapter 18's scheduler.
 

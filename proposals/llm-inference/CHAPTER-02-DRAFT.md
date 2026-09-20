@@ -41,10 +41,17 @@ choose the next word.
 
 > **If you're new here: vectors, and what a model is made of**
 >
+> <!-- defines: vector, matrix, tensor -->
 > A **vector** is a list of numbers. That is all. When this chapter
 > says a token becomes "a vector of 128 numbers", it means the
 > word has been replaced by a list of 128 numbers that the model
 > can do arithmetic on.
+>
+> A **matrix** is a rectangle of numbers, and multiplying matrices is
+> where a model spends nearly all of its time. You will also meet the
+> word **tensor**, which simply means a block of numbers of any shape:
+> a vector and a matrix are both tensors. Nothing in this book needs
+> more than that.
 >
 > A **parameter** (or *weight*) is one number that was learned during
 > training and is now fixed. Our model has 801,920 of them. A
@@ -95,9 +102,11 @@ be two pieces, "Khan" might be three. That changes the vocabulary size
 (typically 30,000–200,000 rather than 48) but changes nothing
 about the rest of this chapter.
 
+<!-- defines: embedding, vocabulary -->
 Next, each token number is used to look up a vector in a table — one
-row per word in the vocabulary. This table is part of the model's
-learned parameters. After the lookup, our five tokens have become five
+row per word in the model's **vocabulary**, the fixed list of tokens it
+knows. That table is called the **embedding**, and it is part of the
+model's learned parameters. After the lookup, our five tokens have become five
 vectors of 128 numbers each:
 
 <!-- include: tables/ch02-shapes.md -->
@@ -121,6 +130,14 @@ A useful way to hold this: each token now has a **notepad** of
 model's answer is whatever is written on the last token's notepad at
 the end.
 
+<!-- defines: residual, transformer -->
+That notepad has a name you will meet elsewhere: the **residual
+stream**, so called because each layer *adds* its work to what is
+already written rather than replacing it. And the whole arrangement —
+a stack of layers, each doing attention and then feed-forward, with a
+residual stream running through — is a **transformer**. Every model in
+this book is one.
+
 ## Step 2: what a layer does
 
 Each of the 4 layers does two things in order.
@@ -134,8 +151,9 @@ The intuition. The word "the" at position 5 is ambiguous on its own. To
 revise its notepad usefully, it needs context: *which* "the"? The one
 after "sat on". So it needs to look at the words before it.
 
-Attention is how it does that, and it works like a very small search.
-Every token produces three vectors from its notepad:
+<!-- defines: attention, query, key, value -->
+**Attention** is how it does that, and it works like a very small
+search. Every token produces three vectors from its notepad:
 
 - a **query** — what am I looking for?
 - a **key** — what do I offer to anyone looking?
@@ -152,7 +170,9 @@ be taken.
 **And there is one rule: a token may only look backwards.** Token 5 may
 look at tokens 1 through 5. It may not look at token 6, because when
 the model is writing, token 6 does not exist yet. This rule is built
-into the architecture, not learned.
+into the architecture, not learned, and it is called the **causal
+mask** — "causal" because a token may depend only on its own past.
+<!-- defines: causal mask -->
 
 Here is that happening, in the real model, for our prompt:
 
@@ -192,6 +212,8 @@ to it in a moment.
 
 ### Feed-forward: each token thinks alone
 
+<!-- defines: feed-forward -->
+
 After attention, each token has gathered context from the tokens before
 it. The second half of the layer lets it process what it gathered,
 **one token at a time, with no communication between them.** It is a
@@ -215,7 +237,12 @@ are irrelevant for choosing what comes next — and multiply it by one
 final table with one row per word in the vocabulary. That produces one
 number per word: a score for how well each word fits as the next token.
 
-Those 48 raw scores are turned into probabilities that sum to 1:
+<!-- defines: logits, softmax -->
+Those raw scores have a name: **logits**. They are not probabilities —
+they can be negative, and they do not add up to anything in particular.
+Turning them into probabilities that sum to one is a single step called
+**softmax**, which exaggerates the differences between them and then
+normalizes. All 48 of them, for our model:
 
 ![The ten highest-scoring next words](code/figures/ch02-scores.svg)
 
@@ -228,11 +255,14 @@ the ranking is meaningless. What matters is the *form* of the output:
 **the model does not produce a word. It produces a score for every word
 it knows, and something else picks one.**
 
+<!-- defines: greedy decoding, sampling -->
 That picking is a separate, cheap step. Always taking the highest
-scorer is called *greedy* decoding, and it is what this book uses
-whenever it needs two runs to produce identical output. Real services
-usually sample instead, which is what makes a chatbot give different
-answers to the same question.
+scorer is called **greedy decoding**, and it is what this book uses
+whenever two runs must produce identical output. Real services usually
+use **sampling** instead: choosing at random in proportion to the
+probabilities, so a likely word is likely but not certain. That is what
+makes a chatbot give different answers to the same question, and it
+costs essentially nothing either way.
 
 ## Step 4: and then it does it all again
 
@@ -301,14 +331,15 @@ above; all of them appear later.
   adds a learned position vector; most modern models rotate the query
   and key vectors by an angle that depends on position. The technique
   matters for long contexts, and Chapter 33 covers it.
-- **Normalization and residual connections.** Each layer actually adds
-  its output to the notepad rather than replacing it, and rescales
-  along the way. This is what makes deep models trainable. It does not
-  change the shapes or the costs.
+- **Normalization.** Each layer rescales its notepad before working on
+  it, so the numbers stay in a workable range — this is what makes deep
+  models trainable at all. It does not change the shapes or the costs.
+  <!-- defines: normalization -->
 - **Multiple heads.** Attention does not run once per layer; it runs
-  several times in parallel, each with its own queries, keys and
-  values, and the results are joined. Our model has 4 such
-  heads of 32 numbers each. Figure 2.2 shows one of them. This
+  several times in parallel, and each independent copy is called a
+  **head**. Each has its own queries, keys and values, and the results
+  are joined. Our model has 4 heads of 32 numbers
+  each. <!-- defines: head --> Figure 2.2 shows one of them. This
   matters a great deal for memory, and Chapter 12 returns to it.
 - **Models that do not use all their weights.** Some large models
   activate only a fraction of their parameters per token. That breaks

@@ -54,6 +54,12 @@ implementation weakness. It is what "generating text" means.
 So the two phases differ in the one way that matters to a computer:
 **how much work is available to do at the same time.**
 
+<!-- defines: time to first token, inter-token latency -->
+They also produce the two numbers a user feels. **Time to first token**
+is the wait before anything appears, and it is prefill. **Inter-token
+latency** is the gap between words once they start, and it is decode.
+They have different causes, so they have different cures.
+
 > **If you're new here: why "at the same time" decides everything**
 >
 > Modern accelerators are extremely wide. They contain thousands of
@@ -69,9 +75,14 @@ So the two phases differ in the one way that matters to a computer:
 > fetch?** Fetching is the slow part; arithmetic riding along with it
 > is nearly free.
 >
-> That ratio has a name — *arithmetic intensity* — and the rest of this
-> chapter is about the fact that prefill and decode have wildly
-> different values of it.
+> <!-- defines: arithmetic intensity, memory-bound, compute-bound, break-even point -->
+> That ratio has a name — **arithmetic intensity** — and the rest of
+> this chapter is about the fact that prefill and decode have wildly
+> different values of it. Work with too little of it is called
+> **memory-bound**: the arithmetic units finish early and wait. Work
+> with plenty is **compute-bound**: memory keeps up and the arithmetic
+> is the limit. The value where a machine crosses from one to the other
+> is its **break-even point**.
 
 ## Why the phases hit different limits
 
@@ -196,12 +207,12 @@ navigational fact in the book:
 | Technique | Helps | Because |
 |---|---|---|
 | Keeping keys and values (Chapter 12) | decode | stops re-reading the whole conversation per token |
-| Paging the cache (Chapter 14) | decode | fits more sequences, so more work shares each fetch |
+| **Paging** the cache (Chapter 14) — storing it in fixed-size pieces that can live anywhere | decode | fits more sequences, so more work shares each fetch | <!-- defines: paging -->
 | Batching (Chapter 16, Chapter 17) | decode | the one real cure: share each weight fetch across users |
 | Quantization (Chapter 25, Chapter 26) | decode | fetches fewer bytes for the same weights |
 | Speculative decoding (Chapter 29) | decode | gets several tokens from one fetch |
 | Prefix caching (Chapter 15) | prefill | skips prompt work already done for someone else |
-| Attention kernels (Chapter 20) | prefill mostly | prefill is where attention's cost concentrates |
+| Attention kernels (Chapter 20) — a **kernel** is one program that runs on the accelerator | prefill mostly | prefill is where attention's cost concentrates | <!-- defines: kernel -->
 | Chunked prefill (Chapter 18) | both, by arbitrating | stops a long prompt stalling everyone's decode |
 
 Notice how one-sided that list is. Decode is where the money goes, so
@@ -225,6 +236,13 @@ Chapter 18 is where it is solved.
 
 **The measured numbers understate the effect**, for the cache reason
 above. Trust their direction and shape, not their magnitude.
+
+<!-- defines: grouped-query attention, multi-query attention -->
+**The cache can be made smaller at the source.** Production models let
+several query heads share one key-value head, which cuts the stored
+cache proportionally; this is **grouped-query attention**, and its
+extreme, one shared head for all queries, is **multi-query attention**.
+Chapter 12 does the arithmetic.
 
 **The balance shifts with the workload.** A summarization service with
 huge prompts and one-word answers is prefill-heavy. A reasoning model

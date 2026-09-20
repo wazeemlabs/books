@@ -39,8 +39,40 @@ writing the obvious code, which is what you will do in
 Chapter 11, and then not knowing what to change. The
 rest of this book is what to change, in the order the numbers justify.
 
+> **If you're new here: the words this book uses**
+>
+> <!-- defines: inference, parameter, weight, bandwidth, latency, throughput, batching, precision, quantization, allocator, concurrency, memory wall, provenance -->
+> A handful of terms appear from here on. None is complicated, and each
+> is used in the same sense every time.
+>
+> **Inference** is using a trained model to answer a question. It is
+> the opposite of *training*, which is making the model in the first
+> place. This book is entirely about inference.
+>
+> A **parameter**, also called a **weight**, is one number that was
+> learned during training and is now fixed. A model's whole behaviour
+> is those numbers — eight billion of them, in the model below.
+>
+> **Bandwidth** is how many bytes per second a machine can move from
+> memory into the processor. **Latency** is how long one thing takes;
+> **throughput** is how many things get done per second. The three are
+> different, and serving forces you to trade them against each other.
+>
+> **Batching** means serving several conversations in the same pass
+> over the weights, so the cost of fetching them is shared;
+> **concurrency** is how many you serve at once. **Precision** is how
+> many bytes each number is stored in, and **quantization** is
+> deliberately using fewer. An **allocator** is the part of a system
+> that hands out memory and takes it back.
+>
+> Two more, used throughout: the **memory wall** is the widening gap
+> between how fast processors compute and how fast memory delivers, and
+> **provenance** is the record of what produced a measurement — which
+> machine, which software, which day.
+
 > **If you're new here: what a token is**
 >
+> <!-- defines: token -->
 > Models do not read letters or words. Text is chopped into **tokens** —
 > common chunks, roughly three-quarters of a word in English, so "the"
 > is one token and "inference" may be two. The model reads your prompt
@@ -64,11 +96,13 @@ A user types a question. Here is what your money is spent on.
 2. **The prompt is read.** The model processes all 1,200-odd tokens of
    conversation history in one pass. This is the **prefill**, and it is
    fast per token, because the tokens can all be worked on at once.
+   <!-- defines: prefill -->
 3. **The reply is written**, one token at a time. Each token requires
    its own pass through the model, and each pass must wait for the one
    before it, because the model cannot know its fifth word before
    choosing its fourth. This is the **decode**, and it is where the
    time and the money go.
+   <!-- defines: decode -->
 4. **The connection closes**, the memory that held this conversation is
    released, and the meter stops.
 
@@ -160,7 +194,7 @@ predicts it.
 **At that point, 80% of the memory traffic is not the model.**
 It is the conversations themselves — the per-sequence state the model
 keeps so it does not have to re-read the whole conversation for every
-token. That state is called the KV cache, it is the subject of
+token. <!-- defines: KV cache -->That state is called the KV cache, it is the subject of
 Chapter 12, and by Chapter 13 it will be the
 thing standing between you and more concurrency.
 

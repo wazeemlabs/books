@@ -42,8 +42,10 @@ accelerator's published numbers are given alongside for scale.
 > gets its speed from doing thousands of things simultaneously rather
 > than one thing faster.
 >
-> An accelerator takes this to an extreme. An H100 has 132 **streaming
-> multiprocessors**, each of which runs many threads in lockstep. That
+> <!-- defines: streaming multiprocessor -->
+> An accelerator takes this to an extreme. An H100 has 132
+> **streaming multiprocessors** — independent processing units, each
+> running many threads in lockstep. That
 > is where 990 TFLOP/s of arithmetic comes from: not from being
 > quick, but from being enormously parallel.
 >
@@ -141,7 +143,9 @@ the largest number. For serving, read them in this order instead:
 3. **Arithmetic, by precision.** This sets prefill speed, and tells you
    what a lower precision buys — often exactly double per halving,
    which is Chapter 26's argument.
-4. **Interconnect.** Only once a model needs more than one card. The
+4. **Interconnect** — the link between accelerators.
+   <!-- defines: interconnect -->
+   Only once a model needs more than one card. The
    gap between an in-node link and a general-purpose bus is large
    enough to decide whether splitting a model is viable at all.
 
@@ -170,7 +174,9 @@ What to look at instead:
   you, per Chapter 13.
 - **`DCGM_FI_PROF_SM_ACTIVE`** — the share of cycles with any work
   resident on a multiprocessor. This is closer to the honest answer.
-- **`DCGM_FI_PROF_SM_OCCUPANCY`** — how full each multiprocessor is.
+- **`DCGM_FI_PROF_SM_OCCUPANCY`** — **occupancy**, meaning how full
+  each multiprocessor is kept. Distinct from utilization, and much
+  harder to satisfy. <!-- defines: occupancy -->
 - **Achieved tokens per second**, from your own harness. In the end
   this is the only metric that pays the bill, and
   Chapter 9 builds it next.
@@ -182,8 +188,13 @@ What to look at instead:
   Chapter 6's argument.
 - **Check the billing granularity** before you start: per second, per
   minute and per hour differ by a lot for short experiments.
-- **Spot and pre-emptible instances** are much cheaper and can be taken
-  away mid-run. Fine for measurement, not for serving.
+- **Spot instances** (also called pre-emptible) are rented machines
+  that are much cheaper because the provider may take them back at
+  short notice. <!-- defines: spot instance --> Fine for measurement, not for serving.
+- **Record the driver version.** The **driver** is the software layer
+  between the operating system and the accelerator, and its version
+  changes results enough to be worth recording.
+  <!-- defines: driver -->
 - **Check what is attached.** Two instances with the same accelerator
   can differ in host memory, disk and network by enough to dominate a
   benchmark, which is why Chapter 9 records the whole
