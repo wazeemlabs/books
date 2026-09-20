@@ -365,6 +365,28 @@ def ch08(d: dict) -> dict[str, str]:
     }
 
 
+def ch09(d: dict) -> dict[str, str]:
+    e, sp, dist = d["experiment"], d["spread"], d["distribution"]
+    by = {w["how"]: w for w in d["ways"]}
+    best = by["Best single run"]
+    return {
+        "samples": f"{e['samples']:,}",
+        "short": f"{e['short_context']:,}",
+        "long": f"{e['long_context']:,}",
+        "honest": f"{d['honest_tokens_per_s']:,.0f}",
+        "spread": f"{sp['ratio']:.1f}x",
+        "flattering": f"{sp['flattering_tokens_per_s']:,.0f}",
+        "damning": f"{sp['damning_tokens_per_s']:,.0f}",
+        "best_run_gain": f"{best['relative_to_honest']:.2f}x",
+        "cold_penalty": f"{d['cold_penalty']:.2f}x",
+        "tail_penalty": f"{d['tail_ratio']:.2f}x",
+        "context_penalty": f"{d['context_penalty']:.2f}x",
+        "p50_ms": f"{dist['p50']:.2f} ms",
+        "p99_ms": f"{dist['p99']:.2f} ms",
+        "min_ms": f"{dist['min']:.2f} ms",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -402,7 +424,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
-            "ch12": ch12, "ch13": ch13}[chapter](d)
+            "ch09": ch09, "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

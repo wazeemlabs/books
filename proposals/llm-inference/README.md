@@ -15,6 +15,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-06-DRAFT.md](CHAPTER-06-DRAFT.md) | **Generated.** Chapter 6, "The Serving Landscape" |
 | [CHAPTER-07-DRAFT.md](CHAPTER-07-DRAFT.md) | **Generated.** Chapter 7, "Reading the GPU" |
 | [CHAPTER-08-DRAFT.md](CHAPTER-08-DRAFT.md) | **Generated.** Chapter 8, "Arithmetic Intensity and the Roofline" |
+| [CHAPTER-09-DRAFT.md](CHAPTER-09-DRAFT.md) | **Generated.** Chapter 9, "Measuring Honestly" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -124,6 +125,10 @@ committed numbers.
   brings its own cache, so the denominator grows with the batch.
   **Decoding this workload is memory-bound at every batch size** — and
   only halving both the cache and the context clears it.
+- Chapter 9 makes the case for the pipeline by measuring against it:
+  one unchanged operation, reported six defensible ways, spans 2.2x.
+  No row is false. A benchmark without its conditions is not a
+  measurement but a claim.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

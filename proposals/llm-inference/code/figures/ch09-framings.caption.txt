@@ -1,0 +1,2 @@
+ALT: Horizontal bars showing the same unchanged operation reported six ways, from 927 to 2,076 tokens per second, a spread of 2.2 times. The amber bar is the median at stated conditions, which is what this book reports. Every other bar is also true.
+PROVENANCE: one unchanged decode step on tinyserve, 400 samples - Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU, NumPy 2.4.6 - every row is the same operation reported differently - commit 568ff49, 2026-09-20T12:36:14Z

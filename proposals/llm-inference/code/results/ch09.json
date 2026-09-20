@@ -1,0 +1,78 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T12:36:14Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "568ff49"
+  },
+  "experiment": {
+    "samples": 400,
+    "short_context": 128,
+    "long_context": 2048
+  },
+  "honest_tokens_per_s": 1683.9651985247542,
+  "ways": [
+    {
+      "how": "Best single run",
+      "sin": "reports the luckiest run",
+      "tokens_per_s": 2076.200718806888,
+      "relative_to_honest": 1.2329237686299892
+    },
+    {
+      "how": "Mean of all runs",
+      "sin": "an average hides the tail",
+      "tokens_per_s": 1668.8960336206164,
+      "relative_to_honest": 0.9910513798519476
+    },
+    {
+      "how": "Median (what this book reports)",
+      "sin": "none",
+      "tokens_per_s": 1683.9651985247542,
+      "relative_to_honest": 1.0
+    },
+    {
+      "how": "p99",
+      "sin": "none - this is what unlucky users get",
+      "tokens_per_s": 1332.2807958183191,
+      "relative_to_honest": 0.7911569651115534
+    },
+    {
+      "how": "Including the first, cold run",
+      "sin": "no warmup",
+      "tokens_per_s": 1150.366736778694,
+      "relative_to_honest": 0.6831297569489431
+    },
+    {
+      "how": "Median at a 2,048-token context",
+      "sin": "the same claim, harder conditions",
+      "tokens_per_s": 926.5668011501303,
+      "relative_to_honest": 0.550229186423718
+    }
+  ],
+  "spread": {
+    "flattering": "Best single run",
+    "flattering_tokens_per_s": 2076.200718806888,
+    "damning": "Median at a 2,048-token context",
+    "damning_tokens_per_s": 926.5668011501303,
+    "ratio": 2.240745854729241
+  },
+  "cold_penalty": 1.4638507396695644,
+  "tail_ratio": 1.263971682103563,
+  "context_penalty": 1.8174244926911682,
+  "distribution": {
+    "p50": 0.5938365002293722,
+    "p99": 0.7505925200894125,
+    "min": 0.4816489999939222,
+    "max": 0.8291040003314265,
+    "mean": 0.5991984999991473
+  }
+}

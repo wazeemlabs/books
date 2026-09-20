@@ -276,6 +276,19 @@ def ch08_ceiling(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch09_framings(d: dict) -> str:
+    out = ["| How it is reported | What is wrong with it | Tokens per second | Relative |",
+           "|---|---|---|---|"]
+    for w in sorted(d["ways"], key=lambda x: -x["tokens_per_s"]):
+        out.append(f"| {w['how']} | {w['sin']} | {w['tokens_per_s']:,.0f} | "
+                   f"**{w['relative_to_honest']:.2f}x** |")
+    sp = d["spread"]
+    out += ["", f"The same operation, on the same machine, unchanged. "
+                f"**{sp['ratio']:.1f}x** separates the most flattering framing from the "
+                "least, and every row is defensible on its own."]
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -320,6 +333,7 @@ def main() -> None:
         "ch06": (("ch06-breakeven", ch06_breakeven),),
         "ch07": (("ch07-sizes", ch07_sizes), ("ch07-scaling", ch07_scaling)),
         "ch08": (("ch08-points", ch08_points), ("ch08-ceiling", ch08_ceiling)),
+        "ch09": (("ch09-framings", ch09_framings),),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),

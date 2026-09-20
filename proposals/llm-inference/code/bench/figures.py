@@ -95,6 +95,13 @@ def caption(d: dict) -> str:
                 f"bandwidth {mc['bandwidth_bytes_per_s'] / 1e9:.1f} GB/s, ridge "
                 f"{mc['ridge_flop_per_byte']:.0f} FLOP/byte - accelerator figures are "
                 f"published specifications - commit {p['commit']}, {p['measured_utc']}")
+    if "ways" in d and "spread" in d:  # Chapter 9: one measurement, many framings
+        e = d["experiment"]
+        return (f"one unchanged decode step on tinyserve, {e['samples']} samples - "
+                f"{p['hardware']['cpu']}, {p['hardware']['cores_available']} vCPU, "
+                f"NumPy {p['software']['numpy']} - every row is the same "
+                f"operation reported differently - commit {p['commit']}, "
+                f"{p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -936,13 +943,51 @@ def fig_batching_roof(d: dict) -> None:
               "limited by arithmetic."))
 
 
+
+
+# --- Chapter 9: the same number, framed several ways --------------------
+
+def fig_framings(d: dict) -> None:
+    rows = sorted(d["ways"], key=lambda w: w["tokens_per_s"])
+    honest = d["honest_tokens_per_s"]
+    labels = [w["how"] for w in rows]
+    values = [w["tokens_per_s"] for w in rows]
+    colours = [T.AMBER if abs(v - honest) < 1 else T.BLUE for v in values]
+
+    fig, ax = plt.subplots(figsize=(7.6, 3.8), dpi=200)
+    ax.barh(range(len(rows)), values, color=colours, height=0.66)
+    ax.axvline(honest, color=T.INK, linestyle=":", linewidth=1.4)
+
+    for i, w in enumerate(rows):
+        ax.text(w["tokens_per_s"] + max(values) * 0.012, i,
+                f"{w['tokens_per_s']:,.0f}  ({w['relative_to_honest']:.2f}x)",
+                va="center", fontsize=7.4, color=T.MUTED)
+
+    ax.set_yticks(range(len(rows)), labels, fontsize=7.6)
+    ax.set_xlim(0, max(values) * 1.32)
+    ax.set_xlabel("tokens per second reported")
+    ax.set_title("One measurement, reported six defensible ways", loc="left",
+                 fontsize=11)
+    ax.text(honest, len(rows) - 0.3, " what this book reports", fontsize=7.4,
+            color=T.INK)
+    T.style(ax, hide_left=True)
+
+    save(fig, "ch09-framings", d,
+         alt=("Horizontal bars showing the same unchanged operation reported six "
+              f"ways, from {min(values):,.0f} to {max(values):,.0f} tokens per second, "
+              f"a spread of {d['spread']['ratio']:.1f} times. The amber bar is the median "
+              "at stated conditions, which is what this book reports. Every "
+              "other bar is also true."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
             "ch05": [fig_tradeoff, fig_tail],
             "ch06": [fig_breakeven],
             "ch07": [fig_size, fig_core_scaling],
-            "ch08": [fig_roofline, fig_batching_roof], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch08": [fig_roofline, fig_batching_roof],
+            "ch09": [fig_framings], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def _check_no_shared_figure_functions() -> None:
