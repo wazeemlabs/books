@@ -23,6 +23,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | [CHAPTER-14-DRAFT.md](CHAPTER-14-DRAFT.md) | **Generated.** Chapter 14, "Paged Attention" |
 | [CHAPTER-15-DRAFT.md](CHAPTER-15-DRAFT.md) | **Generated.** Chapter 15, "Prefix Caching" |
+| [CHAPTER-16-DRAFT.md](CHAPTER-16-DRAFT.md) | **Generated.** Chapter 16, "Batching" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 
@@ -189,6 +190,21 @@ committed numbers.
   was, and shows the keys diverging from layer 1 onwards while layer 0
   stays identical. vLLM issue #33123 is the same effect changing a
   real answer.
+- Chapter 16 batches the decode step and finds the book's cleanest
+  roofline result on a laptop: one 25 MiB weight matrix multiplied by
+  two rows and by eight takes the same 2 ms, because the fetch was the
+  cost and the arithmetic units were idle while it arrived. Past eight
+  the time rises with the work. Across the sweep the machine's
+  arithmetic rate goes from 13 to 233 GFLOP/s. With the model attached,
+  throughput rises 4.3x where the weights must be fetched and 2.4x
+  where they are already in cache — the same code, and the difference
+  is entirely whether there was a fetch worth amortizing. The user pays
+  15x in inter-token latency for it. And the chapter finds the batch of
+  *one* to be a trap: a single row takes the matrix-vector path, so two
+  sequences are 3.7x slower than one, with the gap measured against
+  what copying the matrix costs. Static batching then turns out to
+  spend what it earned: on the case study's traffic a fixed batch of 64
+  is 31% useful.
 
 ## Open decisions
 

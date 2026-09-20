@@ -116,6 +116,17 @@ def caption(d: dict) -> str:
                 f"{p['hardware']['cpu']}, {p['hardware']['cores_available']} vCPU - "
                 f"arithmetic counted from the shapes, time measured as the median "
                 f"of {e['runs']} runs - commit {p['commit']}, {p['measured_utc']}")
+    if "matmuls" in d and "waste" in d:  # Chapter 16: batching
+        e, mc = d["experiment"], d["machine"]
+        return (f"measured on {p['hardware']['cpu']}, "
+                f"{p['hardware']['cores_available']} vCPU, NumPy "
+                f"{p['software']['numpy']} on {p['software']['blas']}, "
+                f"{mc['threads']} threads - peak {mc['flops'] / 1e9:,.0f} GFLOP/s, "
+                f"{mc['dram_bytes_per_s'] / 1e9:.1f} GB/s from memory - median of "
+                f"{e['runs']} runs after {e['warmup']} warmup, {e['steps']} decode "
+                f"steps each - batch waste computed over {e['n_requests']:,} "
+                f"sampled requests (seed {e['seed']}) - commit {p['commit']}, "
+                f"{p['measured_utc']}")
     if "unlimited" in d and "prefill" in d:  # Chapter 15: prefix caching
         a, pf, tr = d["assumptions"], d["prefill"], d["trace"]
         return (f"prefill measured on tinyserve, {pf['prompt_tokens']}-token prompts, "
@@ -1367,6 +1378,164 @@ def fig_hitrate(d: dict) -> None:
               "trails the other two badly at small sizes."))
 
 
+# --- Chapter 16: what a batch buys, and what a static one wastes -------
+
+def fig_matmul(d: dict) -> None:
+    """One weight matrix, many batch sizes: batching with nothing else in it."""
+    big = next(m for m in d["matmuls"] if m["name"] == "memory-resident")
+    x = [r["batch"] for r in big["rows"]]
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.6, 3.5), dpi=200)
+
+    ax.plot(x, [r["seconds"] * 1e3 for r in big["rows"]], color=T.BLUE,
+            linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH)
+    flat_to = big["flat_to"]
+    flat = [r for r in big["rows"] if 2 <= r["batch"] <= flat_to]
+    ax.axvspan(2, flat_to, color=T.BLUE, alpha=0.08)
+    ax.annotate(f"2 to {flat_to} sequences:\nthe same time",
+                (2, flat[0]["seconds"] * 1e3), textcoords="offset points",
+                xytext=(8, 22), fontsize=7.2, color=T.INK)
+    ax.set_xscale("log", base=2); ax.set_xticks(x, [str(v) for v in x])
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel("sequences in the batch")
+    ax.set_ylabel("time for one weight matmul (ms)")
+    ax.set_title(f"{big['weight_bytes'] / 1024**2:.0f} MiB of weights, "
+                 "fetched for the batch", loc="left", fontsize=10)
+    T.style(ax)
+
+    peak = d["machine"]["flops"] / 1e9
+    ax2.plot(x, [r["flops"] / 1e9 for r in big["rows"]], color=T.BLUE,
+             linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH)
+    ax2.axhline(peak, color=T.INK, linewidth=0.9, alpha=0.5)
+    ax2.annotate(f"what this machine can do: {peak:,.0f}", (x[0], peak),
+                 textcoords="offset points", xytext=(2, -12), fontsize=7.2,
+                 color=T.INK)
+    ax2.set_xscale("log", base=2); ax2.set_xticks(x, [str(v) for v in x])
+    ax2.set_ylim(0, peak * 1.15)
+    ax2.set_xlabel("sequences in the batch")
+    ax2.set_ylabel("arithmetic rate (GFLOP/s)")
+    ax2.set_title("and the machine gets closer to working", loc="left",
+                  fontsize=10)
+    T.style(ax2)
+
+    save(fig, "ch16-matmul", d,
+         alt=("Two panels. Left: the time for one weight matrix multiply "
+              f"against batch size. It is {big['rows'][1]['seconds'] * 1e3:.2f} "
+              "milliseconds for two sequences and the same for four and eight "
+              "-- four times the work for no extra time -- then rises to "
+              f"{big['rows'][-1]['seconds'] * 1e3:.2f} milliseconds at "
+              f"{big['rows'][-1]['batch']}. Right: the arithmetic rate that "
+              f"implies, rising from {big['rows'][1]['flops'] / 1e9:.0f} to "
+              f"{big['rows'][-1]['flops'] / 1e9:.0f} GFLOP/s, against the "
+              f"{d['machine']['flops'] / 1e9:,.0f} GFLOP/s this machine reaches "
+              "on a large square multiply. Batching closes most of that gap "
+              "and does not close all of it."))
+
+
+def fig_batch_tradeoff(d: dict) -> None:
+    """Throughput against batch, and what it costs the user waiting."""
+    big = next(m for m in d["models"] if m["name"] == "memory-resident")
+    small = next(m for m in d["models"] if m["name"] == "cache-resident")
+    x = [r["batch"] for r in big["rows"]]
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.6, 3.5), dpi=200)
+
+    ax.plot(x, [r["tokens_per_s"] for r in big["rows"]], color=T.BLUE,
+            linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH,
+            label="weights from memory")
+    ax.plot(x, [r["tokens_per_s"] for r in small["rows"]], color=T.AMBER,
+            linestyle="-", marker="o", markersize=4, linewidth=T.LINE_WIDTH,
+            label="weights already in cache")
+    ax.set_xscale("log", base=2); ax.set_xticks(x, [str(v) for v in x])
+    ax.set_yscale("log")
+    ax.set_xlabel("sequences in the batch")
+    ax.set_ylabel("tokens per second, whole server")
+    ax.legend(frameon=False, fontsize=7.6, loc="lower right")
+    ax.set_title("Throughput rises with the batch", loc="left", fontsize=10)
+    T.style(ax)
+
+    ax2.plot([r["inter_token_ms"] for r in big["rows"]],
+             [r["tokens_per_s"] for r in big["rows"]], color=T.BLUE,
+             linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH)
+    for r in big["rows"]:
+        offsets = {1: (2, 12), 8: (10, -4), 64: (-6, -18)}
+        if r["batch"] in offsets:
+            ax2.annotate(f"batch {r['batch']}",
+                         (r["inter_token_ms"], r["tokens_per_s"]),
+                         textcoords="offset points", xytext=offsets[r["batch"]],
+                         ha="right" if r["batch"] == 64 else "left",
+                         fontsize=7.2, color=T.MUTED)
+    ax2.set_xlabel("what one user waits between tokens (ms)")
+    ax2.set_ylabel("tokens per second, whole server")
+    ax2.set_title("and the user pays for it", loc="left", fontsize=10)
+    T.style(ax2)
+
+    save(fig, "ch16-tradeoff", d,
+         alt=("Two panels, for the model whose weights do not fit in cache. "
+              f"Left: server throughput against batch size, rising from "
+              f"{big['rows'][0]['tokens_per_s']:.0f} tokens per second at batch "
+              f"one to {big['rows'][-1]['tokens_per_s']:.0f} at batch "
+              f"{big['rows'][-1]['batch']}, with a dip at batch two. Right: the "
+              "same throughput against the time one user waits between tokens, "
+              f"which grows from {big['rows'][0]['inter_token_ms']:.0f} to "
+              f"{big['rows'][-1]['inter_token_ms']:.0f} milliseconds. Throughput "
+              "is bought with latency."))
+
+
+def fig_static_batch(d: dict) -> None:
+    """A diagram: what a fixed batch does with its slots."""
+    from matplotlib.patches import Patch, Rectangle
+
+    rows = sorted(d["picture"], key=lambda r: r["prompt"] + r["output"],
+                  reverse=True)
+    padded, steps = rows[0]["padded_prompt"], rows[0]["batch_steps"]
+    total = padded + steps
+
+    fig, ax = plt.subplots(figsize=(7.6, 3.6), dpi=200)
+    height, gap = 0.62, 0.38
+    for i, r in enumerate(rows):
+        y = len(rows) - i - 1
+        ax.add_patch(Rectangle((0, y), r["prompt"], height, facecolor="#2563EB",
+                               edgecolor="none"))
+        ax.add_patch(Rectangle((r["prompt"], y), padded - r["prompt"], height,
+                               facecolor="#DCE7FC", edgecolor="none", hatch="///"))
+        ax.add_patch(Rectangle((padded, y), r["output"], height,
+                               facecolor="#B7780F", edgecolor="none"))
+        ax.add_patch(Rectangle((padded + r["output"], y), steps - r["output"],
+                               height, facecolor="#FDF6EA", edgecolor="none",
+                               hatch="///"))
+        ax.text(-total * 0.015, y + height / 2, f"seq {i + 1}", ha="right",
+                va="center", fontsize=7.2, color=T.MUTED)
+
+    ax.set_xlim(0, total); ax.set_ylim(-0.4, len(rows))
+    ax.axvline(padded, color=T.INK, linewidth=0.9, alpha=0.6)
+    ax.text(padded, len(rows) - 0.25, "  decoding starts", fontsize=7.2,
+            color=T.INK, va="center")
+    ax.set_yticks([])
+    ax.set_xlabel("tokens the batch holds a slot for "
+                  "(prompt, then one per decode step)")
+    ax.set_title("A fixed batch pays for the longest of everything",
+                 loc="left", fontsize=11)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.legend(handles=[Patch(facecolor="#2563EB", label="prompt"),
+                       Patch(facecolor="#DCE7FC", hatch="///", label="padding"),
+                       Patch(facecolor="#B7780F", label="generated"),
+                       Patch(facecolor="#FDF6EA", hatch="///",
+                             label="finished, slot still held")],
+              frameon=False, fontsize=7.4, ncol=4,
+              loc="lower center", bbox_to_anchor=(0.5, -0.42))
+
+    at8 = next(w for w in d["waste"] if w["batch"] == len(rows))
+    save(fig, "ch16-static", d,
+         alt=(f"A chart of {len(rows)} sequences sharing one fixed batch, each "
+              "drawn as a horizontal bar. Every prompt is padded out to the "
+              f"longest, {padded} tokens, and every sequence holds its slot "
+              f"until the longest generation finishes after {steps} steps. "
+              "Solid colour is real work, hatched is paid for and wasted; "
+              f"across the traffic only {at8['total_utilization'] * 100:.0f}% of "
+              f"what a batch of {len(rows)} pays for is work."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -1377,7 +1546,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch09": [fig_framings],
             "ch10": [fig_framework],
             "ch11": [fig_waste], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory], "ch14": [fig_blocktable, fig_blocksize],
-            "ch15": [fig_prefixtree, fig_prefill, fig_hitrate]}
+            "ch15": [fig_prefixtree, fig_prefill, fig_hitrate],
+            "ch16": [fig_matmul, fig_batch_tradeoff, fig_static_batch]}
 
 
 def _check_no_shared_figure_functions() -> None:

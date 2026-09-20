@@ -382,6 +382,64 @@ def ch14_blocksize(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch16_matmul(d: dict) -> str:
+    big = next(m for m in d["matmuls"] if m["name"] == "memory-resident")
+    out = [f"| Sequences | Time for one {big['shape'][0]}x{big['shape'][1]} matmul | "
+           "Weights re-read at | Arithmetic rate | Time per token |",
+           "|---|---|---|---|---|"]
+    for r in big["rows"]:
+        flag = " \\*" if r["noisy"] else ""
+        out.append(f"| {r['batch']} | {r['seconds'] * 1e3:.2f} ms{flag} | "
+                   f"{r['bytes_per_s'] / 1e9:.0f} GB/s | "
+                   f"{r['flops'] / 1e9:.0f} GFLOP/s | "
+                   f"**{r['per_token_ms'] * 1e3:.0f} us** |")
+    out += ["", f"{big['matrices']} weight matrices of "
+                f"{big['weight_bytes'] / 1024**2:.0f} MiB "
+                f"({big['working_set_bytes'] / 1024**2:.0f} MiB in total, more "
+                "than this machine's cache holds), each multiplied once by a "
+                "batch of rows; the time is one pass divided by the number of "
+                "matrices. Nothing else is in the measurement: no attention, "
+                "no cache, no model.",
+            "", "\\* run-to-run spread exceeded 5%."]
+    return "\n".join(out)
+
+
+def ch16_sweep(d: dict) -> str:
+    big = next(m for m in d["models"] if m["name"] == "memory-resident")
+    small = next(m for m in d["models"] if m["name"] == "cache-resident")
+    out = ["| Sequences | Step time | Of which shared | Of which per-sequence | "
+           "Tokens/s | Tokens/s, cache-resident model |",
+           "|---|---|---|---|---|---|"]
+    for r, s in zip(big["rows"], small["rows"]):
+        out.append(f"| {r['batch']} | {r['inter_token_ms']:.1f} ms | "
+                   f"{r['shared_s'] * 1e3:.1f} ms | {r['private_s'] * 1e3:.1f} ms | "
+                   f"**{r['tokens_per_s']:,.0f}** | {s['tokens_per_s']:,.0f} |")
+    out += ["", f"The whole decode step for a {big['weight_mib']:.0f} MiB model "
+                f"whose weights come from memory at "
+                f"{big['bandwidth_bytes_per_s'] / 1e9:.1f} GB/s, beside the "
+                f"{small['weight_mib']:.1f} MiB model whose weights are already "
+                "in cache. The step time is what one user waits between tokens."]
+    return "\n".join(out)
+
+
+def ch16_waste(d: dict) -> str:
+    out = ["| Batch | Prompt tokens that are real | Decode steps that are real | "
+           "Together | Steps the batch runs | Steps a sequence needs |",
+           "|---|---|---|---|---|---|"]
+    for w in d["waste"]:
+        out.append(f"| {w['batch']} | {w['prompt_utilization'] * 100:.0f}% | "
+                   f"{w['output_utilization'] * 100:.0f}% | "
+                   f"**{w['total_utilization'] * 100:.0f}%** | "
+                   f"{w['steps_per_batch']:,.0f} | "
+                   f"{w['useful_steps_per_sequence']:,.0f} |")
+    e = d["experiment"]
+    out += ["", f"Batches filled from {e['n_requests']:,} sampled requests "
+                f"(seed {e['seed']}), each run until its longest sequence "
+                "finishes. Nothing here is an implementation flaw: it all "
+                "follows from the batch being fixed for its whole life."]
+    return "\n".join(out)
+
+
 def ch15_numerics(d: dict) -> str:
     n, e = d["numerics"], d["equivalence"]
     yes = lambda b: "**yes**" if b else "**no**"
@@ -509,6 +567,8 @@ def main() -> None:
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),
         "ch15": (("ch15-numerics", ch15_numerics), ("ch15-prefill", ch15_prefill),
                  ("ch15-policies", ch15_policies)),
+        "ch16": (("ch16-matmul", ch16_matmul), ("ch16-sweep", ch16_sweep),
+                 ("ch16-waste", ch16_waste)),
     }
     for chapter, entries in specs.items():
         path = RESULTS / f"{chapter}.json"

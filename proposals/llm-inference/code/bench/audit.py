@@ -130,6 +130,9 @@ def cross_chapter_consistency() -> list[str]:
         # legitimately (time-averaged holding against admit-until-full), so
         # only the contiguous one is required to match.
         note("full-context capacity", "ch14", r["ch14"]["at_default"]["admitted_contiguous"])
+    if "ch16" in r:
+        note("accelerator break-even", "ch16",
+             r["ch16"]["machine"]["accelerator_ridge_flop_per_byte"])
     if "ch15" in r:
         note("KV bytes per token", "ch15",
              r["ch15"]["assumptions"]["kv_bytes_per_token"])

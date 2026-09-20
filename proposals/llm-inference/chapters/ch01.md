@@ -41,7 +41,7 @@ rest of this book is what to change, in the order the numbers justify.
 
 > **If you're new here: the words this book uses**
 >
-> <!-- defines: inference, parameter, weight, bandwidth, latency, throughput, batching, precision, quantization, allocator, concurrency, memory wall, provenance -->
+> <!-- defines: inference, parameter, weight, bandwidth, latency, throughput, batching, batch, precision, quantization, allocator, concurrency, memory wall, provenance -->
 > A handful of terms appear from here on. None is complicated, and each
 > is used in the same sense every time.
 >

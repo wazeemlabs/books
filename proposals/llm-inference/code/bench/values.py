@@ -554,13 +554,106 @@ def ch15(d: dict) -> dict[str, str]:
     }
 
 
+def ch16(d: dict) -> dict[str, str]:
+    e, mc = d["experiment"], d["machine"]
+    big = next(m for m in d["models"] if m["name"] == "memory-resident")
+    small = next(m for m in d["models"] if m["name"] == "cache-resident")
+    mm = next(m for m in d["matmuls"] if m["name"] == "memory-resident")
+    mrows = {r["batch"]: r for r in mm["rows"]}
+    brows = {r["batch"]: r for r in big["rows"]}
+    srows = {r["batch"]: r for r in small["rows"]}
+    waste = {w["batch"]: w for w in d["waste"]}
+    ref = {r["batch"]: r for r in d["reference_8b"]}
+    cs = d["case_study"]
+    fleet = {f["batch"]: f for f in cs["fleet"]}
+    last = max(brows)
+
+    flat_to = mm["flat_to"]
+    return {
+        "batches": ", ".join(str(b) for b in e["batches"]),
+        "same_tokens": "yes" if d["equivalence"]["same_tokens"] else "NO",
+        "compared": str(d["equivalence"]["tokens_compared"]),
+        "sequences": str(d["equivalence"]["sequences"]),
+        "score_diff": f"{d['equivalence']['agreement']['worst']:.0e}".replace("e-0", "e-"),
+        "bandwidth": f"{mc['dram_bytes_per_s'] / 1e9:.0f} GB/s",
+        "peak_flops": f"{mc['flops'] / 1e9:,.0f} GFLOP/s",
+        "ridge": f"{mc['ridge_flop_per_byte']:.0f}",
+        "acc_ridge": f"{mc['accelerator_ridge_flop_per_byte']:.0f}",
+        # the isolated matmul
+        "mm_shape": f"{mm['shape'][0]}x{mm['shape'][1]}",
+        "mm_mib": f"{mm['weight_bytes'] / 1024**2:.0f} MiB",
+        "mm_one_ms": f"{mrows[1]['seconds'] * 1e3:.2f} ms",
+        "mm_two_ms": f"{mrows[2]['seconds'] * 1e3:.2f} ms",
+        "mm_two_over_one": f"{mrows[2]['seconds'] / mrows[1]['seconds']:.1f}x",
+        "mm_flat_to": str(flat_to),
+        "mm_flat_gain": f"{flat_to // 2}x",
+        "mm_flat_ms": f"{mrows[flat_to]['seconds'] * 1e3:.2f} ms",
+        "mm_working_set": f"{mm['working_set_bytes'] / 1024**2:.0f} MiB",
+        "mm_matrices": str(mm["matrices"]),
+        "cache_mib": f"{d['cache_bytes'] / 1024**2:.0f} MiB",
+        "pack_gemm_ms": f"{d['packing']['matrix_matrix_s'] * 1e3:.2f} ms",
+        "pack_gemv_ms": f"{d['packing']['two_matrix_vector_s'] * 1e3:.2f} ms",
+        "pack_gap_ms": f"{d['packing']['unexplained_s'] * 1e3:.2f} ms",
+        "pack_copy_ms": f"{d['packing']['half_a_copy_s'] * 1e3:.2f} ms",
+        "mm_last_ms": f"{mrows[last]['seconds'] * 1e3:.2f} ms",
+        "mm_rate_low": f"{mrows[2]['flops'] / 1e9:.0f}",
+        "mm_rate_high": f"{mrows[last]['flops'] / 1e9:.0f}",
+        "mm_rate_gain": f"{mrows[last]['flops'] / mrows[2]['flops']:.0f}x",
+        "mm_rate_share": f"{mrows[last]['flops'] / mc['flops'] * 100:.0f}%",
+        "mm_per_token_gain": f"{mrows[last]['per_token_speedup']:.0f}x",
+        # the whole step
+        "big_mib": f"{big['weight_mib']:.0f} MiB",
+        "big_bw": f"{big['bandwidth_bytes_per_s'] / 1e9:.1f} GB/s",
+        "small_mib": f"{small['weight_mib']:.1f} MiB",
+        "itl_one": f"{brows[1]['inter_token_ms']:.0f} ms",
+        "itl_last": f"{brows[last]['inter_token_ms']:.0f} ms",
+        "itl_growth": f"{brows[last]['inter_token_ms'] / brows[1]['inter_token_ms']:.0f}x",
+        "tok_one": f"{brows[1]['tokens_per_s']:,.0f}",
+        "tok_last": f"{brows[last]['tokens_per_s']:,.0f}",
+        "big_gain": f"{brows[last]['throughput_gain']:.1f}x",
+        "small_gain": f"{srows[last]['throughput_gain']:.1f}x",
+        "shared_share": f"{brows[last]['shared_s'] / brows[last]['step_s']['median'] * 100:.0f}%",
+        "private_growth": f"{brows[last]['private_s'] / brows[1]['private_s']:.0f}x",
+        "last_batch": str(last),
+        "knee": str(big["knee_batch"]),
+        # what a static batch wastes
+        "waste_8": f"{waste[8]['total_utilization'] * 100:.0f}%",
+        "waste_last": f"{waste[last]['total_utilization'] * 100:.0f}%",
+        "prompt_waste_last": f"{waste[last]['prompt_utilization'] * 100:.0f}%",
+        "output_waste_last": f"{waste[last]['output_utilization'] * 100:.0f}%",
+        "steps_run": f"{waste[last]['steps_per_batch']:,.0f}",
+        "steps_needed": f"{waste[last]['useful_steps_per_sequence']:,.0f}",
+        "requests": f"{e['n_requests']:,}",
+        "pic_batch": str(len(d["picture"])),
+        "pic_short_prompt": f"{min(r['prompt'] for r in d['picture']):,}",
+        "pic_padded": f"{d['picture'][0]['padded_prompt']:,}",
+        "pic_short_output": f"{min(r['output'] for r in d['picture']):,}",
+        "pic_steps": f"{d['picture'][0]['batch_steps']:,}",
+        "pic_idle": f"{d['picture'][0]['batch_steps'] - min(r['output'] for r in d['picture']):,}",
+        # the same question at the reference model's scale
+        "ref_itl_one": f"{ref[1]['inter_token_ms']:.0f} ms",
+        "ref_itl_last": f"{ref[last]['inter_token_ms']:.0f} ms",
+        "ref_tok_one": f"{ref[1]['tokens_per_s']:,.0f}",
+        "ref_tok_last": f"{ref[last]['tokens_per_s']:,.0f}",
+        "ref_gain": f"{ref[last]['tokens_per_s'] / ref[1]['tokens_per_s']:.0f}x",
+        "ref_bound": ref[last]["bound_by"],
+        "agree_from": str(d["equivalence"]["agreement"]["agree_from"]),
+        "needed_tokens": f"{cs['tokens_per_s_needed']:,}",
+        "case_rate": str(cs["requests_per_s"]),
+        "case_output": str(cs["output_tokens"]),
+        "gpus_one": f"{fleet[1]['accelerators']:,.0f}",
+        "gpus_eight": f"{fleet[8]['accelerators']:,.0f}",
+        "gpus_last": f"{fleet[last]['accelerators']:,.0f}",
+    }
+
+
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
             "ch09": ch09, "ch10": ch10, "ch11": ch11,
             "ch12": ch12, "ch13": ch13, "ch14": ch14,
-            "ch15": ch15}[chapter](d)
+            "ch15": ch15, "ch16": ch16}[chapter](d)
 
 
 if __name__ == "__main__":

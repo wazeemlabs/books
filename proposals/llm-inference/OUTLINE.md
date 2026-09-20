@@ -601,11 +601,11 @@ standards. It does, so that reason has expired.
    KV cache and what it costs in memory.
 3. **Chapters 1–3** — the opening, written once there were real numbers
    to open with.
-4. **Chapters 4–11, 14–15** — front to back from there, closing Part I
-   and Part II and carrying Part III as far as prefix caching.
+4. **Chapters 4–11, 14–16** — front to back from there, closing Part I
+   and Part II and carrying Part III as far as batching.
 
-Drafted so far: **1–15**, every one of them passing `make check`.
-Next: **16, Batching**.
+Drafted so far: **1–16**, every one of them passing `make check`.
+Next: **17, Continuous Batching**.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of

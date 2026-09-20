@@ -21,7 +21,7 @@ explanation.
 | KV cache | 1 | The stored keys and values of every token so far, kept so they need not be recomputed. The single largest consumer of memory in serving. |
 | latency | 1 | How long one thing takes. In serving, always qualified: time to first token, or time between tokens. |
 | throughput | 1 | How many tokens per second a whole server produces, across every user. |
-| batching | 1 | Serving several sequences in the same pass over the weights, so the cost of fetching them is shared. |
+| batching, batch | 1 | Serving several sequences in the same pass over the weights, so the cost of fetching them is shared. The batch is the set of sequences advanced together in one pass. |
 | precision | 1 | How many bytes each number is stored in. Fewer bytes means less to fetch and less exactness. |
 | quantization | 1 | Deliberately storing a model's numbers in fewer bytes, to fetch fewer of them. |
 | allocator | 1 | The part of a system that hands out memory and takes it back. |

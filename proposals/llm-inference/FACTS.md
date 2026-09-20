@@ -83,6 +83,16 @@ Format: claim · value · source · last verified.
 | H100 streaming multiprocessors | 132 | NVIDIA H100 whitepaper | 2026-09 |
 | Better metrics | `DCGM_FI_PROF_SM_ACTIVE` (cycles with a warp resident), `DCGM_FI_PROF_SM_OCCUPANCY` | NVIDIA DCGM docs | 2026-09 |
 
+## Batching
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| vLLM `--max-num-seqs` | maximum sequences processed in a single iteration | vLLM docs, `configuration/engine_args` | 2026-09 |
+| vLLM `--max-num-batched-tokens` | maximum total tokens, summed across sequences, in one iteration; the batch is measured in tokens per iteration, not sequences | same | 2026-09 |
+| SGLang `--max-running-requests` | "The maximum number of running requests"; default `None` (derived from the memory pool) | SGLang docs, `advanced_features/server_arguments` | 2026-09 |
+| SGLang `--max-prefill-tokens` | "The maximum number of tokens in a prefill batch"; default 16,384 | same | 2026-09 |
+| SGLang `--chunked-prefill-size` | chunk size for chunked prefill; -1 disables it; default `None` | same | 2026-09 |
+
 ## Prefix caching
 
 | Claim | Value | Source | Verified |

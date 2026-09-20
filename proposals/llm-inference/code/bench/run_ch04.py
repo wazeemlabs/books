@@ -41,10 +41,10 @@ from tinyserve.reference import (HBM_BYTES_PER_S, PEAK_BF16_FLOPS,  # noqa: E402
                                  RIDGE_FLOP_PER_BYTE, WEIGHT_BYTES)
 
 from .harness import write  # noqa: E402
+from .machine import MATMUL_N, matmul_flops, stream_bandwidth  # noqa: E402
 
 # Working sets from inside L1 to far outside the last level of cache.
 WORKING_SETS_KIB = [64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
-MATMUL_N = 1024
 
 # Model shapes whose weights cross the cache boundary.
 SHAPES = [(128, 4), (256, 4), (384, 6), (512, 6), (768, 8), (1024, 8), (1280, 10)]
@@ -75,42 +75,6 @@ def cache_topology() -> list[dict]:
         except (OSError, ValueError):
             continue
     return levels
-
-
-def stream_bandwidth(kib: int, target_s: float = 0.25) -> float:
-    """Bytes per second reading a working set of `kib` KiB, repeatedly.
-
-    A dot product of an array with itself touches every byte and does
-    one multiply-add per four bytes -- far below any break-even point,
-    so what this measures is fetching, not arithmetic. It runs through
-    the vectorized BLAS path, so the result is not limited by Python
-    call overhead the way a plain sum is.
-    """
-    a = np.ones(kib * 1024 // 4, dtype=np.float32)
-    np.dot(a, a)                             # warm this level of the hierarchy
-    reps, elapsed = 0, 0.0
-    t0 = perf_counter()
-    while elapsed < target_s:
-        np.dot(a, a)
-        reps += 1
-        elapsed = perf_counter() - t0
-    return a.nbytes * reps / elapsed
-
-
-def matmul_flops(n: int = MATMUL_N, runs: int = 7) -> tuple[float, float]:
-    """Peak arithmetic rate, and how much it moves between runs.
-
-    On a shared machine this is the noisiest number in the chapter, so
-    it is reported with its spread rather than alone.
-    """
-    x = np.random.rand(n, n).astype(np.float32)
-    y = np.random.rand(n, n).astype(np.float32)
-    x @ y
-    rates = []
-    for _ in range(runs):
-        t0 = perf_counter(); x @ y; rates.append(2 * n**3 / (perf_counter() - t0))
-    mid = median(rates)
-    return mid, (max(rates) - min(rates)) / 2 / mid
 
 
 def decode_step_seconds(cfg: Config, runs: int = 3) -> tuple[float, int]:
