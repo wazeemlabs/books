@@ -4,3 +4,6 @@ __pycache__/
 # Python build artifacts in book working materials
 __pycache__/
 *.pyc
+
+# Python virtual environments (created by `make venv`; never committed)
+.venv/

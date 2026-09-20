@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import platform
-import re
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, is_dataclass
@@ -27,16 +26,7 @@ from typing import Any, Callable, Sequence
 
 import numpy as np
 
-
-def cpu_model() -> str:
-    try:
-        txt = Path("/proc/cpuinfo").read_text()
-        m = re.search(r"^model name\s*:\s*(.+)$", txt, re.M)
-        if m:
-            return m.group(1).strip()
-    except OSError:
-        pass
-    return platform.processor() or "unknown"
+from tinyserve.device import name as cpu_model
 
 
 def git_commit() -> str:
@@ -48,15 +38,22 @@ def git_commit() -> str:
         return "unknown"
 
 
-def provenance() -> dict[str, Any]:
-    """Everything a reader needs to know what produced a number."""
+def provenance(gpu: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Everything a reader needs to know what produced a number.
+
+    `gpu` is whatever `device.require_accelerator()` returned, for a
+    chapter that measured one. It is not filled in automatically: a
+    machine having a GPU is not the same as a chapter having used it,
+    and a Tier 0 measurement that recorded the GPU sitting idle beside
+    it would be claiming something it did not do.
+    """
     import os
     return {
         "measured_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "hardware": {
             "cpu": cpu_model(),
             "cores_available": os.cpu_count(),
-            "gpu": None,  # Tier 0: this chapter runs on the CPU
+            "gpu": gpu,
         },
         "software": {
             "python": sys.version.split()[0],
@@ -112,8 +109,13 @@ def repeat(fn: Callable[[], float], warmup: int = 1, runs: int = 3) -> Repeated:
     return Repeated([fn() for _ in range(runs)])
 
 
-def write(path: str | Path, payload: dict[str, Any]) -> Path:
-    """Write results with provenance attached."""
+def write(path: str | Path, payload: dict[str, Any],
+          gpu: dict[str, Any] | None = None) -> Path:
+    """Write results with provenance attached.
+
+    Pass `gpu` when the numbers came off an accelerator, so the file
+    says which one.
+    """
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -124,6 +126,6 @@ def write(path: str | Path, payload: dict[str, Any]) -> Path:
             return o.item()
         raise TypeError(f"not JSON-serializable: {type(o)}")
 
-    out.write_text(json.dumps({"provenance": provenance(), **payload},
+    out.write_text(json.dumps({"provenance": provenance(gpu), **payload},
                               indent=2, default=plain) + "\n")
     return out

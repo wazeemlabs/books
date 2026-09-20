@@ -2,7 +2,7 @@
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make ddr1   - re-derive a Part's design decision record from its chapters
 #   make lock   - refresh environment.lock
-.PHONY: all ddr1 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all venv ddr1 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
@@ -141,13 +141,28 @@ from tinyserve.flash import test_a_decode_step_skips_no_keys as v; v(); \
 from tinyserve.flash import test_swapping_the_kernel_changes_no_token as w; w(); \
 from tinyserve.flash import test_a_decode_step_has_almost_no_square_term_to_save as x; x(); \
 from tinyserve.flash import test_keeping_the_block_resident_is_strictly_a_bound as y; y(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels')"
+from tinyserve.device import test_the_accelerator_guard_refuses_what_it_should as z; z(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard')"
 
+# One environment per machine the book measures on. The venv is never
+# committed; requirements.txt says what to install and the lock records
+# exactly what was installed when the numbers in results/ were produced.
+venv:
+	python3 -m venv .venv
+	.venv/bin/pip install --quiet --upgrade pip
+	.venv/bin/pip install --quiet -r requirements.txt
+	@echo "created .venv - run make with PATH=\".venv/bin:$$PATH\", or activate it"
+
+# `make lock` writes the lock for whichever machine you are on. Chapters
+# 1-20 were measured on the Linux instance in environment.lock; the
+# Apple Silicon numbers from Part IV onward come from environment-mps.lock.
 lock:
-	python3 -m pip freeze > environment.lock
-	@python3 -c "import sys,platform,pathlib; \
-p=pathlib.Path('environment.lock'); \
-p.write_text('# python %s on %s\n%s' % (sys.version.split()[0], platform.platform(), p.read_text()))"
+	@python3 -c "import sys,platform,pathlib,subprocess; \
+mps = platform.system() == 'Darwin' and platform.machine() == 'arm64'; \
+name = 'environment-mps.lock' if mps else 'environment.lock'; \
+froze = subprocess.run([sys.executable,'-m','pip','freeze'],capture_output=True,text=True).stdout; \
+pathlib.Path(name).write_text('# python %s on %s\n%s' % (sys.version.split()[0], platform.platform(), froze)); \
+print('wrote ' + name)"
 
 clean:
 	rm -rf figures tables results/*.json __pycache__ */__pycache__

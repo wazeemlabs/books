@@ -16,6 +16,15 @@ from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
+
+# Make an SVG depend only on the figure, not on when or where it was
+# drawn. Matplotlib names its reusable elements with a random salt and
+# stamps the file with the current time, so every rebuild rewrote every
+# figure and a real change was invisible in the diff. With these two
+# lines the same data draws the same bytes on any machine, which is
+# what makes "regenerate and see nothing change" a check worth running.
+matplotlib.rcParams["svg.hashsalt"] = "llm-inference-from-the-ground-up"
+SVG_METADATA = {"Date": None}
 import matplotlib.pyplot as plt
 
 from . import legibility as L
@@ -377,8 +386,9 @@ def save(fig, name: str, d: dict, alt: str) -> None:
     # Read every label's position now, while the figure is still a live
     # object: once it is an SVG nobody checks whether it can be read.
     L.REPORT.add(fig, name)
-    for ext in ("svg", "png"):
-        fig.savefig(FIGS / f"{name}.{ext}", bbox_inches="tight")
+    fig.savefig(FIGS / f"{name}.svg", bbox_inches="tight",
+                metadata=SVG_METADATA)
+    fig.savefig(FIGS / f"{name}.png", bbox_inches="tight")
     plt.close(fig)
     (FIGS / f"{name}.caption.txt").write_text(
         f"ALT: {alt}\nPROVENANCE: {caption(d)}\n")
@@ -2366,9 +2376,11 @@ def fig_traffic(d: dict) -> None:
         (rows[-1]["tokens"], rows[-1]["ratio"],
          f"{rows[-1]['whole_bytes'] / 1e6:,.0f} MB down to "
          f"{rows[-1]['tiled_bytes'] / 1e6:,.0f} MB"),
-        (rows[0]["tokens"], rows[0]["ratio"],
-         "short prompts have\nlittle to save"),
     ], fontsize=7.4, color=T.INK)
+    # No label at the short-prompt end. The two curves nearly meet there,
+    # so anything written between them lands on one or on the dotted
+    # "no saving" line below; and the curve starting low already says
+    # it, as does the sentence in the chapter beside this figure.
 
     save(fig, "ch20-traffic", d,
          alt=("How many times less memory traffic the tiled kernel moves per "

@@ -1,0 +1,12 @@
+# What the book's code needs. `make venv` installs these into code/.venv.
+#
+# Pinned loosely here and exactly in the environment-*.lock files, one per
+# machine the book measures on. A lock records what produced the numbers
+# in results/; this file records what a reader needs to reproduce them.
+numpy>=2.0
+matplotlib>=3.9
+# Torch appears twice in this book: as the reference implementation
+# Chapter 10 checks tinyserve against, and from Part IV as the way to
+# reach a GPU. Neither needs a specific build; on Apple Silicon the
+# default wheel carries the Metal backend.
+torch>=2.6
