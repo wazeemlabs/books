@@ -1,0 +1,87 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T11:15:03Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "9058658"
+  },
+  "experiment": {
+    "n_requests": 19998,
+    "seed": 0,
+    "prompt_mean": 1200,
+    "prompt_cv": 0.6,
+    "output_mean": 300,
+    "output_cv": 0.8,
+    "max_model_len": 8192,
+    "max_new": 1024,
+    "block": 16,
+    "rejected_over_context": 2
+  },
+  "traffic": {
+    "prompt_p50": 1026.0,
+    "prompt_p99": 3701.0899999999965,
+    "output_p50": 234.0,
+    "output_p99": 1024.0,
+    "total_p50": 1337.0,
+    "total_p99": 4032.0599999999977
+  },
+  "hardware": {
+    "gpu_bytes": 80000000000,
+    "weight_bytes": 16000000000,
+    "free_bytes": 64000000000,
+    "kv_bytes_per_token": 131072
+  },
+  "policies": [
+    {
+      "policy": "max_model_len",
+      "reserved_tokens_mean": 8192.0,
+      "live_tokens_mean": 1347.2745774577459,
+      "utilization": 0.1644622286935725,
+      "waste": 0.8355377713064275,
+      "bytes_per_seq": 1073741824.0,
+      "concurrent_seqs": 59
+    },
+    {
+      "policy": "prompt_plus_cap",
+      "reserved_tokens_mean": 2224.152815281528,
+      "live_tokens_mean": 1347.2745774577459,
+      "utilization": 0.6057473066603164,
+      "waste": 0.3942526933396836,
+      "bytes_per_seq": 291524157.80458045,
+      "concurrent_seqs": 219
+    },
+    {
+      "policy": "oracle",
+      "reserved_tokens_mean": 1494.3963396339634,
+      "live_tokens_mean": 1347.2745774577459,
+      "utilization": 0.9015510422005895,
+      "waste": 0.09844895779941054,
+      "bytes_per_seq": 195873517.02850285,
+      "concurrent_seqs": 326
+    },
+    {
+      "policy": "paged_16",
+      "reserved_tokens_mean": 1501.945394539454,
+      "live_tokens_mean": 1347.2745774577459,
+      "utilization": 0.8970196801800938,
+      "waste": 0.10298031981990619,
+      "bytes_per_seq": 196862986.7530753,
+      "concurrent_seqs": 325
+    }
+  ],
+  "measured_tinyserve": {
+    "max_seq": 1024,
+    "allocated_bytes": 4194304,
+    "used_bytes": 1048576,
+    "utilization": 0.25
+  }
+}

@@ -64,13 +64,54 @@ def memory(d: dict) -> str:
     ])
 
 
+def ch13_policies(d: dict) -> str:
+    names = {"max_model_len": "Reserve the full context (8,192)",
+             "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
+             "paged_16": "Pages of 16 tokens (Chapter 14)",
+             "oracle": "Perfect foresight (not achievable)"}
+    order = ["max_model_len", "prompt_plus_cap", "paged_16", "oracle"]
+    rows = sorted(d["policies"], key=lambda r: order.index(r["policy"]))
+    out = ["| Allocation policy | Held per sequence | In use | Wasted | Concurrent sequences |",
+           "|---|---|---|---|---|"]
+    for r in rows:
+        out.append(f"| {names[r['policy']]} | {r['reserved_tokens_mean']:,.0f} tok "
+                   f"({r['bytes_per_seq'] / 1024**2:,.0f} MiB) | "
+                   f"{r['utilization'] * 100:.0f}% | **{r['waste'] * 100:.0f}%** | "
+                   f"**{r['concurrent_seqs']}** |")
+    return "\n".join(out)
+
+
+def ch13_traffic(d: dict) -> str:
+    t, e = d["traffic"], d["experiment"]
+    return "\n".join([
+        "| | p50 | p99 |", "|---|---|---|",
+        f"| Prompt tokens | {t['prompt_p50']:,.0f} | {t['prompt_p99']:,.0f} |",
+        f"| Output tokens | {t['output_p50']:,.0f} | {t['output_p99']:,.0f} |",
+        f"| Total per sequence | {t['total_p50']:,.0f} | {t['total_p99']:,.0f} |",
+        "",
+        f"{e['n_requests']:,} sampled requests, seed {e['seed']}; lengths are "
+        f"lognormal about means of {e['prompt_mean']:,} and {e['output_mean']} "
+        f"tokens. {e['rejected_over_context']:,} samples exceeded the "
+        f"{e['max_model_len']:,}-token context and were dropped, as the server "
+        "would refuse them.",
+    ])
+
+
 def main() -> None:
-    d = json.loads((RESULTS / "ch12.json").read_text())
     TABLES.mkdir(exist_ok=True)
-    for name, fn in (("ch12-head-to-head", head_to_head),
-                     ("ch12-scaling", scaling), ("ch12-memory", memory)):
-        (TABLES / f"{name}.md").write_text(fn(d) + "\n")
-        print(f"  {name}.md")
+    specs = {
+        "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
+                 ("ch12-memory", memory)),
+        "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),
+    }
+    for chapter, entries in specs.items():
+        path = RESULTS / f"{chapter}.json"
+        if not path.exists():
+            continue
+        d = json.loads(path.read_text())
+        for name, fn in entries:
+            (TABLES / f"{name}.md").write_text(fn(d) + "\n")
+            print(f"  {name}.md")
 
 
 if __name__ == "__main__":

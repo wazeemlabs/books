@@ -33,7 +33,12 @@ def style(ax) -> None:
 
 def caption(d: dict) -> str:
     p = d["provenance"]
-    m = d["model"]
+    m = d.get("model")
+    if m is None:  # an accounting chapter: no model was timed
+        e = d["experiment"]
+        return (f"{e['n_requests']:,} sampled requests, seed {e['seed']} - "
+                f"case-study traffic (STANDARDS.md section 7) - "
+                f"commit {p['commit']}, computed {p['measured_utc']}")
     return (f"tinyserve {m['params']:,} params "
             f"({m['config']['n_layers']}L/{m['config']['n_heads']}H/"
             f"d={m['config']['d_model']}, fp32) - "
@@ -99,6 +104,44 @@ def fig_scaling(d: dict) -> None:
               f"{s[-1]['speedup']:.0f}x at {s[-1]['n_new']}."))
 
 
+def fig_memory(d: dict) -> None:
+    rows = d["policies"]
+    labels = {"max_model_len": "Reserve the full context\n(8,192 tokens)",
+              "prompt_plus_cap": "Reserve prompt + cap\n(prompt + 1,024)",
+              "paged_16": "Pages of 16 tokens\n(Chapter 14)",
+              "oracle": "Perfect foresight\n(not achievable)"}
+    order = ["max_model_len", "prompt_plus_cap", "paged_16", "oracle"]
+    rows = sorted(rows, key=lambda r: order.index(r["policy"]))
+    y = range(len(rows))
+    live = [r["live_tokens_mean"] for r in rows]
+    idle = [r["reserved_tokens_mean"] - r["live_tokens_mean"] for r in rows]
+
+    fig, ax = plt.subplots(figsize=(7.4, 3.4), dpi=200)
+    ax.barh(y, live, color="#0B1F3A", label="Holding live keys and values")
+    ax.barh(y, idle, left=live, color="#D9DDE5", edgecolor="#B7780F",
+            hatch="//", linewidth=0.6, label="Held, but idle")
+    for i, r in enumerate(rows):
+        ax.text(r["reserved_tokens_mean"] + 90, i,
+                f"{r['utilization']*100:.0f}% used - {r['concurrent_seqs']} concurrent",
+                va="center", fontsize=7.5)
+    ax.set_yticks(list(y), [labels[r["policy"]] for r in rows], fontsize=8)
+    ax.invert_yaxis()
+    ax.set_xlim(0, max(r["reserved_tokens_mean"] for r in rows) * 1.42)
+    ax.set_xlabel("KV cache held per sequence (tokens), averaged over its lifetime")
+    ax.set_title("Most of what a contiguous allocator holds is idle", loc="left")
+    ax.legend(frameon=False, fontsize=8, loc="lower right")
+    style(ax)
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    save(fig, "ch13-memory", d,
+         alt=("KV cache held per sequence under four allocation policies, split "
+              "into the part holding live data and the part held but idle. "
+              f"Reserving the full context uses {rows[0]['utilization']*100:.0f}% of what it "
+              f"holds and fits {rows[0]['concurrent_seqs']} sequences; 16-token pages "
+              f"use {rows[2]['utilization']*100:.0f}% and fit {rows[2]['concurrent_seqs']}, "
+              "within a percent of perfect foresight."))
+
+
 def save(fig, name: str, d: dict, alt: str) -> None:
     FIGS.mkdir(exist_ok=True)
     fig.tight_layout()
@@ -110,11 +153,18 @@ def save(fig, name: str, d: dict, alt: str) -> None:
     print(f"  {name}.svg / .png")
 
 
+CHAPTERS = {"ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+
+
 def main() -> None:
-    d = json.loads((RESULTS / "ch12.json").read_text())
-    print("regenerating figures from results/ch12.json")
-    fig_per_step(d)
-    fig_scaling(d)
+    for chapter, figs in CHAPTERS.items():
+        path = RESULTS / f"{chapter}.json"
+        if not path.exists():
+            continue
+        print(f"regenerating figures from {path}")
+        d = json.loads(path.read_text())
+        for fn in figs:
+            fn(d)
 
 
 if __name__ == "__main__":

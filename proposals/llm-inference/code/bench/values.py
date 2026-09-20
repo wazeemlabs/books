@@ -10,10 +10,43 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 
 RESULTS = Path("results")
+OUTLINE = Path("../OUTLINE.md")
+
+
+def chapter_numbers() -> dict[str, int]:
+    """Map a slug of each chapter's title to its number, read from the outline.
+
+    Chapters get renumbered as the book takes shape. A reference written
+    as a literal "Chapter 14" silently becomes wrong when that happens;
+    a reference written as {{ch:paged-attention}} does not. This is the
+    lookup behind that.
+    """
+    text = OUTLINE.read_text()
+    out: dict[str, int] = {}
+    for m in re.finditer(r"^## (\d+)\. (.+)$", text, re.M):
+        slug = re.sub(r"[^a-z0-9]+", "-", m.group(2).lower()).strip("-")
+        out[slug] = int(m.group(1))
+    if not out:
+        raise RuntimeError(f"no chapters found in {OUTLINE}")
+    return out
+
+
+def resolve_chapter(ref: str) -> int:
+    """Resolve a slug, or any unambiguous fragment of one, to a number."""
+    chapters = chapter_numbers()
+    if ref in chapters:
+        return chapters[ref]
+    hits = sorted(n for slug, n in chapters.items() if ref in slug)
+    if len(hits) == 1:
+        return hits[0]
+    if not hits:
+        raise KeyError(f"no chapter matches {ref!r}")
+    raise KeyError(f"{ref!r} is ambiguous: chapters {hits}")
 
 
 def growth_exponent(sweep: list[dict], key: str) -> float:
@@ -87,9 +120,42 @@ def ch12(d: dict) -> dict[str, str]:
     }
 
 
+def ch13(d: dict) -> dict[str, str]:
+    e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
+    p = {r["policy"]: r for r in d["policies"]}
+    v = {
+        "n_requests": f"{e['n_requests']:,}",
+        "seed": str(e["seed"]),
+        "max_model_len": f"{e['max_model_len']:,}",
+        "max_new": f"{e['max_new']:,}",
+        "block": str(e["block"]),
+        "prompt_p50": f"{t['prompt_p50']:,.0f}",
+        "output_p50": f"{t['output_p50']:,.0f}",
+        "total_p50": f"{t['total_p50']:,.0f}",
+        "total_p99": f"{t['total_p99']:,.0f}",
+        "free_gb": f"{h['free_bytes'] / 1000**3:.0f} GB",
+        "kv_kib": f"{h['kv_bytes_per_token'] / 1024:.0f} KiB",
+        "tiny_alloc_mib": f"{m['allocated_bytes'] / 1024**2:.0f} MiB",
+        "tiny_used_mib": f"{m['used_bytes'] / 1024**2:.0f} MiB",
+        "tiny_util": f"{m['utilization'] * 100:.0f}%",
+        "tiny_max_seq": f"{m['max_seq']:,}",
+        "gain": f"{p['paged_16']['concurrent_seqs'] / p['max_model_len']['concurrent_seqs']:.1f}x",
+        "oracle_gap": f"{p['oracle']['concurrent_seqs'] - p['paged_16']['concurrent_seqs']}",
+    }
+    for key, short in (("max_model_len", "maxlen"), ("prompt_plus_cap", "cap"),
+                       ("paged_16", "paged"), ("oracle", "oracle")):
+        r = p[key]
+        v[f"util_{short}"] = f"{r['utilization'] * 100:.0f}%"
+        v[f"waste_{short}"] = f"{r['waste'] * 100:.0f}%"
+        v[f"conc_{short}"] = str(r["concurrent_seqs"])
+        v[f"held_{short}"] = f"{r['reserved_tokens_mean']:,.0f}"
+        v[f"mib_{short}"] = f"{r['bytes_per_seq'] / 1024**2:,.0f} MiB"
+    return v
+
+
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
-    return {"ch12": ch12}[chapter](d)
+    return {"ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

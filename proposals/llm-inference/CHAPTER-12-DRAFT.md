@@ -128,7 +128,7 @@ is quietly wrong — the failure mode you will meet again in Chapter 14.
 **One function serves both phases.** With many new tokens and an empty
 cache, `forward` is a prefill. With one new token and a full cache, it
 is a decode step. This is not a convenience; it is what prefill and
-decode actually are, and Chapter 18 will split them across different
+decode actually are, and Chapter 19 will split them across different
 machines on exactly this seam.
 
 Generating now has two phases instead of one loop:
@@ -158,7 +158,7 @@ It returns `True`. Keep this test; every optimization in Parts III and
 IV should either pass an equivalence check like it or come with an
 explicit statement of what it changes and by how much. Quantization in
 Part V is the first technique in this book that fails such a test on
-purpose, and Chapter 27 is about measuring exactly what it costs.
+purpose, and Chapter 28 is about measuring exactly what it costs.
 
 ## Measure
 
@@ -293,7 +293,7 @@ paying for memory traffic, and the hardware is far worse at the second.
 You have just met the central fact of this book, on a laptop CPU, three
 chapters into building an engine: **decoding is limited by how fast you
 can read weights, not by how fast you can multiply.** Chapter 8's
-roofline predicted it. Chapter 15 will turn it from a disappointment
+roofline predicted it. Chapter 16 will turn it from a disappointment
 into a strategy: if reading the weights costs the same whether you
 serve one user or a hundred, serve a hundred.
 
@@ -311,12 +311,12 @@ what they do about the memory bill.
   fp8 halves the table above at some cost in quality. Chapter 26
   measures that cost.
 - **Prefix sharing.** Two requests with the same system prompt compute
-  and store identical keys and values. Chapter 14's prefix cache stores
+  and store identical keys and values. Chapter 15's prefix cache stores
   them once.
 - **Eviction.** Your cache assumes a sequence runs to completion with
   its memory reserved. A real server runs out, and must decide whose
   cache to drop and whether to recompute it or swap it out. That is
-  Chapter 17's scheduler.
+  Chapter 18's scheduler.
 
 ## Numbers to remember
 

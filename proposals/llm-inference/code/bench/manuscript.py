@@ -18,16 +18,21 @@ import re
 import sys
 from pathlib import Path
 
-from .values import load
+from .values import load, resolve_chapter
 
 SRC = Path("../chapters")
 OUT = Path("..")
 INCLUDE = re.compile(r"^<!-- include: (\S+) -->$", re.M)
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
+CHAPTER_REF = re.compile(r"\{\{ch:([a-z0-9-]+)\}\}")
 
 
 def render(text: str, values: dict[str, str]) -> str:
     missing: list[str] = []
+
+    # Symbolic chapter references first, so renumbering the outline
+    # cannot leave a stale "Chapter 14" behind in the prose.
+    text = CHAPTER_REF.sub(lambda m: f"Chapter {resolve_chapter(m.group(1))}", text)
 
     def sub(m: re.Match) -> str:
         name = m.group(1)
