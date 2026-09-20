@@ -24,7 +24,7 @@ import subprocess
 from pathlib import Path
 from statistics import median
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import numpy as np
 
@@ -198,6 +198,49 @@ def require_accelerator() -> dict[str, Any]:
     return acc
 
 
+# A dispatch costs single-digit microseconds. A machine with other work
+# on it produces timings whose noise is larger than that, and the
+# regression below will happily fit a line through them and report a
+# number. This is the load above which it should not be believed: one
+# busy core per core the machine has is already generous.
+BUSY_LOAD_PER_CORE = 0.5
+
+
+def load() -> dict[str, Any]:
+    """How busy the machine is, and whether that is too busy to time on."""
+    try:
+        one, five, fifteen = os.getloadavg()
+    except (OSError, AttributeError):
+        return {"available": False}
+    cores = os.cpu_count() or 1
+    return {
+        "available": True,
+        "load_1min": one, "load_5min": five, "load_15min": fifteen,
+        "cores": cores,
+        "per_core": one / cores,
+        "busy": one / cores > BUSY_LOAD_PER_CORE,
+    }
+
+
+def require_quiet_machine() -> dict[str, Any]:
+    """Refuse to take a microsecond measurement on a loaded machine.
+
+    Chapter 9 asks for measurements that can be trusted, and nothing
+    about a timing says on its face that something else was using the
+    processor while it ran. This says it.
+    """
+    now = load()
+    if now.get("busy"):
+        raise RuntimeError(
+            f"the machine is busy: load {now['load_1min']:.1f} over "
+            f"{now['cores']} cores ({now['per_core']:.2f} per core, "
+            f"above {BUSY_LOAD_PER_CORE}). Dispatch costs a few "
+            "microseconds and contention is worth more than that, so a "
+            "number taken now would be noise. Wait, or stop whatever "
+            "else is running.")
+    return now
+
+
 def synchronize(acc: dict[str, Any] | None = None) -> None:
     """Wait for the accelerator to finish what it was given.
 
@@ -231,15 +274,58 @@ def timed(fn: Callable[[], Any], acc: dict[str, Any], warmup: int = 20,
     return median(times)
 
 
-def marginal(fn: Callable[[int], Any], acc: dict[str, Any], k: int) -> float:
+def marginal(fn: Callable[[int], Any], acc: dict[str, Any],
+             counts: Sequence[int] = (100, 200, 400, 800),
+             warmup: int = 10, runs: int = 7) -> dict[str, float]:
     """Seconds for one more of whatever `fn(n)` does n of.
 
-    A single timing of one operation is mostly the cost of asking the
-    GPU whether it has finished, which is far larger than the operation.
-    Timing k and 2k and taking the difference cancels that, along with
-    anything else fixed per measurement, and leaves the marginal cost.
+    Timing one operation measures mostly the cost of asking the GPU
+    whether it has finished, which is far larger than the operation
+    itself. The fixed cost has to be removed, and the obvious way --
+    time n and 2n, subtract, divide -- turns out to be too fragile to
+    use: on a laptop the noise in two timings is comparable to the few
+    microseconds being measured, and the answer comes out negative often
+    enough to be useless.
+
+    So the cost is a slope instead. Time several sizes, fit a line
+    through them, and take its gradient. Every sample constrains the
+    answer, the fixed cost falls out as the intercept, and the quality
+    of the fit says whether the model -- a constant cost per operation
+    -- describes what happened at all. `r2` below 0.99 means it does
+    not, and the number should not be quoted.
+
+    Each timing uses the minimum rather than the median, which is the
+    right summary for a latency floor: a run can be interrupted and come
+    out slow, but nothing makes it come out faster than the machine can
+    go.
     """
-    return (timed(lambda: fn(2 * k), acc) - timed(lambda: fn(k), acc)) / k
+    xs, ys = [], []
+    for n in counts:
+        for _ in range(warmup):
+            fn(n)
+        synchronize(acc)
+        best = float("inf")
+        for _ in range(runs):
+            t0 = perf_counter()
+            fn(n)
+            synchronize(acc)
+            best = min(best, perf_counter() - t0)
+        xs.append(float(n)); ys.append(best)
+
+    n = len(xs)
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
+    slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
+    intercept = my - slope * mx
+    ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(xs, ys))
+    ss_tot = sum((y - my) ** 2 for y in ys)
+    return {
+        "seconds_per_op": slope,
+        "fixed_seconds": intercept,
+        "r2": 1 - ss_res / ss_tot if ss_tot else float("nan"),
+        "counts": list(counts),
+        "seconds": ys,
+    }
 
 
 def report() -> dict:
