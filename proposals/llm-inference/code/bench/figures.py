@@ -114,6 +114,18 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "schemes" in d and "outliers" in d:  # Chapter 24: quantization
+        a = d["assumptions"]
+        return (f"EXACT ARITHMETIC, not a timing run: weights are quantized "
+                f"and recovered by hand in tinyserve/quantize.py, over "
+                f"{d['schemes']['matrices']} weight matrices of a "
+                f"{a['model']['layers']}-layer model of width "
+                f"{a['model']['d_model']}, seed {a['seed']} - the outlier "
+                f"sweep is constructed, not observed, and says so - memory "
+                f"figures are the reference model's "
+                f"{a['reference_params'] / 1e9:.0f}B parameters at each "
+                f"scheme's bytes a weight, scales included - commit "
+                f"{p['commit']}, {p['measured_utc']}")
     if "formats" in d and "accumulation" in d:  # Chapter 22: number formats
         a = d["assumptions"]
         return (f"EXACT ARITHMETIC, not a timing run: rounding is done by "
@@ -2631,6 +2643,152 @@ def fig_range(d: dict) -> None:
               "in this sweep -- it just answers coarsely."))
 
 
+# --- Chapter 24: weights as integers -----------------------------------
+
+def fig_grid(d: dict) -> None:
+    """A diagram: the values a scheme can represent, and where the
+    weights actually fall."""
+    w = d["worked"]
+    values = w["values"]
+    scale, qmin, qmax = w["scale"], w["qmin"], w["qmax"]
+    grid = [c * scale for c in range(qmin, qmax + 1)]
+
+    fig, ax = plt.subplots(figsize=(7.2, 2.9), dpi=200)
+    span = max(grid) - min(grid)
+    ax.set_xlim(min(grid) - span * 0.30, max(grid) + span * 0.06)
+    ax.set_ylim(-1.35, 1.35)
+    ax.axis("off")
+
+    ax.axhline(0, color=T.RULE, linewidth=1.0)
+    for g in grid:
+        ax.plot([g, g], [-0.16, 0.16], color=T.RULE, linewidth=0.9)
+    for code, g in zip(range(qmin, qmax + 1), grid):
+        if code % 2 == 0:
+            ax.text(g, -0.42, str(code), ha="center", va="top",
+                    fontsize=6.4, color=T.MUTED)
+    ax.text(0, -0.62, "integer code", ha="center", va="top",
+            fontsize=7.0, color=T.MUTED, style="italic")
+    ax.text(0, -0.95, f"the {qmax - qmin + 1} values {w['bits']} bits can hold, "
+            f"a step of {scale:.4f} apart",
+            ha="center", va="top", fontsize=7.8, color=T.MUTED)
+
+    for v, code, back in zip(values, w["codes"], w["recovered"]):
+        ax.plot([v, v], [0.2, 0.62], color=T.AMBER, linewidth=1.1)
+        ax.plot([v], [0.62], marker="o", markersize=3.4, color=T.AMBER)
+        ax.plot([back], [0.2], marker="v", markersize=3.6, color=T.BLUE)
+    left = min(grid) - span * 0.035
+    ax.text(left, 0.62, "weights", fontsize=7.8, color=T.AMBER,
+            ha="right", va="center", fontweight="bold")
+    ax.text(left, 0.20, "where each lands", fontsize=7.8,
+            color=T.BLUE, ha="right", va="center", fontweight="bold")
+
+    save(fig, "ch24-grid", d,
+         alt=(f"A number line marked with the {qmax - qmin + 1} values "
+              f"{w['bits']}-bit symmetric quantization can represent, "
+              f"evenly spaced {scale:.4f} apart. Eight example weights sit "
+              "above it and each drops to the nearest mark. The largest "
+              f"error is {w['largest_error']:.4f}, which is at most half a "
+              f"step, {w['half_a_step']:.4f}. Every weight in a group shares "
+              "this one grid, so the grid is set by the largest value among "
+              "them."))
+
+
+def fig_outlier(d: dict) -> None:
+    """What one large weight costs everything sharing its scale."""
+    rows = d["outliers"]["rows"]
+    factors = [r["outlier_factor"] for r in rows]
+    keys = [k for k in rows[0] if k.startswith("int4")]
+    styles = [(T.AMBER, "-", "o"), (T.BLUE, "--", "s"), (T.BLUE, ":", "^")]
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.2), dpi=200)
+    ends = []
+    for key, (colour, dash, mark) in zip(keys, styles):
+        ys = [r[key] for r in rows]
+        ax.plot(factors, ys, marker=mark, markersize=T.MARKER_SIZE,
+                linewidth=T.LINE_WIDTH, color=colour, linestyle=dash)
+        ends.append((factors[-1], ys[-1], key.split(", ")[-1], colour))
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xticks(factors, [f"{f}x" for f in factors])
+    ax.set_xlim(factors[0] * 0.8, factors[-1] * 3.2)
+    ax.set_xlabel("one weight, this many times the largest of the others")
+    ax.set_ylabel("error on all the other weights")
+    ax.set_title("A scale is set by the largest value sharing it",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+    for x, y, text, colour in ends:
+        ax.annotate(text, (x, y), textcoords="offset points", xytext=(9, 0),
+                    fontsize=7.4, color=colour, va="center", ha="left")
+
+    first, last = rows[0], rows[-1]
+    tensor = keys[0]
+    save(fig, "ch24-outlier", d,
+         alt=("Error on the ordinary weights, against the size of a single "
+              "outlier placed among them, on log axes. With one scale for "
+              "the whole tensor the error rises from "
+              f"{first[tensor]:.2e} to {last[tensor]:.2e} -- the ordinary "
+              "weights are destroyed, because the grid has been stretched to "
+              "reach a value none of them is near. With a scale per group of "
+              f"32 the error barely moves, from {first[keys[2]]:.2e} to "
+              f"{last[keys[2]]:.2e}, because the outlier stretches only its "
+              "own group's grid. This is the argument for group-wise "
+              "quantization, and it is why the group size is the number that "
+              "matters."))
+
+
+def fig_margin(d: dict) -> None:
+    """When quantization error changes an answer, and when it does not."""
+    a = d["answers"]
+    rows = a["rows"]
+    names = [r["scheme"].replace("int", "int ").replace(", symmetric", "")
+             .replace(", asymmetric", " (asym)") for r in rows]
+    shift = [r["median_shift"] for r in rows]
+    changed = [r["positions_that_changed"] * 100 for r in rows]
+    pos = list(range(len(rows)))
+
+    fig, ax = plt.subplots(figsize=(7.4, 4.4), dpi=200)
+    colours = [T.BLUE if r["bits"] == 8 else T.AMBER
+               for r in _with_bits(rows)]
+    ax.barh(pos, shift, height=0.62, color=colours)
+    ax.axvline(a["margin_median"], color=T.INK, linewidth=1.1, linestyle=":")
+    ax.set_yticks(pos, names, fontsize=7.4)
+    ax.invert_yaxis()
+    ax.set_xscale("log")
+    ax.set_xlabel("how far the logits moved (median over positions);\n"
+                  "the percentage is next tokens that changed")
+    ax.set_title("Quantization changes an answer only where it moves the\n"
+                 "logits further than the model's own margin",
+                 loc="left", fontsize=10.5)
+    T.style(ax, hide_left=True)
+    # Short, because the int8 bars end well left of the margin line and
+    # a longer label would have to cross it to be read.
+    for y, (s, c) in enumerate(zip(shift, changed)):
+        ax.text(s * 1.12, y, f"{c:.0f}% changed",
+                va="center", ha="left", fontsize=6.9, color=T.MUTED)
+    ax.set_xlim(min(shift) / 2.2, max(shift) * 9)
+    L.label_points(ax, [(a["margin_median"], len(rows) - 0.6,
+                         f"the model's median margin: {a['margin_median']:.2f}")],
+                   fontsize=7.4, color=T.INK)
+
+    best8 = min((r for r in rows if "int8" in r["scheme"]),
+                key=lambda r: r["median_shift"])
+    worst4 = max(rows, key=lambda r: r["median_shift"])
+    save(fig, "ch24-margin", d,
+         alt=("How far each scheme moves the logits, against the gap between "
+              "the model's first and second choice. Eight-bit schemes move "
+              f"them about {best8['median_shift']:.2f}, below the median "
+              f"margin of {a['margin_median']:.2f}, and change "
+              f"{best8['positions_that_changed']*100:.0f}% of next tokens. "
+              f"Four-bit schemes move them {worst4['median_shift']:.1f} and "
+              f"change up to {max(r['positions_that_changed'] for r in rows)*100:.0f}%. "
+              "The error is not what decides; the error relative to how "
+              "confident the model was is."))
+
+
+def _with_bits(rows: list) -> list:
+    """Attach the bit width, which the scheme name carries as text."""
+    return [{**r, "bits": 8 if "int8" in r["scheme"] else 4} for r in rows]
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -2647,7 +2805,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch18": [fig_interference, fig_budget, fig_policy],
             "ch19": [fig_transfer, fig_split, fig_second_token],
             "ch20": [fig_score_matrix, fig_traffic, fig_tiles],
-            "ch22": [fig_bits, fig_accumulation, fig_range]}
+            "ch22": [fig_bits, fig_accumulation, fig_range],
+            "ch24": [fig_grid, fig_outlier, fig_margin]}
 
 
 def _check_no_shared_figure_functions() -> None:

@@ -2,14 +2,14 @@
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make ddr1   - re-derive a Part's design decision record from its chapters
 #   make lock   - refresh environment.lock
-.PHONY: all venv ddr1 ch22 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all venv ddr1 ch22 ch24 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ddr1
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ddr1
 
 ch01:
 	python3 -m bench.run_ch01
@@ -95,6 +95,10 @@ ch22:
 	python3 -m bench.run_ch22
 	$(MAKE) figures tables manuscript
 
+ch24:
+	python3 -m bench.run_ch24
+	$(MAKE) figures tables manuscript
+
 ddr1:
 	python3 -m bench.run_ddr1
 	$(MAKE) figures tables manuscript
@@ -150,7 +154,12 @@ from tinyserve.precision import test_the_hand_rounding_matches_numpys_float16 as
 from tinyserve.precision import test_each_format_reports_the_range_its_bits_allow as ab; ab(); \
 from tinyserve.precision import test_rounding_is_unbiased as ac; ac(); \
 from tinyserve.precision import test_a_value_that_fits_is_left_alone as ad; ad(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats')"
+from tinyserve.quantize import test_the_codes_really_fit_in_their_bits as ae; ae(); \
+from tinyserve.quantize import test_a_finer_scale_is_never_worse as af; af(); \
+from tinyserve.quantize import test_grouping_puts_the_right_values_together as ag; ag(); \
+from tinyserve.quantize import test_zero_survives_a_symmetric_scheme as ah; ah(); \
+from tinyserve.quantize import test_asymmetric_wins_on_one_sided_data as ai; ai(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats, quantization')"
 
 # One environment per machine the book measures on. The venv is never
 # committed; requirements.txt says what to install and the lock records

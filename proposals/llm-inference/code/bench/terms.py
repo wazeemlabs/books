@@ -55,7 +55,11 @@ ORDINARY_ENGLISH = {"value", "block", "key", "head", "weight", "precision",
                     # "at different exponents", "grows exponentially":
                     # Chapter 4 means the ordinary word, not the field of a
                     # floating-point number that Chapter 22 names.
-                    "exponent"}
+                    "exponent",
+                    # "the tail at scale", "scale out", "at this scale":
+                    # Chapter 5 and others mean size, not the step of an
+                    # integer code that Chapter 24 names.
+                    "scale"}
 
 
 def glossary() -> dict[str, int]:

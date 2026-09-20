@@ -119,3 +119,7 @@ explanation.
 | mantissa | 22 | The digits of a floating-point number, as distinct from its scale. More mantissa bits means more digits survive. |
 | exponent | 22 | The scale of a floating-point number: the power of two the mantissa is multiplied by. More exponent bits means a wider range of sizes. |
 | accumulator | 22 | The running total a dot product adds into. Its format need not match the inputs', and on a tensor core it does not: small inputs, a float32 total. |
+| symmetric quantization | 24 | Integer codes spread evenly either side of zero, so zero maps to code zero exactly. What weights use. |
+| asymmetric quantization | 24 | Integer codes spanning the actual range from smallest to largest, with a zero point recording which code means zero. What one-sided data uses. |
+| scale | 24 | The size of one step of an integer code: the largest magnitude in a group divided by the largest code. Shared by every value in the group. |
+| zero point | 24 | The code that stands for zero in an asymmetric scheme. Stored alongside the scale, one per group. |

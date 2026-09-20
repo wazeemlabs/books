@@ -205,3 +205,10 @@ Format: claim · value · source · last verified.
 | vLLM `--dtype auto` | "\"auto\" will use FP16 precision for FP32 and FP16 models, and BF16 precision for BF16 models" -- it does not simply follow the checkpoint | vLLM docs, Engine Arguments | 2026-09-21 |
 | vLLM `--kv-cache-dtype` | default `auto`, which "will use model data type"; accepts `fp8`, `fp8_e4m3`, `fp8_e5m2` among others | vLLM docs, Engine Arguments | 2026-09-21 |
 | vLLM fp8 KV cache by platform | "CUDA 11.8+ supports fp8 (=fp8_e4m3) and fp8_e5m2. ROCm (AMD GPU) supports fp8 (=fp8_e4m3)." | vLLM docs, Engine Arguments | 2026-09-21 |
+
+## Quantization
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| Integer-only quantization, original | Benoit Jacob, Skirmantas Kligys, Bo Chen, Menglong Zhu, Matthew Tang, Andrew Howard, Hartwig Adam, Dmitry Kalenichenko, "Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference", arXiv:1712.05877 | arXiv abstract page | 2026-09-21 |
+| What that paper proposes | "a quantization scheme that allows inference to be carried out using integer-only arithmetic", which "can be implemented more efficiently than floating point inference on commonly available integer-only hardware" | arXiv:1712.05877, abstract | 2026-09-21 |

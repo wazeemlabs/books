@@ -1084,6 +1084,68 @@ def ch22_hardware(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch24_schemes(d: dict) -> str:
+    """What each scheme costs on the model's own weights."""
+    sc = d["schemes"]
+    out = ["| Scheme | Bytes a weight | Values sharing a scale | "
+           "Error, typical | Error, worst | Against bfloat16 |",
+           "|---|---|---|---|---|---|"]
+    base = sc["bfloat16_rms"]
+    out.append(f"| _bfloat16, for comparison_ | "
+               f"{sc['bfloat16_bytes_per_weight']:.3f} | 1 (each carries its "
+               f"own exponent) | {base:.2e} | -- | 1x |")
+    for r in sc["rows"]:
+        out.append(f"| {r['scheme']} | {r['bytes_per_weight']:.3f} "
+                   f"| {r['values_per_scale']:,} "
+                   f"| {r['rms']:.2e} | {r['worst']:.2e} "
+                   f"| {r['rms'] / base:,.0f}x worse |")
+    out += ["", f"Root-mean-square error after a round trip, averaged over "
+                f"all {sc['matrices']} weight matrices of the book's small "
+                "model and reported as a fraction of the largest weight in "
+                "each. \"Bytes a weight\" includes the scales: a scale is a "
+                "float32 and an asymmetric scheme needs a zero point beside "
+                "it, so a small group is not as cheap as its bit width "
+                "suggests."]
+    return "\n".join(out)
+
+
+def ch24_groups(d: dict) -> str:
+    """What a finer scale buys and what it costs."""
+    out = ["| Values per scale | Error | Bytes a weight | Over four bits |",
+           "|---|---|---|---|"]
+    for r in d["groups"]:
+        out.append(f"| {r['group']} | {r['rms']:.2e} "
+                   f"| {r['bytes_per_weight']:.3f} | {r['overhead_pct']:+.0f}% |")
+    out += ["", "Four-bit symmetric quantization at four group sizes. Every "
+                "halving of the group buys a little accuracy and costs a "
+                "fixed amount of storage, because each group needs its own "
+                "float32 scale. The knee is where a reader's own tolerance "
+                "puts it; 32 and 128 are the sizes the published methods use."]
+    return "\n".join(out)
+
+
+def ch24_memory(d: dict) -> str:
+    """The reference model under each scheme."""
+    mem = d["memory"]
+    out = ["| Scheme | Weights | Time to read them | Smaller than bfloat16 | "
+           "Left on an 80 GB card for cache |",
+           "|---|---|---|---|---|"]
+    out.append(f"| _bfloat16_ | {mem['bf16_gb']:.0f} GB "
+               f"| {mem['bf16_read_ms']:.2f} ms | 1.00x "
+               f"| {mem['bf16_free_gb']:.0f} GB |")
+    for r in mem["rows"]:
+        out.append(f"| {r['scheme']} | {r['weights_gb']:.1f} GB "
+                   f"| {r['read_ms']:.2f} ms | {r['over_bf16']:.2f}x "
+                   f"| {r['free_for_cache_gb']:.0f} GB |")
+    out += ["", f"The book's {mem['params'] / 1e9:.0f}B model on one "
+                f"{mem['gpu_gb']:.0f} GB accelerator. The time to read the "
+                "weights is the floor under every decode step (Chapter 4), "
+                "and what is left over is what Chapter 13 spends on the KV "
+                "cache -- so a smaller model is worth more than its own "
+                "size, because the memory it frees becomes batch size."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -1118,6 +1180,9 @@ def main() -> None:
         "ch22": (("ch22-formats", ch22_formats),
                  ("ch22-tensors", ch22_tensors),
                  ("ch22-hardware", ch22_hardware)),
+        "ch24": (("ch24-schemes", ch24_schemes),
+                 ("ch24-groups", ch24_groups),
+                 ("ch24-memory", ch24_memory)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),

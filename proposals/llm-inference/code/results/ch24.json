@@ -1,0 +1,412 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T19:27:20Z",
+    "hardware": {
+      "cpu": "Apple M4 Max",
+      "cores_available": 16,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.14.7",
+      "numpy": "2.5.3",
+      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "blas": "accelerate"
+    },
+    "commit": "c032c6c"
+  },
+  "worked": {
+    "values": [
+      0.0,
+      0.10000000149011612,
+      -0.25,
+      0.800000011920929,
+      -0.05000000074505806,
+      0.4000000059604645,
+      -0.800000011920929,
+      0.15000000596046448
+    ],
+    "bits": 4,
+    "largest": 0.800000011920929,
+    "qmax": 7,
+    "qmin": -8,
+    "scale": 0.11428571492433548,
+    "codes": [
+      0,
+      1,
+      -2,
+      7,
+      0,
+      4,
+      -7,
+      1
+    ],
+    "recovered": [
+      0.0,
+      0.11428571492433548,
+      -0.22857142984867096,
+      0.800000011920929,
+      0.0,
+      0.4571428596973419,
+      -0.800000011920929,
+      0.11428571492433548
+    ],
+    "errors": [
+      0.0,
+      0.01428571343421936,
+      0.02142857015132904,
+      0.0,
+      0.05000000074505806,
+      0.05714285373687744,
+      0.0,
+      -0.035714291036129
+    ],
+    "largest_error": 0.05714285373687744,
+    "half_a_step": 0.05714285746216774
+  },
+  "schemes": {
+    "rows": [
+      {
+        "scheme": "int8, symmetric, per tensor",
+        "bits": 8,
+        "symmetric": true,
+        "granularity": "tensor",
+        "group": null,
+        "rms": 0.0022734576847929385,
+        "worst": 0.00393701876357235,
+        "bytes_per_weight": 1.000244140625,
+        "values_per_scale": 16384
+      },
+      {
+        "scheme": "int8, asymmetric, per tensor",
+        "bits": 8,
+        "symmetric": false,
+        "granularity": "tensor",
+        "group": null,
+        "rms": 0.002186385796145464,
+        "worst": 0.003894858512700445,
+        "bytes_per_weight": 1.00048828125,
+        "values_per_scale": 16384
+      },
+      {
+        "scheme": "int8, symmetric, per channel",
+        "bits": 8,
+        "symmetric": true,
+        "granularity": "channel",
+        "group": null,
+        "rms": 0.001567015114675006,
+        "worst": 0.003934684995473066,
+        "bytes_per_weight": 1.03125,
+        "values_per_scale": 128
+      },
+      {
+        "scheme": "int4, symmetric, per tensor",
+        "bits": 4,
+        "symmetric": true,
+        "granularity": "tensor",
+        "group": null,
+        "rms": 0.04126172421096285,
+        "worst": 0.07142852227970528,
+        "bytes_per_weight": 0.500244140625,
+        "values_per_scale": 16384
+      },
+      {
+        "scheme": "int4, asymmetric, per tensor",
+        "bits": 4,
+        "symmetric": false,
+        "granularity": "tensor",
+        "group": null,
+        "rms": 0.03714758540363743,
+        "worst": 0.06621397466299621,
+        "bytes_per_weight": 0.50048828125,
+        "values_per_scale": 16384
+      },
+      {
+        "scheme": "int4, symmetric, per channel",
+        "bits": 4,
+        "symmetric": true,
+        "granularity": "channel",
+        "group": null,
+        "rms": 0.02840779945702893,
+        "worst": 0.07142581746243236,
+        "bytes_per_weight": 0.53125,
+        "values_per_scale": 128
+      },
+      {
+        "scheme": "int4, symmetric, per group of 64",
+        "bits": 4,
+        "symmetric": true,
+        "granularity": "group",
+        "group": 64,
+        "rms": 0.025504490629150275,
+        "worst": 0.07142581746243236,
+        "bytes_per_weight": 0.5625,
+        "values_per_scale": 64
+      },
+      {
+        "scheme": "int4, symmetric, per group of 32",
+        "bits": 4,
+        "symmetric": true,
+        "granularity": "group",
+        "group": 32,
+        "rms": 0.0229363156290215,
+        "worst": 0.07136314621159467,
+        "bytes_per_weight": 0.625,
+        "values_per_scale": 32
+      },
+      {
+        "scheme": "int4, asymmetric, per group of 32",
+        "bits": 4,
+        "symmetric": false,
+        "granularity": "group",
+        "group": 32,
+        "rms": 0.019123665944172454,
+        "worst": 0.06010073107805854,
+        "bytes_per_weight": 0.75,
+        "values_per_scale": 32
+      }
+    ],
+    "matrices": 24,
+    "bfloat16_rms": 0.0003911162858929037,
+    "bfloat16_bytes_per_weight": 2.0
+  },
+  "groups": [
+    {
+      "group": 128,
+      "rms": 0.027775010161995822,
+      "bytes_per_weight": 0.53125,
+      "overhead_pct": 6.25
+    },
+    {
+      "group": 64,
+      "rms": 0.025504490629150275,
+      "bytes_per_weight": 0.5625,
+      "overhead_pct": 12.5
+    },
+    {
+      "group": 32,
+      "rms": 0.0229363156290215,
+      "bytes_per_weight": 0.625,
+      "overhead_pct": 25.0
+    },
+    {
+      "group": 16,
+      "rms": 0.020177644832168863,
+      "bytes_per_weight": 0.75,
+      "overhead_pct": 50.0
+    }
+  ],
+  "outliers": {
+    "rows": [
+      {
+        "outlier_factor": 1,
+        "outlier_value": 0.4023158550262451,
+        "int4, symmetric, per tensor": 0.0413256242092288,
+        "int4, symmetric, per channel": 0.03154977543579456,
+        "int4, symmetric, per group of 32": 0.024343463137098613
+      },
+      {
+        "outlier_factor": 3,
+        "outlier_value": 1.2069475650787354,
+        "int4, symmetric, per tensor": 0.1246204668624273,
+        "int4, symmetric, per channel": 0.034835110315360296,
+        "int4, symmetric, per group of 32": 0.02498747868436414
+      },
+      {
+        "outlier_factor": 10,
+        "outlier_value": 4.023158550262451,
+        "int4, symmetric, per tensor": 0.24592300962703748,
+        "int4, symmetric, per channel": 0.044744404043711314,
+        "int4, symmetric, per group of 32": 0.026107977862851014
+      },
+      {
+        "outlier_factor": 30,
+        "outlier_value": 12.069475173950195,
+        "int4, symmetric, per tensor": 0.24760848195634202,
+        "int4, symmetric, per channel": 0.04477112266546563,
+        "int4, symmetric, per group of 32": 0.026107977862851014
+      },
+      {
+        "outlier_factor": 100,
+        "outlier_value": 40.23158645629883,
+        "int4, symmetric, per tensor": 0.24760848195634202,
+        "int4, symmetric, per channel": 0.04477112266546563,
+        "int4, symmetric, per group of 32": 0.026107977862851014
+      }
+    ],
+    "typical_largest": 0.4023158550262451,
+    "shape": [
+      256,
+      64
+    ]
+  },
+  "answers": {
+    "rows": [
+      {
+        "scheme": "int8, symmetric, per tensor",
+        "median_shift": 0.0832689180970192,
+        "shift_over_margin": 0.28241676092147827,
+        "positions_where_shift_exceeds_margin": 0.1875,
+        "positions_that_changed": 0.041666666666666664
+      },
+      {
+        "scheme": "int8, asymmetric, per tensor",
+        "median_shift": 0.06820821762084961,
+        "shift_over_margin": 0.2322389930486679,
+        "positions_where_shift_exceeds_margin": 0.20833333333333334,
+        "positions_that_changed": 0.020833333333333332
+      },
+      {
+        "scheme": "int8, symmetric, per channel",
+        "median_shift": 0.05121508985757828,
+        "shift_over_margin": 0.1627105176448822,
+        "positions_where_shift_exceeds_margin": 0.16666666666666666,
+        "positions_that_changed": 0.041666666666666664
+      },
+      {
+        "scheme": "int4, symmetric, per tensor",
+        "median_shift": 1.2746270895004272,
+        "shift_over_margin": 3.846224069595337,
+        "positions_where_shift_exceeds_margin": 1.0,
+        "positions_that_changed": 0.4375
+      },
+      {
+        "scheme": "int4, asymmetric, per tensor",
+        "median_shift": 1.388960599899292,
+        "shift_over_margin": 4.260595798492432,
+        "positions_where_shift_exceeds_margin": 1.0,
+        "positions_that_changed": 0.6041666666666666
+      },
+      {
+        "scheme": "int4, symmetric, per channel",
+        "median_shift": 0.9767547845840454,
+        "shift_over_margin": 3.083582639694214,
+        "positions_where_shift_exceeds_margin": 0.9791666666666666,
+        "positions_that_changed": 0.5
+      },
+      {
+        "scheme": "int4, symmetric, per group of 64",
+        "median_shift": 0.8989262580871582,
+        "shift_over_margin": 2.896834135055542,
+        "positions_where_shift_exceeds_margin": 0.9166666666666666,
+        "positions_that_changed": 0.4166666666666667
+      },
+      {
+        "scheme": "int4, symmetric, per group of 32",
+        "median_shift": 0.8148277997970581,
+        "shift_over_margin": 2.6561119556427,
+        "positions_where_shift_exceeds_margin": 0.9166666666666666,
+        "positions_that_changed": 0.2708333333333333
+      },
+      {
+        "scheme": "int4, asymmetric, per group of 32",
+        "median_shift": 0.7020201683044434,
+        "shift_over_margin": 2.1676573753356934,
+        "positions_where_shift_exceeds_margin": 0.8333333333333334,
+        "positions_that_changed": 0.3333333333333333
+      }
+    ],
+    "positions": 48,
+    "margin_median": 0.2940903902053833,
+    "margin_p10": 0.03141353279352188,
+    "margin_max": 0.9508788585662842
+  },
+  "memory": {
+    "rows": [
+      {
+        "scheme": "int8, symmetric, per tensor",
+        "bytes_per_weight": 1.0000000004998622,
+        "weights_gb": 8.002207748000002,
+        "read_ms": 2.3887187307462687,
+        "over_bf16": 1.9999999990002757,
+        "free_for_cache_gb": 71.997792252
+      },
+      {
+        "scheme": "int8, asymmetric, per tensor",
+        "bytes_per_weight": 1.000000000999724,
+        "weights_gb": 8.002207752,
+        "read_ms": 2.3887187319402985,
+        "over_bf16": 1.9999999980005518,
+        "free_for_cache_gb": 71.997792248
+      },
+      {
+        "scheme": "int8, symmetric, per channel",
+        "bytes_per_weight": 1.0009765625,
+        "weights_gb": 8.0100224,
+        "read_ms": 2.391051462686567,
+        "over_bf16": 1.9980487804878049,
+        "free_for_cache_gb": 71.9899776
+      },
+      {
+        "scheme": "int4, symmetric, per tensor",
+        "bytes_per_weight": 0.500000000499862,
+        "weights_gb": 4.001103876,
+        "read_ms": 1.1943593659701492,
+        "over_bf16": 3.9999999960011037,
+        "free_for_cache_gb": 75.998896124
+      },
+      {
+        "scheme": "int4, asymmetric, per tensor",
+        "bytes_per_weight": 0.5000000009997241,
+        "weights_gb": 4.00110388,
+        "read_ms": 1.1943593671641792,
+        "over_bf16": 3.9999999920022073,
+        "free_for_cache_gb": 75.99889612
+      },
+      {
+        "scheme": "int4, symmetric, per channel",
+        "bytes_per_weight": 0.5009765625,
+        "weights_gb": 4.008918528,
+        "read_ms": 1.1966920979104478,
+        "over_bf16": 3.992202729044834,
+        "free_for_cache_gb": 75.991081472
+      },
+      {
+        "scheme": "int4, symmetric, per group of 64",
+        "bytes_per_weight": 0.5625,
+        "weights_gb": 4.501241856,
+        "read_ms": 1.3436542853731344,
+        "over_bf16": 3.5555555555555554,
+        "free_for_cache_gb": 75.498758144
+      },
+      {
+        "scheme": "int4, symmetric, per group of 32",
+        "bytes_per_weight": 0.625,
+        "weights_gb": 5.00137984,
+        "read_ms": 1.4929492059701492,
+        "over_bf16": 3.2,
+        "free_for_cache_gb": 74.99862016
+      },
+      {
+        "scheme": "int4, asymmetric, per group of 32",
+        "bytes_per_weight": 0.75,
+        "weights_gb": 6.001655808,
+        "read_ms": 1.791539047164179,
+        "over_bf16": 2.6666666666666665,
+        "free_for_cache_gb": 73.998344192
+      }
+    ],
+    "params": 8002207744,
+    "bf16_gb": 16.004415488,
+    "bf16_read_ms": 4.777437459104477,
+    "bf16_free_gb": 63.995584512,
+    "gpu_gb": 80.0
+  },
+  "assumptions": {
+    "seed": 0,
+    "prompt_tokens": 48,
+    "groups": [
+      128,
+      64,
+      32,
+      16
+    ],
+    "model": {
+      "layers": 4,
+      "d_model": 128,
+      "heads": 4
+    },
+    "reference_params": 8002207744,
+    "model_not_measurement": true
+  },
+  "model_not_measurement": true
+}

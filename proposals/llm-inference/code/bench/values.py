@@ -1243,6 +1243,91 @@ def ch22(d: dict) -> dict[str, str]:
     }
 
 
+def ch24(d: dict) -> dict[str, str]:
+    a, w, sc = d["assumptions"], d["worked"], d["schemes"]
+    mem, ans, out = d["memory"], d["answers"], d["outliers"]
+    rows = {r["scheme"]: r for r in sc["rows"]}
+    mrows = {r["scheme"]: r for r in mem["rows"]}
+    arows = {r["scheme"]: r for r in ans["rows"]}
+    groups = {r["group"]: r for r in d["groups"]}
+    worst_out = out["rows"][-1]
+    clean_out = out["rows"][0]
+    keys = [k for k in clean_out if k.startswith("int4")]
+    i8 = "int8, symmetric, per tensor"
+    i4t = "int4, symmetric, per tensor"
+    i4g = "int4, symmetric, per group of 32"
+    pct = lambda x: f"{x * 100:.0f}%"
+    return {
+        # the worked example
+        "ex_values": ", ".join(f"{v:g}" for v in w["values"]),
+        "ex_largest": f"{w['largest']:g}",
+        "ex_qmax": str(w["qmax"]),
+        "ex_qmin": str(w["qmin"]),
+        "ex_bits": str(w["bits"]),
+        "ex_levels": str(w["qmax"] - w["qmin"] + 1),
+        "ex_scale": f"{w['scale']:.4f}",
+        "ex_codes": ", ".join(str(c) for c in w["codes"]),
+        "ex_error": f"{w['largest_error']:.4f}",
+        "ex_half_step": f"{w['half_a_step']:.4f}",
+        # schemes
+        "matrices": str(sc["matrices"]),
+        "bf16_err": f"{sc['bfloat16_rms']:.2e}",
+        "int8_err": f"{rows[i8]['rms']:.2e}",
+        "int4_err": f"{rows[i4t]['rms']:.2e}",
+        "int4_group_err": f"{rows[i4g]['rms']:.2e}",
+        "int8_over_bf16": f"{rows[i8]['rms'] / sc['bfloat16_rms']:,.0f}x",
+        "int4_over_int8": f"{rows[i4t]['rms'] / rows[i8]['rms']:.0f}x",
+        "group_over_tensor": f"{rows[i4t]['rms'] / rows[i4g]['rms']:.1f}x",
+        "int4_group_bytes": f"{rows[i4g]['bytes_per_weight']:.3f}",
+        # groups
+        "group_coarse": str(max(groups)),
+        "group_fine": str(min(groups)),
+        "group_coarse_err": f"{groups[max(groups)]['rms']:.2e}",
+        "group_fine_err": f"{groups[min(groups)]['rms']:.2e}",
+        "group32_overhead": f"{groups[32]['overhead_pct']:+.0f}%",
+        "group16_overhead": f"{groups[16]['overhead_pct']:+.0f}%",
+        # the outlier
+        "outlier_shape": f"{out['shape'][0]}x{out['shape'][1]}",
+        "outlier_factor": f"{worst_out['outlier_factor']}x",
+        "outlier_tensor_before": f"{clean_out[keys[0]]:.2e}",
+        "outlier_tensor_after": f"{worst_out[keys[0]]:.2e}",
+        "outlier_tensor_ratio":
+            f"{worst_out[keys[0]] / clean_out[keys[0]]:.1f}x",
+        "outlier_group_before": f"{clean_out[keys[2]]:.2e}",
+        "outlier_group_after": f"{worst_out[keys[2]]:.2e}",
+        "outlier_group_ratio":
+            f"{worst_out[keys[2]] / clean_out[keys[2]]:.2f}x",
+        # answers
+        "positions": str(ans["positions"]),
+        "margin": f"{ans['margin_median']:.2f}",
+        "margin_p10": f"{ans['margin_p10']:.2f}",
+        "int8_shift": f"{arows[i8]['median_shift']:.3f}",
+        "int8_changed": pct(arows[i8]["positions_that_changed"]),
+        "int4_shift": f"{arows[i4t]['median_shift']:.2f}",
+        "int4_changed": pct(arows[i4t]["positions_that_changed"]),
+        "int4_group_shift": f"{arows[i4g]['median_shift']:.2f}",
+        "int4_group_changed": pct(arows[i4g]["positions_that_changed"]),
+        "int8_over_margin":
+            pct(arows[i8]["positions_where_shift_exceeds_margin"]),
+        "int4_over_margin":
+            pct(arows[i4t]["positions_where_shift_exceeds_margin"]),
+        # memory
+        "bf16_gb": f"{mem['bf16_gb']:.0f} GB",
+        "int8_gb": f"{mrows[i8]['weights_gb']:.0f} GB",
+        "int4_gb": f"{mrows[i4t]['weights_gb']:.0f} GB",
+        "int4_group_gb": f"{mrows[i4g]['weights_gb']:.0f} GB",
+        "bf16_read": f"{mem['bf16_read_ms']:.2f} ms",
+        "int4_read": f"{mrows[i4t]['read_ms']:.2f} ms",
+        "int4_group_read": f"{mrows[i4g]['read_ms']:.2f} ms",
+        "bf16_free": f"{mem['bf16_free_gb']:.0f} GB",
+        "int4_group_free": f"{mrows[i4g]['free_for_cache_gb']:.0f} GB",
+        "cache_gain":
+            f"{mrows[i4g]['free_for_cache_gb'] / mem['bf16_free_gb']:.2f}x",
+        "params": f"{a['reference_params'] / 1e9:.0f}B",
+        "gpu_gb": f"{mem['gpu_gb']:.0f} GB",
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -1361,7 +1446,8 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch12": ch12, "ch13": ch13, "ch14": ch14,
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
-            "ch20": ch20, "ch22": ch22, "ddr1": ddr1}[chapter](d)
+            "ch20": ch20, "ch22": ch22,
+            "ch24": ch24, "ddr1": ddr1}[chapter](d)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,7 @@ Working materials for the third *from the Ground Up* book.
 | [DDR-1-DRAFT.md](DDR-1-DRAFT.md) | **Generated.** Design decision record I, closing Part III: the case study's scheduler and cache policy |
 | [CHAPTER-20-DRAFT.md](CHAPTER-20-DRAFT.md) | **Generated.** Chapter 20, "Attention Kernels" |
 | [CHAPTER-22-DRAFT.md](CHAPTER-22-DRAFT.md) | **Generated.** Chapter 22, "Precision and Tensor Cores" |
+| [CHAPTER-24-DRAFT.md](CHAPTER-24-DRAFT.md) | **Generated.** Chapter 24, "Quantization from the Ground Up" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 

@@ -616,8 +616,10 @@ rent.
 Chapter 21 needs a GPU quiet enough to time a few microseconds on, and
 Chapter 22 needs only exact arithmetic on bit fields. Its measurement
 code is written and exercised; only the numbers wait.
-Next: **21, Fused Operations and CUDA Graphs**, then **23, Reading a
-Real Kernel**.
+**24, Quantization from the Ground Up** follows it, for the same
+reason: it needs only exact arithmetic on the model's own weights.
+Next: **21** and **23** when a GPU is free; meanwhile the Tier 0
+chapters of Parts VI and VIII.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of
