@@ -28,6 +28,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-18-DRAFT.md](CHAPTER-18-DRAFT.md) | **Generated.** Chapter 18, "Chunked Prefill and Scheduling Policies" |
 | [CHAPTER-19-DRAFT.md](CHAPTER-19-DRAFT.md) | **Generated.** Chapter 19, "Disaggregated Prefill and Decode" |
 | [DDR-1-DRAFT.md](DDR-1-DRAFT.md) | **Generated.** Design decision record I, closing Part III: the case study's scheduler and cache policy |
+| [CHAPTER-20-DRAFT.md](CHAPTER-20-DRAFT.md) | **Generated.** Chapter 20, "Attention Kernels" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 

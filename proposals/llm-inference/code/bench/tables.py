@@ -913,6 +913,97 @@ def ddr1_fleet(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch20_counted(d: dict) -> str:
+    """The bytes the running code moved, against the formula's prediction."""
+    a = d["assumptions"]
+    out = ["| Prompt | Score matrix | Traffic, built in full | Traffic, tiled | "
+           "Times less | Largest thing held | Blocks skipped | Formula |",
+           "|---|---|---|---|---|---|---|---|"]
+    for r in d["traffic"]:
+        out.append(f"| {r['tokens']:,} | {r['score_matrix_bytes'] / 1e6:,.1f} MB "
+                   f"| {r['whole_bytes'] / 1e6:,.1f} MB "
+                   f"| {r['tiled_bytes'] / 1e6:,.1f} MB "
+                   f"| **{r['ratio']:.2f}x** "
+                   f"| {r['whole_largest_intermediate'] / 1e6:,.1f} MB -> "
+                   f"{r['tiled_largest_intermediate'] / 1e3:,.0f} KB "
+                   f"| {r['skipped_share'] * 100:.0f}% "
+                   f"| {'agrees' if r['formulas_agree'] else 'DISAGREES'} |")
+    out += ["", f"One layer of an {a['measured_heads']}-head model with "
+                f"{a['measured_head_dim']}-dimensional heads in float32, tiles "
+                f"of {a['q_tile']}x{a['kv_tile']}, seed {a['seed']}. Every "
+                "byte is counted as the code moves it, not estimated. The "
+                "last column checks each count against the closed-form "
+                "formula the next table applies to a model too large to run "
+                "here; they must agree exactly, and `make tests` fails if "
+                "they do not."]
+    return "\n".join(out)
+
+
+def ch20_reference(d: dict) -> str:
+    """The same arithmetic on the model the case study actually serves."""
+    ref, a = d["reference"], d["assumptions"]
+    out = ["| Prompt | Score matrix, one layer | Against its own inputs | "
+           "Traffic, built in full | Traffic, tiled | Times less | "
+           "Times less, block resident | All layers, built in full | "
+           "All layers, tiled |",
+           "|---|---|---|---|---|---|---|---|---|"]
+    for r in ref["rows"]:
+        mark = " *" if r["tokens"] == a["prompt_tokens"] else ""
+        out.append(f"| {r['tokens']:,}{mark} "
+                   f"| {r['score_matrix_bytes'] / 1e6:,.0f} MB "
+                   f"| {r['square_over_inputs']:.1f}x "
+                   f"| {r['whole_bytes'] / 1e6:,.0f} MB "
+                   f"| {r['tiled_bytes'] / 1e6:,.0f} MB "
+                   f"| **{r['ratio']:.1f}x** "
+                   f"| {r['ratio_block_resident']:.1f}x "
+                   f"| {r['whole_ms_all_layers']:,.2f} ms "
+                   f"| {r['tiled_ms_all_layers']:,.2f} ms |")
+    out += ["", f"\\* the case study's prompt. The book's 8B model: "
+                f"{ref['heads']} query heads sharing {ref['kv_heads']} key "
+                f"heads of {ref['head_dim']} dimensions, bf16, "
+                f"{ref['layers']} layers, tiles of {a['q_tile']}x"
+                f"{a['kv_tile']}. \"Against its own inputs\" is the score "
+                "matrix divided by the queries, keys and values it is built "
+                "from. \"Times less\" charges the blocks of scores as "
+                "traffic, which is what this NumPy implementation makes them; "
+                "the column after it charges them to the scratchpad instead, "
+                "which is what a CUDA kernel's tile size is chosen for. The "
+                "real figure is the second; the chapter quotes the first, so "
+                "every saving in it is a lower bound. Times are bytes over "
+                f"{ref['hbm_bytes_per_s'] / 1e12:.2f} TB/s (FACTS.md): a "
+                "floor for the memory, not a prediction of a kernel's "
+                "runtime, which also has arithmetic to do."]
+    return "\n".join(out)
+
+
+def ch20_tiles(d: dict) -> str:
+    """What bounds the tile size from each side."""
+    t = d["tiles"]
+    out = ["| Tile | Memory traffic | Blocks computed | Blocks skipped | "
+           "Fast memory one tile needs | Share of a multiprocessor | Fits |",
+           "|---|---|---|---|---|---|---|"]
+    for r in t["rows"]:
+        name = f"**{r['tile']}**" if r["tile"] == t["largest_that_fits"] else str(r["tile"])
+        out.append(f"| {name} | {r['bytes'] / 1e6:,.0f} MB "
+                   f"| {r['tiles_computed']:,} | {r['tiles_skipped']:,} "
+                   f"| {r['sram_bytes_reference_model'] / 1024:,.0f} KB "
+                   f"| {r['sram_share'] * 100:.0f}% "
+                   f"| {'yes' if r['fits'] else 'no'} |")
+    out += ["", f"At {t['tokens']:,} tokens. Traffic is counted on the "
+                "runnable model; the fast memory is what one tile of the "
+                f"book's 8B model needs in bf16 -- a query tile, a key tile, "
+                "a value tile, the block of scores between them, the running "
+                "output and the two running numbers per row -- against the "
+                f"{t['sram_bytes_per_sm'] / 1024:,.0f} KB a Hopper streaming "
+                "multiprocessor has (FACTS.md). Traffic falls with every "
+                "increase in tile size and the memory rises with the square "
+                f"of it, so the tile is as large as will fit: "
+                f"{t['largest_that_fits']}. A real kernel also wants room to "
+                "fetch the next tile while it works on this one, so it has "
+                "less to spend than this table allows."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -941,6 +1032,9 @@ def main() -> None:
                  ("ch18-preemption", ch18_preemption), ("ch18-swap", ch18_swap)),
         "ch19": (("ch19-transfer", ch19_transfer), ("ch19-split", ch19_split),
                  ("ch19-links", ch19_links), ("ch19-regimes", ch19_regimes)),
+        "ch20": (("ch20-counted", ch20_counted),
+                 ("ch20-reference", ch20_reference),
+                 ("ch20-tiles", ch20_tiles)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),

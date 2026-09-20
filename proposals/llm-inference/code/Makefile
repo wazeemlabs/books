@@ -2,14 +2,14 @@
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make ddr1   - re-derive a Part's design decision record from its chapters
 #   make lock   - refresh environment.lock
-.PHONY: all ddr1 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all ddr1 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ddr1
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ddr1
 
 ch01:
 	python3 -m bench.run_ch01
@@ -87,6 +87,10 @@ ch19:
 	python3 -m bench.run_ch19
 	$(MAKE) figures tables manuscript
 
+ch20:
+	python3 -m bench.run_ch20
+	$(MAKE) figures tables manuscript
+
 ddr1:
 	python3 -m bench.run_ddr1
 	$(MAKE) figures tables manuscript
@@ -130,7 +134,14 @@ from tinyserve.scheduler import test_chunking_reads_every_prompt_token_exactly_o
 from tinyserve.scheduler import test_a_smaller_budget_smooths_the_gap_between_tokens as o; o(); \
 from tinyserve.scheduler import test_swapping_keeps_the_tokens_that_recomputing_throws_away as q; q(); \
 from tinyserve.scheduler import test_the_mean_batch_is_inside_the_batches_it_averages as r; r(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets')"
+from tinyserve.flash import test_tiling_changes_no_number as s; s(); \
+from tinyserve.flash import test_tiling_survives_every_tile_size as t; t(); \
+from tinyserve.flash import test_the_byte_formulas_match_the_bytes_counted as u; u(); \
+from tinyserve.flash import test_a_decode_step_skips_no_keys as v; v(); \
+from tinyserve.flash import test_swapping_the_kernel_changes_no_token as w; w(); \
+from tinyserve.flash import test_a_decode_step_has_almost_no_square_term_to_save as x; x(); \
+from tinyserve.flash import test_keeping_the_block_resident_is_strictly_a_bound as y; y(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels')"
 
 lock:
 	python3 -m pip freeze > environment.lock

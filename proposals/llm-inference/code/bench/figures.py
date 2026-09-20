@@ -88,6 +88,23 @@ def caption(d: dict) -> str:
                 f"pool {a['pool_bytes'] / 1e9:.0f} GB, {a['blocks']:,} blocks "
                 f"of {a['block']} tokens - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "tiles" in d and "traffic" in d:  # Chapter 20: bytes, counted and derived
+        a = d["assumptions"]
+        return (f"COUNTED BYTES, not a timing run: every read and write "
+                f"between the two levels of memory is counted as the kernels "
+                f"in tinyserve/flash.py make it, on "
+                f"{a['measured_heads']} heads of {a['measured_head_dim']} "
+                f"dimensions at lengths {a['lengths'][0]}-"
+                f"{a['lengths'][-1]}, seed {a['seed']}; figures for the "
+                f"reference model apply the byte formulas those counts "
+                f"verify exactly, to {d['reference']['heads']} heads "
+                f"({d['reference']['kv_heads']} shared) of "
+                f"{d['reference']['head_dim']} in bf16, with tiles of "
+                f"{a['q_tile']}x{a['kv_tile']} - times are bytes over "
+                f"{a['hbm_bytes_per_s'] / 1e12:.2f} TB/s and shared memory "
+                f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
+                f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
+                f"{p['measured_utc']}")
     if d.get("model_not_measurement"):  # a cost model, not a benchmark
         a = d["assumptions"]
         return (f"MODEL, not a measurement: arithmetic over published specs - "
@@ -2220,6 +2237,219 @@ def fig_second_token(d: dict) -> None:
               "token penalty at all."))
 
 
+# --- Chapter 20: the matrix the kernel does not build -------------------
+
+def fig_score_matrix(d: dict) -> None:
+    """A diagram: what is held in memory, one way and the other."""
+    from matplotlib.patches import Rectangle
+
+    ref = next(r for r in d["reference"]["rows"]
+               if r["tokens"] == d["assumptions"]["prompt_tokens"])
+    counted = d["traffic"][-1]
+    n, tile = 12, 4
+
+    fig, axes = plt.subplots(1, 2, figsize=(7.4, 4.6), dpi=200)
+    for ax in axes:
+        # Row 0 at the top, so the grid reads like the matrix it is.
+        ax.set_xlim(-2.8, n + 0.6); ax.set_ylim(n + 6.4, -0.6)
+        ax.set_aspect("equal"); ax.axis("off")
+        ax.set_xticks([]); ax.set_yticks([])
+
+    def cells(ax, items, face, edge="#FFFFFF", hatch=None):
+        for (r, c) in items:
+            ax.add_patch(Rectangle((c, r), 1, 1, facecolor=face, hatch=hatch,
+                                   edgecolor=edge, linewidth=0.35))
+
+    below = [(r, c) for r in range(n) for c in range(n) if c <= r]
+    above = [(r, c) for r in range(n) for c in range(n) if c > r]
+
+    # Left: the whole rectangle is computed, including the half that the
+    # causal mask then discards.
+    cells(axes[0], below, T.SEQUENTIAL(0.45))
+    cells(axes[0], above, T.SEQUENTIAL(0.45), hatch="xxx")
+    axes[0].set_title("Built in full, then read back", loc="left", fontsize=10)
+
+    # Right: one block resident, the blocks behind it finished, the
+    # blocks above the diagonal never computed at all.
+    live = [(r, c) for r in range(tile, 2 * tile) for c in range(tile)]
+    done = [(r, c) for (r, c) in below if (r, c) not in live and r < 2 * tile]
+    todo = [(r, c) for (r, c) in below if r >= 2 * tile]
+    cells(axes[1], done, T.SEQUENTIAL(0.5))
+    cells(axes[1], todo, "#FFFFFF", edge=T.RULE)
+    cells(axes[1], live, T.AMBER)
+    cells(axes[1], above, "#ECEDF1", edge="#FFFFFF")
+    for k in range(0, n, tile):
+        axes[1].add_patch(Rectangle((0, k), n, tile, facecolor="none",
+                                    edgecolor=T.RULE, linewidth=0.9))
+    axes[1].set_title("Walked a block at a time", loc="left", fontsize=10)
+
+    notes = [
+        (axes[0], f"{ref['score_matrix_bytes'] / 1e6:,.0f} MB per layer at "
+                  f"{ref['tokens']:,} tokens",
+         "written once, read twice, written once more.",
+         "Hatched: computed, then thrown away by the mask."),
+        (axes[1], f"one block resident: "
+                  f"{counted['tiled_largest_intermediate'] / 1e3:,.0f} KB",
+         "Amber is resident now, blue is finished and gone, white is still "
+         "to come.",
+         f"Grey: never computed at all, "
+         f"{counted['skipped_share'] * 100:.0f}% of the blocks."),
+    ]
+    for ax, headline, line1, line2 in notes:
+        ax.text(n / 2, n + 1.0, "keys", ha="center", va="top",
+                fontsize=7.6, color=T.MUTED)
+        ax.text(n / 2, n + 2.4, headline, ha="center", va="top",
+                fontsize=8.4, color=T.INK)
+        ax.text(n / 2, n + 3.8, line1, ha="center", va="top",
+                fontsize=7.2, color=T.MUTED)
+        ax.text(n / 2, n + 5.0, line2, ha="center", va="top",
+                fontsize=7.2, color=T.MUTED)
+        ax.text(-1.8, n / 2, "queries", rotation=90, ha="center", va="center",
+                fontsize=7.6, color=T.MUTED)
+
+    save(fig, "ch20-score-matrix", d,
+         alt=("Two grids of query positions against key positions. On the "
+              "left the whole rectangle is filled, including the hatched "
+              "half above the diagonal that the causal mask discards: that "
+              "is the score matrix, "
+              f"{ref['score_matrix_bytes'] / 1e6:,.0f} megabytes for one "
+              f"layer at {ref['tokens']:,} tokens, written out and read "
+              "back. On the right only one block is filled at a time, the "
+              "blocks behind it are finished and gone, the blocks below are "
+              "still to come, and the blocks above the diagonal are never "
+              "computed at all -- "
+              f"{counted['skipped_share'] * 100:.0f}% of them at the longest "
+              "length measured. The largest thing the tiled kernel holds is "
+              f"one block, {counted['tiled_largest_intermediate'] / 1e3:,.0f} "
+              "kilobytes."))
+
+
+def fig_traffic(d: dict) -> None:
+    """How much of attention's traffic is the intermediate it need not build.
+
+    Plotted as a ratio rather than as two curves of bytes: on log axes
+    two curves that diverge slowly look parallel, and the finding is
+    precisely that they diverge.
+    """
+    rows = d["reference"]["rows"]
+    n = [r["tokens"] for r in rows]
+    ratio = [r["ratio"] for r in rows]
+    case_n = d["assumptions"]["prompt_tokens"]
+    case = next(r for r in rows if r["tokens"] == case_n)
+
+    resident = [r["ratio_block_resident"] for r in rows]
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.2), dpi=200)
+    ax.fill_between(n, ratio, resident, color=T.BLUE, alpha=0.10, linewidth=0)
+    ax.plot(n, resident, marker="s", markersize=T.MARKER_SIZE,
+            linewidth=T.LINE_WIDTH, color=T.AMBER, linestyle="--",
+            label="block kept in the scratchpad (a real kernel)")
+    ax.plot(n, ratio, marker="o", markersize=T.MARKER_SIZE,
+            linewidth=T.LINE_WIDTH, color=T.BLUE,
+            label="block charged as traffic (this repository)")
+    ax.axhline(1.0, color=T.MUTED, linewidth=0.9, linestyle=":")
+    ax.legend(frameon=False, fontsize=7.6, loc="upper left")
+    ax.axvline(case_n, color=T.RULE, linewidth=0.9)
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(n, [f"{x:,}" for x in n])
+    ax.set_ylim(0, max(resident) * 1.30)
+    ax.set_xlabel("prompt length (tokens)")
+    ax.set_ylabel("times less memory traffic, per layer")
+    ax.set_title("The longer the prompt, the more of attention is an "
+                 "intermediate\nnobody needs", loc="left", fontsize=10.5)
+    T.style(ax)
+
+    L.label_points(ax, [
+        (case_n, case["ratio"],
+         f"the case study's prompt\n{case['whole_bytes'] / 1e6:,.0f} MB "
+         f"down to {case['tiled_bytes'] / 1e6:,.0f} MB"),
+        (rows[-1]["tokens"], rows[-1]["ratio"],
+         f"{rows[-1]['whole_bytes'] / 1e6:,.0f} MB down to "
+         f"{rows[-1]['tiled_bytes'] / 1e6:,.0f} MB"),
+        (rows[0]["tokens"], rows[0]["ratio"],
+         "short prompts have\nlittle to save"),
+    ], fontsize=7.4, color=T.INK)
+
+    save(fig, "ch20-traffic", d,
+         alt=("How many times less memory traffic the tiled kernel moves per "
+              "layer, against prompt length, for the book's 8B model. The "
+              f"ratio rises from {rows[0]['ratio']:.1f} at "
+              f"{rows[0]['tokens']} tokens to {case['ratio']:.1f} at the "
+              f"case study's {case_n:,} and {rows[-1]['ratio']:.1f} at "
+              f"{rows[-1]['tokens']:,} when the blocks of scores are "
+              "charged as traffic, and from "
+              f"{rows[0]['ratio_block_resident']:.1f} to "
+              f"{rows[-1]['ratio_block_resident']:.1f} when they are kept in "
+              "the scratchpad as a real kernel keeps them. The saving is not "
+              "a constant factor: "
+              "it grows with the prompt, because the part being avoided "
+              "grows with the square of the length while everything else "
+              "grows linearly. In absolute terms the case study's prompt "
+              f"goes from {case['whole_bytes'] / 1e6:,.0f} to "
+              f"{case['tiled_bytes'] / 1e6:,.0f} megabytes a layer."))
+
+
+def fig_tiles(d: dict) -> None:
+    """The tile size is bounded from below by traffic and above by SRAM."""
+    t = d["tiles"]
+    rows = t["rows"]
+    sizes = [r["tile"] for r in rows]
+    limit = t["sram_bytes_per_sm"] / 1024
+
+    fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.6), dpi=200, sharex=True)
+
+    axes[0].plot(sizes, [r["bytes"] / 1e6 for r in rows], marker="o",
+                 markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE)
+    axes[0].set_ylim(0, max(r["bytes"] for r in rows) / 1e6 * 1.15)
+    axes[0].set_ylabel("memory traffic (MB)")
+    axes[0].set_title("Bigger tiles move less", loc="left", fontsize=9.6)
+
+    fits = [r for r in rows if r["fits"]]
+    over = [r for r in rows if not r["fits"]]
+    # Bars at the same log positions as the left panel, so the two
+    # panels read against one x axis rather than two different ones.
+    for group, colour, hatch, label in ((fits, T.BLUE, None, "fits"),
+                                        (over, T.AMBER, "///", "does not fit")):
+        if not group:
+            continue
+        axes[1].bar([r["tile"] for r in group],
+                    [r["sram_bytes_reference_model"] / 1024 for r in group],
+                    width=[r["tile"] * 0.5 for r in group],
+                    color=colour, hatch=hatch, edgecolor="#FFFFFF",
+                    label=label)
+    axes[1].axhline(limit, color=T.INK, linewidth=1.0, linestyle=":")
+    axes[1].set_ylim(0, max(r["sram_bytes_reference_model"]
+                            for r in rows) / 1024 * 1.25)
+    axes[1].set_ylabel("fast memory needed (KB)")
+    axes[1].set_title("and demand more room", loc="left", fontsize=9.6)
+    axes[1].legend(frameon=False, fontsize=7.6, loc="upper left")
+
+    for ax in axes:
+        ax.set_xlabel("tile size (positions)")
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(sizes, [str(x) for x in sizes])
+        T.style(ax)
+
+    best = max(r["tile"] for r in fits)
+    L.label_points(axes[1], [
+        (sizes[0], limit, f"one multiprocessor: {limit:,.0f} KB"),
+        (best, [r for r in fits if r["tile"] == best][0]
+         ["sram_bytes_reference_model"] / 1024,
+         f"largest tile that fits: {best}"),
+    ], fontsize=7.4, color=T.INK)
+
+    save(fig, "ch20-tiles", d,
+         alt=("Two panels against tile size. Traffic falls steadily as the "
+              f"tile grows, from {rows[0]['bytes'] / 1e6:,.0f} megabytes at "
+              f"{rows[0]['tile']} positions to "
+              f"{rows[-1]['bytes'] / 1e6:,.0f} at {rows[-1]['tile']}. The "
+              "fast memory one tile needs grows with the square of it, and "
+              f"at {over[0]['tile'] if over else 0} positions it passes the "
+              f"{limit:,.0f} kilobytes a streaming multiprocessor has. The "
+              f"largest tile that fits is {best}, which is where the tile "
+              "size comes from: not tuning, but the size of the scratchpad."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -2234,7 +2464,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch16": [fig_matmul, fig_batch_tradeoff, fig_static_batch],
             "ch17": [fig_scheduler_timeline, fig_load, fig_itl],
             "ch18": [fig_interference, fig_budget, fig_policy],
-            "ch19": [fig_transfer, fig_split, fig_second_token]}
+            "ch19": [fig_transfer, fig_split, fig_second_token],
+            "ch20": [fig_score_matrix, fig_traffic, fig_tiles]}
 
 
 def _check_no_shared_figure_functions() -> None:

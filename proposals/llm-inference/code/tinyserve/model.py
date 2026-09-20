@@ -115,6 +115,57 @@ def softmax(x: np.ndarray) -> np.ndarray:
     return e / e.sum(axis=-1, keepdims=True)
 
 
+def share_kv_heads(k: np.ndarray, v: np.ndarray, heads: int
+                   ) -> tuple[np.ndarray, np.ndarray]:
+    """Give every query head the keys and values of its group.
+
+    With grouped-query attention (Chapter 7) there are fewer key heads
+    than query heads, and each key head serves several query heads. The
+    expansion belongs to the kernel rather than to the model: a real one
+    reads the shared keys from memory once and hands the same copy to
+    every query head in the group, which is why Chapter 20 charges them
+    once.
+    """
+    n_rep = heads // k.shape[0]
+    if n_rep == 1:
+        return k, v
+    return np.repeat(k, n_rep, axis=0), np.repeat(v, n_rep, axis=0)
+
+
+def attention_whole(q: np.ndarray, k: np.ndarray, v: np.ndarray,
+                    mask: np.ndarray, meter: "Meter | None" = None
+                    ) -> tuple[np.ndarray, np.ndarray | None]:
+    """Attention with the score matrix built in full.
+
+    `q` is (heads, new, dim), `k` and `v` are (heads, seen, dim), and
+    `mask` is (new, seen): zero where a query may attend to a key,
+    negative infinity where it may not.
+
+    This is the arithmetic of Chapter 2, lifted out of `forward` so that
+    Chapter 20 can hand `forward` a different kernel without touching
+    the model -- the same seam Chapter 14 used for the cache. It returns
+    the weight matrix alongside the output because it has one anyway; a
+    kernel that never builds one returns None there.
+
+    `meter` is Chapter 20's byte counter. When it is None, which is
+    every use before Part IV, this costs nothing.
+    """
+    scale = q.shape[-1] ** -0.5
+    if meter is not None:
+        meter.read(q), meter.read(k), meter.read(v)
+    k, v = share_kv_heads(k, v, q.shape[0])
+    scores = (q @ k.transpose(0, 2, 1)) * scale + mask
+    if meter is not None:
+        meter.write(scores), meter.read(scores)
+    weights = softmax(scores)
+    if meter is not None:
+        meter.write(weights), meter.read(weights)
+    out = weights @ v
+    if meter is not None:
+        meter.write(out)
+    return out, weights
+
+
 class KVCache:
     """Storage for the keys and values of every token the model has seen.
 
@@ -155,7 +206,7 @@ class KVCache:
 
 
 def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None,
-            trace: dict | None = None) -> np.ndarray:
+            trace: dict | None = None, attention=attention_whole) -> np.ndarray:
     """Run the model over `tokens` and return logits, shape (len(tokens), vocab).
 
     With no cache, `tokens` is the whole sequence and the model recomputes
@@ -169,11 +220,15 @@ def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None,
     Pass a dict as `trace` to record the intermediate tensors. Chapter 2
     uses it to show what actually happens to a prompt; nothing else does,
     and it costs nothing when it is None.
+
+    `attention` is the kernel. The default builds the whole score matrix;
+    Chapter 20 passes one that never does. A kernel that does not build
+    the matrix cannot report attention weights, and a trace taken with
+    one records None for them.
     """
     cfg = model.cfg
     t = len(tokens)
     start = cache.length if cache is not None else 0
-    n_rep = cfg.n_heads // cfg.n_kv_heads
 
     x = model.tok_emb[tokens] + model.pos_emb[start : start + t]
     if trace is not None:
@@ -198,13 +253,10 @@ def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None,
         if cache is not None:
             k, v = cache.append(i, k, v, start)
 
-        if n_rep > 1:  # grouped-query attention: share each KV head
-            k = np.repeat(k, n_rep, axis=0)
-            v = np.repeat(v, n_rep, axis=0)
-
-        scores = (q @ k.transpose(0, 2, 1)) * cfg.head_dim**-0.5 + mask
-        weights = softmax(scores)
-        attn = (weights @ v).transpose(1, 0, 2).reshape(t, -1)
+        # Grouped-query attention is the kernel's business now: it reads
+        # each shared key head once. `share_kv_heads` does the expansion.
+        heads, weights = attention(q, k, v, mask)
+        attn = heads.transpose(1, 0, 2).reshape(t, -1)
         x = x + attn @ layer.wo
         if trace is not None:
             after_attention = x.copy()
@@ -213,7 +265,8 @@ def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None,
         x = x + gelu(h @ layer.w1) @ layer.w2
         if trace is not None:
             trace["layers"].append({
-                "attention_weights": weights.copy(),   # (heads, new, seen)
+                # None when the kernel never assembled them (Chapter 20).
+                "attention_weights": None if weights is None else weights.copy(),
                 "keys": k.copy(), "values": v.copy(),
                 "after_attention": after_attention,
                 "after_feed_forward": x.copy(),

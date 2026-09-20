@@ -1035,6 +1035,121 @@ def ch19(d: dict) -> dict[str, str]:
     }
 
 
+def ch20(d: dict) -> dict[str, str]:
+    a, eq, ref, ti, ph = (d["assumptions"], d["equivalence"], d["reference"],
+                          d["tiles"], d["phases"])
+    sv = d["service"]
+    counted = {r["tokens"]: r for r in d["traffic"]}
+    rows = {r["tokens"]: r for r in ref["rows"]}
+    case = rows[a["prompt_tokens"]]
+    short, long = ref["rows"][0], ref["rows"][-1]
+    big = counted[max(counted)]
+    tiles = {r["tile"]: r for r in ti["rows"]}
+    best = tiles[ti["largest_that_fits"]]
+    over = next(r for r in ti["rows"] if not r["fits"])
+    mb = lambda x: f"{x / 1e6:,.0f} MB"
+    kb = lambda x: f"{x / 1024:,.0f} KB"
+    ms = lambda x: f"{x:,.2f} ms"
+    pct = lambda x: f"{x * 100:.0f}%"
+    return {
+        # the shape of everything
+        "prompt_tokens": f"{a['prompt_tokens']:,}",
+        "context_tokens": f"{a['context_tokens']:,}",
+        "heads": str(ref["heads"]),
+        "kv_heads": str(ref["kv_heads"]),
+        "head_dim": str(ref["head_dim"]),
+        "layers": str(ref["layers"]),
+        "q_tile": str(a["q_tile"]),
+        "kv_tile": str(a["kv_tile"]),
+        "hbm": f"{ref['hbm_bytes_per_s'] / 1e12:.2f} TB/s",
+        "sram": kb(ti["sram_bytes_per_sm"]),
+        "sram_block": kb(ti["sram_usable_per_block"]),
+        # the intermediate nobody needs
+        "case_square": mb(case["score_matrix_bytes"]),
+        "case_square_ratio": f"{case['square_over_inputs']:.1f}x",
+        "case_qkv": mb(case["qkv_bytes"]),
+        "case_square_all_layers": f"{case['score_matrix_gb_all_layers']:.1f} GB",
+        "long_tokens": f"{long['tokens']:,}",
+        "long_square": mb(long["score_matrix_bytes"]),
+        "long_square_ratio": f"{long['square_over_inputs']:.0f}x",
+        "short_tokens": f"{short['tokens']:,}",
+        "short_square_ratio": f"{short['square_over_inputs']:.1f}x",
+        "crossover": f"{ref['crossover_tokens']:,.0f}",
+        "crossover_heads": f"{ref['crossover_over_head_dim']:.1f}",
+        # what it costs to move
+        "case_whole": mb(case["whole_bytes"]),
+        "case_tiled": mb(case["tiled_bytes"]),
+        "case_ratio": f"{case['ratio']:.1f}x",
+        "case_ratio_resident": f"{case['ratio_block_resident']:.1f}x",
+        "case_tiled_resident": mb(case["tiled_bytes_block_resident"]),
+        "case_block": mb(case["block_bytes"]),
+        "case_saving": pct(case["saving"]),
+        "case_whole_ms": ms(case["whole_ms_all_layers"]),
+        "case_tiled_ms": ms(case["tiled_ms_all_layers"]),
+        "case_ms_saved": ms(case["whole_ms_all_layers"]
+                            - case["tiled_ms_all_layers"]),
+        "long_whole": mb(long["whole_bytes"]),
+        "long_tiled": mb(long["tiled_bytes"]),
+        "long_ratio": f"{long['ratio']:.1f}x",
+        "long_ratio_resident": f"{long['ratio_block_resident']:.1f}x",
+        "long_whole_ms": ms(long["whole_ms_all_layers"]),
+        "long_tiled_ms": ms(long["tiled_ms_all_layers"]),
+        "short_ratio": f"{short['ratio']:.1f}x",
+        "second_long_tokens": f"{ref['rows'][-2]['tokens']:,}",
+        "second_long_ratio": f"{ref['rows'][-2]['ratio']:.1f}x",
+        # it is exact
+        "same_tokens": "yes" if eq["same_tokens"] else "NO",
+        "tokens_generated": str(eq["tokens_generated"]),
+        "eq_prompt": f"{eq['prompt_tokens']:,}",
+        "tile_sizes_tried": str(len(eq["tile_sizes"])),
+        "attn_diff": f"{eq['attention_max_diff']:.1e}",
+        "attn_scale": f"{eq['attention_scale']:.2f}",
+        "attn_relative": f"{eq['attention_max_diff'] / eq['attention_scale']:.1e}",
+        "float32_eps": f"{eq['float32_eps']:.1e}",
+        "ulps": f"{eq['attention_max_diff'] / eq['attention_scale'] / eq['float32_eps']:.1f}",
+        "logit_diff": f"{max(r['max_logit_diff'] for r in eq['tile_sizes']):.1e}",
+        # counted, on the model that runs
+        "counted_tokens": f"{big['tokens']:,}",
+        "counted_whole": mb(big["whole_bytes"]),
+        "counted_tiled": mb(big["tiled_bytes"]),
+        "counted_ratio": f"{big['ratio']:.2f}x",
+        "counted_held_whole": mb(big["whole_largest_intermediate"]),
+        "counted_held_tiled": kb(big["tiled_largest_intermediate"]),
+        "counted_held_ratio": f"{big['intermediate_ratio']:,.0f}x",
+        "skipped": pct(big["skipped_share"]),
+        "measured_heads": str(a["measured_heads"]),
+        "measured_dim": str(a["measured_head_dim"]),
+        # the tile size
+        "best_tile": str(ti["largest_that_fits"]),
+        "best_tile_sram": kb(best["sram_bytes_reference_model"]),
+        "best_tile_share": pct(best["sram_share"]),
+        "best_tile_traffic": mb(best["bytes"]),
+        "over_tile": str(over["tile"]),
+        "over_tile_sram": kb(over["sram_bytes_reference_model"]),
+        "over_tile_share": pct(over["sram_share"]),
+        "smallest_tile": str(ti["rows"][0]["tile"]),
+        "smallest_tile_traffic": mb(ti["rows"][0]["bytes"]),
+        "tile_tokens": f"{ti['tokens']:,}",
+        # the range a kernel can actually use: smallest tried, to largest
+        # that fits in the scratchpad
+        "tile_traffic_spread": f"{ti['rows'][0]['bytes'] / best['bytes']:.1f}x",
+        # prefill against decode
+        "prefill_saving": pct(ph["prefill"]["saving"]),
+        "decode_saving": f"{ph['decode']['saving'] * 100:.1f}%",
+        "decode_kv_share": pct(ph["decode"]["kv_share_of_tiled"]),
+        "decode_square": f"{ph['decode']['score_matrix_bytes'] / 1e3:,.0f} KB",
+        "decode_whole": mb(ph["decode"]["whole_bytes"]),
+        "prefill_square_share": pct(ph["prefill"]["square_share_of_whole"]),
+        "counted_decode_saving":
+            f"{ph['counted']['decode']['saving'] * 100:.1f}%",
+        "counted_prefill_saving": pct(ph["counted"]["prefill"]["saving"]),
+        # what it is worth to the service
+        "rate": str(sv["requests_per_s"]),
+        "saved_per_prefill": ms(sv["saved_ms_per_prefill"]),
+        "saved_per_second": f"{sv['saved_s_per_s_of_traffic']:.2f}",
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -1153,7 +1268,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch12": ch12, "ch13": ch13, "ch14": ch14,
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
-            "ddr1": ddr1}[chapter](d)
+            "ch20": ch20, "ddr1": ddr1}[chapter](d)
 
 
 if __name__ == "__main__":

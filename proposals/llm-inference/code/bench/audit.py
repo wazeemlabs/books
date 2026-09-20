@@ -198,9 +198,26 @@ def figures_are_legible() -> list[str]:
         accepted = {k: v for k, v in json.loads(path.read_text()).items()
                     if not k.startswith("_")}
     problems = [f"overlapping labels: {p}" for p in found if p not in accepted]
-    stale = [k for k in accepted if k not in found]
-    problems += [f"accepted overlap no longer happens, drop it: {k}"
-                 for k in stale]
+
+    # An accepted entry that no longer reproduces is two different
+    # things. If its figure is gone, the entry is dead and must go. If
+    # the figure is still drawn, the label has simply landed somewhere
+    # else: `label_points` picks the first offset that is clear, and
+    # which offset that is depends on font metrics, so an entry for a
+    # marginal placement stops reproducing when the book is built on
+    # another machine. Failing on that would mean the accepted list
+    # could only ever be correct on one laptop. It is reported instead.
+    drawn = {f.stem for f in Path("figures").glob("*.svg")}
+    for k in accepted:
+        if k in found:
+            continue
+        figure = k.split(":", 1)[0].strip()
+        if figure not in drawn:
+            problems.append(f"accepted overlap names a figure that is no "
+                            f"longer drawn, drop it: {k}")
+        else:
+            print(f"  note: accepted overlap did not reproduce here "
+                  f"(label placement is font-dependent): {k}")
     return problems
 
 

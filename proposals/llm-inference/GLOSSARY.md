@@ -112,3 +112,7 @@ explanation.
 | disaggregation | 19 | Running prefill and decode on different machines, and moving the keys and values between them. |
 | tensor parallelism | 19 | Splitting each weight matrix across several accelerators so they share the work of one layer. A way to fit a model that does not fit, and to go faster once it does. |
 | design decision record | 19 | A short document naming a decision, what else was considered, the measurement that settled it, and the condition that would reverse it. One closes each Part of this book. |
+| score matrix | 20 | One number for every pair of a query position and a key position. It grows with the square of the sequence length, which is what makes attention expensive to move. |
+| SRAM | 20 | The small, fast scratchpad attached to each core of an accelerator, a few hundred kilobytes, against the tens of gigabytes of HBM everything shares. |
+| kernel launch | 20 | One instruction from the host processor telling the accelerator to run one program. Results pass between launches through HBM, which is why fusing two kernels into one saves traffic. |
+| online softmax | 20 | Finishing a softmax without having seen all of its inputs, by carrying a running maximum and rescaling what is already accumulated whenever the maximum moves. Exact, not approximate. |

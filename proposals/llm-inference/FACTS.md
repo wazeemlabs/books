@@ -163,3 +163,24 @@ Format: claim · value · source · last verified.
 | Claim | Value | Verified |
 |---|---|---|
 | Inference-specific books in print | *vLLM and the Engineering of Fast LLM Inference* (Leanpub, 2026-09); *The SGLang Production Handbook* (Leanpub, 2026-09); *Hands-On LLM Serving and Optimization* | 2026-09 |
+
+## Attention kernels
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| H100 shared memory per SM | 228 KB (A100: 164 KB) | NVIDIA Hopper Tuning Guide, release 13.3, §1 | 2026-09-20 |
+| H100 max shared memory per thread block | 227 KB; "CUDA reserves 1 KB of shared memory per thread block" | NVIDIA Hopper Tuning Guide 13.3 | 2026-09-20 |
+| H100 shared memory carveouts | "0, 8, 16, 32, 64, 100, 132, 164, 196 and 228 KB per SM" | NVIDIA Hopper Tuning Guide 13.3 | 2026-09-20 |
+| Static shared memory allocation limit | 48 KB, with explicit opt-in required above it | NVIDIA Hopper Tuning Guide 13.3 | 2026-09-20 |
+| FlashAttention is exact | "an IO-aware exact attention algorithm that uses tiling to reduce the number of memory reads/writes between GPU high bandwidth memory (HBM) and GPU on-chip SRAM" | Dao, Fu, Ermon, Rudra, Ré, arXiv:2205.14135, abstract | 2026-09-20 |
+| FlashAttention-1 IO complexity | "requires fewer HBM accesses than standard attention, and is optimal for a range of SRAM sizes" | arXiv:2205.14135, abstract | 2026-09-20 |
+| FlashAttention-1 speedups | 15% end-to-end on BERT-large (seq 512) over the MLPerf 1.1 record; 3x on GPT-2 (seq 1K) | arXiv:2205.14135, abstract | 2026-09-20 |
+| FlashAttention-3 speedup | "speedup on H100 GPUs by 1.5-2.0x with FP16" | Shah, Bikshandi, Zhang, Thakkar, Ramani, Dao, arXiv:2407.08608, abstract | 2026-09-20 |
+| FlashAttention-3 FP16 throughput | "reaching up to 740 TFLOPs/s (75% utilization)" | arXiv:2407.08608, abstract | 2026-09-20 |
+| FlashAttention-3 FP8 throughput | "close to 1.2 PFLOPs/s"; "2.6x lower numerical error than a baseline FP8 attention" | arXiv:2407.08608, abstract | 2026-09-20 |
+| FlashAttention-2 utilization on H100 | "only 35% utilization on the H100 GPU" | arXiv:2407.08608, abstract | 2026-09-20 |
+| vLLM backend selection | "vLLM iterates through backends in priority order"; "The first compatible backend is selected" | vLLM docs, Attention Backend Feature Support | 2026-09-20 |
+| vLLM backend override flags | `--attention-backend`, or `--attention-config.backend` / `-ac.backend` (mutually exclusive) | vLLM docs, Attention Backend Feature Support | 2026-09-20 |
+| vLLM FlashAttention version default | "Default is FA4 on SM100+ (Blackwell), FA3 on SM90 (Hopper), FA2 otherwise"; override `--attention-config.flash_attn_version` | vLLM docs, Attention Backend Feature Support | 2026-09-20 |
+| A100 memory hierarchy | "HBM: 1.5 TB/s (40 GB)" against "SRAM: 19 TB/s (20 MB)" -- about 13x the bandwidth, aggregate across all multiprocessors | Dao et al., arXiv:2205.14135, Figure 1 (left) | 2026-09-20 |
+| Online softmax | The running-maximum rescaling FlashAttention's one pass depends on | Milakov and Gimelshein, "Online normalizer calculation for softmax", arXiv:1805.02867 | 2026-09-20 |
