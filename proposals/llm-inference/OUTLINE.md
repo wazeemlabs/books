@@ -2,324 +2,566 @@
 
 **Subtitle:** Serve Models Fast and Cheap — The Path to Inference Engineering
 
-**Series:** the third "from the Ground Up" book. Book 1 built the model;
-Book 2 wielded the agent; this book serves the model at production speed
-and cost. It picks up exactly where *Large Language Models from the
-Ground Up* ends (Chapter 30, "Sampling & beyond").
+**Series:** the third *from the Ground Up* book. Book 1 built the model;
+Book 2 wielded the agent; this book serves the model at production
+speed and cost. It begins where *Large Language Models from the Ground
+Up* ends (Chapter 30, "Sampling & beyond").
 
-## Who it is for
+This outline is written against [STANDARDS.md](STANDARDS.md). Every
+chapter follows the nine-section skeleton defined there; this document
+gives each chapter's objectives, what is built and measured, and its
+primary sources.
 
-- Readers of Book 1 who have a working GPT and want the next job.
+## Audience and prerequisites
+
+- Readers of Book 1 with a working GPT who want the next job.
 - Backend and ML engineers who call an API today and want to own the
-  serving layer tomorrow.
-- Anyone targeting an inference / GPU performance / ML platform role.
+  serving layer.
+- Engineers targeting inference, GPU performance, or ML platform roles.
 
-Prerequisites: Python, basic PyTorch, and either Book 1 or an equivalent
-understanding of attention and autoregressive decoding. No CUDA required;
-Part IV explains kernels, it does not ask the reader to write them.
+Prerequisites: Python, basic PyTorch, and an understanding of attention
+and autoregressive decoding (Book 1 or equivalent). No CUDA is required;
+Part IV teaches the reader to read kernels and profiler output, not to
+write kernels.
 
-## The spine: build your own engine, then read the real ones
+## Thesis
 
-As Book 1 went micrograd → GPT, this book goes naive loop → engine.
-Parts II–VI grow one small Python engine (working name **`tinyserve`**)
-from a recompute-everything generate loop into one with a paged KV cache,
-continuous batching, chunked prefill, quantized weights, and speculative
-decoding. Every technique is built, measured, and only then named. In
-Part VII the reader opens vLLM and SGLang and recognizes every component.
+Inference is a memory-bandwidth problem wearing a compute problem's
+clothes. Every technique in this book is one of four moves: read fewer
+bytes per token (caching, quantization), amortize the bytes you read
+across more tokens (batching, speculation), stop doing work you do not
+need (paging, prefix reuse, chunking), or put the work where the
+hardware is idle (disaggregation, parallelism). The roofline model in
+Chapter 7 makes this visible; the rest of the book is its consequences.
 
-Two running models: Book 1's own 825K-parameter GPT (fits anywhere, every
-mechanism visible) and a Qwen/Llama-class open model in the 1B–8B range
-(real numbers). Every measurement in the book comes from the companion
-**benchmark harness** (Appendix A), which a reader reproduces on one
-rented GPU in under an hour. The harness is the book's proof and moat.
+## The spine: build an engine, then read the real ones
+
+Following Book 1's micrograd → GPT pattern, Parts II–VI grow one small
+Python engine, **`tinyserve`**, from a recompute-everything generate loop
+to a paged KV cache, continuous batching with chunked prefill,
+weight-only quantization, and speculative decoding. Each mechanism is
+built, measured against the harness, and only then given its name and
+its paper. In Part VII the reader opens vLLM and SGLang and recognizes
+every component.
+
+Two running models: Book 1's own 825K-parameter GPT (every mechanism
+visible on a CPU) and an 8B open model with published smaller sizes
+(real numbers on real hardware).
+
+## The running case study
+
+Defined in STANDARDS.md §7: a customer-support assistant on an 8B
+model, 200 requests/s at peak, 1,200 input / 300 output tokens, p99
+TTFT ≤ 1,000 ms, p99 ITL ≤ 50 ms, 99.9% availability, minimum cost per
+million output tokens. Chapter 4 states it, each Part's design decision
+record advances it, Chapter 40 sizes it, Chapter 41 prices it, and the
+capstone asks the reader to beat the book's number.
+
+## Numbers every inference engineer should know
+
+The front matter carries this table, in the spirit of "numbers every
+programmer should know". Values are for the H100 SXM (80 GB HBM3)
+unless stated and are re-verified at each revision.
+
+| Quantity | Value | Consequence |
+|---|---|---|
+| HBM bandwidth | 3.35 TB/s | The decode speed limit |
+| BF16 dense peak | ~990 TFLOP/s | The prefill speed limit |
+| FP8 dense peak | ~1,980 TFLOP/s | Why FP8 is the default |
+| Ridge point (BF16) | ~300 FLOP/byte | Below this you are bandwidth-bound |
+| NVLink per GPU | 900 GB/s | Tensor parallel is feasible in-node |
+| PCIe 5.0 x16 | ~64 GB/s per direction | Tensor parallel across PCIe is not |
+| 8B model, BF16 weights | 16 GB | Fits one GPU with room for cache |
+| Decode floor, 8B, batch 1 | 16 GB / 3.35 TB/s ≈ 4.8 ms/token | ~210 tok/s, and the GPU is 99% idle |
+| KV cache, 8B (32 layers, 8 KV heads, d=128, BF16) | 128 KiB per token | 1 GiB per 8K-token sequence |
+| Tokens in flight to reach the ridge, 8B | ~150 | The batch size that pays for the GPU |
+| Prefill, 8B, 1,000 tokens, ideal | 16 TFLOP / 990 TFLOP/s ≈ 16 ms | Real: 2–3× this |
+| Human reading speed | ~5 tokens/s | ITL below ~50 ms reads as instant |
+| H100 rental (2026) | ~$2–3 per hour | The denominator of every cost figure |
+
+Every row is derived in the chapter that owns it and checked by the
+harness.
 
 ## The compute ladder
 
-| Tier | Runs on | Parts |
-|------|---------|-------|
-| 0 | CPU / free Colab | I, II, III (825K GPT) |
-| 1 | Colab T4 or one consumer GPU | III (1B model), V, VI |
-| 2 | One rented H100/H200 (~$3/hr) | IV, VI (FP8), VII, VIII |
-| 3 | 2–8 GPU node, a few hours total | Ch 18, 37, 38 only |
+| Tier | Runs on | Chapters | Cost to reproduce |
+|---|---|---|---|
+| 0 | CPU / free Colab | 1–17 (825K GPT), 23 | $0 |
+| 1 | Colab T4 or one consumer GPU | 9–17 (1B model), 24, 26–31 | < $10 |
+| 2 | One rented H100/H200 | 19–22, 25, 32–36, 39–44 | ~$3/hr, < $60 total |
+| 3 | 2–8 GPU node | 18, 37, 38 | ~$25/hr, < $100 total |
 
-Tiers 0–1 cover roughly two thirds of the book. Total GPU budget to
-write it: a few thousand dollars; to read it: under $100.
-
-Conventions carried over from Book 1: ★/★★/★★★ exercises with ★ and ★★
-answers in Appendix B, "Watch it move" boxes pointing at browser labs,
-one Colab notebook per code chapter, and a course-fit appendix.
+Roughly two thirds of the book runs at Tier 0–1. Writing budget for
+the book's own measurements: a few thousand dollars.
 
 ---
 
-## Part I — Why Inference (no code)
+# Part I — Why Inference
 
-The reader leaves Part I able to explain, in plain words, why serving
-is expensive, why the two phases of a request behave differently, and
-what the job is.
+No code. The reader leaves able to explain why serving is expensive,
+why the two phases of a request behave differently, and what the job
+is.
 
-### 1. The Cost of a Token
-A model is trained once and served forever; inference is most of its
-lifetime cost. Follow one request from HTTP to bill. Cost per million
-tokens as the number the whole book optimizes. What an inference
-engineer does in a week, and what the role pays.
+## 1. The Cost of a Token
 
-### 2. Prefill and Decode
-The prompt is read all at once; the answer is written one token at a
-time. Why these are effectively two different programs with different
-bottlenecks, and why every optimization in the book targets one or the
-other. *Lab: watch one request move through both phases.*
+A model is trained once and served for its lifetime; inference is
+where the money goes. One request is followed from HTTP to invoice.
+Cost per million tokens is introduced as the number the book
+optimizes. What an inference engineer does in a week, and what the
+role pays.
 
-### 3. The Memory Wall
+- Objectives: decompose a request's cost into GPU-seconds; state the
+  three quantities that determine cost per token; describe the role.
+- Sources: public price sheets and rental rates (Appendix C); Jouppi
+  et al., "TPU v4" (ISCA 2023) for the inference-dominates-cost claim.
+
+## 2. Prefill and Decode
+
+The prompt is read in one parallel pass; the answer is written one
+token at a time. Why these are effectively two different programs with
+different bottlenecks, and why every optimization in the book targets
+one or the other.
+
+- Objectives: identify which phase a given optimization targets;
+  explain why TTFT and ITL are governed by different limits.
+- Lab: one request moving through both phases.
+- Sources: Vaswani et al., "Attention Is All You Need" (2017); Shazeer,
+  "Fast Transformer Decoding: One Write-Head is All You Need" (2019).
+
+## 3. The Memory Wall
+
 Weights live in HBM; every decode step re-reads all of them to produce
-one token. Bandwidth, not FLOPs, is the limit. Why a $30,000 GPU sits
-mostly idle serving one user, and why batching exists.
+one token. Bandwidth, not FLOPs, is the limit. Why a $30,000 GPU is
+99% idle serving one user, and why batching exists.
 
-### 4. Latency, Throughput, and the SLO
-Time to first token, inter-token latency, tokens per second, goodput.
-Why you cannot maximize all of them, p50 vs p99, and how a service level
-objective turns engineering into a constrained optimization.
+- Objectives: compute the decode floor of a model from its size and
+  the GPU's bandwidth; explain why more FLOPs do not help decode.
+- Sources: Wulf & McKee, "Hitting the Memory Wall" (1995); Pope et
+  al., "Efficiently Scaling Transformer Inference" (MLSys 2023).
 
-### 5. The Serving Landscape
-API vs self-hosting, the four engines (vLLM, SGLang, TensorRT-LLM,
-Dynamo), the hardware tiers, and who runs what. A map of the rest of
-the book.
+## 4. Latency, Throughput, and the SLO
 
-## Part II — Foundations
+TTFT, inter-token latency, throughput, goodput. Why they cannot all be
+maximized; p50 versus p99; why the tail is the product. A service
+level objective turns engineering into constrained optimization. The
+running case study is stated here.
 
-### 6. Reading the GPU
-SMs, HBM, the memory hierarchy, FLOPs versus bytes. `nvidia-smi` and
-what its numbers mean. How to rent an H100 for an hour without being
-surprised by the bill. *Build: a script that reports what a GPU can do.*
+- Objectives: write an SLO for a chat service; explain goodput; read a
+  latency-throughput curve and locate the operating point.
+- Sources: Dean & Barroso, "The Tail at Scale" (CACM 2013); Beyer et
+  al., *Site Reliability Engineering* (2016), ch. 4.
 
-### 7. Arithmetic Intensity and the Roofline
-Compute the intensity of prefill and decode by hand for a real model
-and place both on a roofline. The one graph that explains the whole
-book: decode is bandwidth-bound, prefill is compute-bound, and batching
-moves decode to the right. *Lab: the interactive roofline.*
+## 5. The Serving Landscape
 
-### 8. Measuring Honestly
-Build the benchmark harness: load generator, warmup, percentiles,
-fixed seeds, saturation curves. The seven ways published benchmarks
-lie (and how to avoid each). This harness is used in every later
-chapter. *Build: `bench/`.*
+API versus self-hosting, the four engines (vLLM, SGLang, TensorRT-LLM,
+Dynamo), the hardware tiers from consumer cards to racks, who runs
+what and why. A map of the rest of the book.
 
-### 9. Your Model on the Bench
-Load the 825K GPT and a 1B open model through plain PyTorch. First
-measurements: TTFT, ITL, throughput at batch 1. These baselines are
-the "before" for every number that follows.
+- Objectives: place a workload on the API/self-host decision tree;
+  name each engine's defining idea.
 
-## Part III — Build an Inference Engine from Scratch
+# Part II — Foundations
 
-Tier 0–1. Each chapter adds one mechanism to `tinyserve` and measures
-the gain against the harness.
+## 6. Reading the GPU
 
-### 10. The Naive Generate Loop
-Recompute the whole sequence every token. Measure it. Watch the cost
-grow with length. Name the waste.
+Streaming multiprocessors, HBM, the memory hierarchy, FLOPs versus
+bytes, `nvidia-smi` and what its numbers mean. Renting an H100 for an
+hour without surprises.
 
-### 11. The KV Cache
-Cache keys and values; compute only the new token. The single largest
-win in the book, built in forty lines. Memory math: bytes per token per
-layer, and what that means at 8K context. *Lab: KV cache fill-up.*
+- Build: a script that reports a GPU's measured (not nominal)
+  bandwidth and matmul throughput.
+- Sources: NVIDIA H100 whitepaper; CUDA C++ Programming Guide.
 
-### 12. Where the Memory Goes
-Preallocated caches waste most of their space: internal fragmentation,
-reservation for unknown lengths, and why "out of memory" arrives long
-before the GPU is full. Measure the waste.
+## 7. Arithmetic Intensity and the Roofline
 
-### 13. Paged Attention
-Virtual-to-physical block tables for the KV cache, exactly like an OS
-page table. Build it; measure recovered capacity and the batch sizes it
-unlocks. This is vLLM's founding idea, in the reader's own code.
+Compute the arithmetic intensity of prefill and decode by hand for a
+real model; place both on the roofline. The one graph that explains
+the book: decode sits far left, bandwidth-bound; batching moves it
+right; prefill sits near the ridge.
 
-### 14. Prefix Caching
-Shared system prompts computed once. Hashing blocks, a radix tree of
-prefixes (SGLang's RadixAttention), eviction policy, measured hit
-rates on realistic traffic. *Lab: the prefix tree.*
+- Objectives: compute intensity for any layer; predict from the
+  roofline whether a change will help; derive the ~150-token ridge
+  figure.
+- Lab: the interactive roofline, with the model and batch as sliders.
+- Sources: Williams, Waterman & Patterson, "Roofline" (CACM 2009).
 
-### 15. Batching
+## 8. Measuring Honestly
+
+Build the benchmark harness the rest of the book depends on: a
+closed- and open-loop load generator, warmup, percentiles, fixed
+seeds, saturation sweeps, JSON output. The seven ways published
+benchmarks mislead — averages, unstated load, cold runs, mismatched
+tokenizers, cherry-picked lengths, single runs, missing provenance —
+and the harness feature that prevents each.
+
+- Build: `bench/` (Appendix A).
+- Sources: Beyer et al., *SRE*, ch. 6; the GenAI-Perf and
+  `vllm bench` methodologies as public reference points.
+
+## 9. Your Model on the Bench
+
+Load the 825K GPT and the 1B model through plain PyTorch and measure
+TTFT, ITL, and throughput at batch 1. These baselines are the "before"
+for every number that follows.
+
+- Build: `tinyserve` v0 — a model, a tokenizer, a generate call.
+
+# Part III — Build an Inference Engine from Scratch
+
+Tier 0–1. Each chapter adds one mechanism and measures the gain.
+
+## 10. The Naive Generate Loop
+
+Recompute the whole sequence every token. Measure it; watch cost grow
+quadratically with length; name the waste precisely.
+
+- Numbers: FLOPs per token as a function of position.
+
+## 11. The KV Cache
+
+Cache keys and values; compute only the new token. The largest single
+win in the book, built in forty lines. The memory formula:
+2 × layers × KV heads × head dim × bytes per token.
+
+- Objectives: implement a KV cache; compute its size for any model;
+  explain what MQA/GQA change about it.
+- Lab: cache fill-up.
+- Sources: Shazeer (2019); Ainslie et al., "GQA" (EMNLP 2023).
+
+## 12. Where the Memory Goes
+
+Preallocated caches waste most of their space: reservation for unknown
+lengths, internal fragmentation, and why "out of memory" arrives long
+before the GPU is full. Measure the waste on realistic traffic.
+
+- Sources: Kwon et al., "Efficient Memory Management for Large Language
+  Model Serving with PagedAttention" (SOSP 2023), §3.
+
+## 13. Paged Attention
+
+Block tables mapping logical to physical KV blocks, exactly as an OS
+page table maps memory. Build it; measure recovered capacity and the
+batch sizes it unlocks. vLLM's founding idea, in the reader's code.
+
+- Sources: Kwon et al. (SOSP 2023).
+
+## 14. Prefix Caching
+
+Shared system prompts computed once. Hash-based block reuse; a radix
+tree of prefixes with LRU eviction; measured hit rates on the case
+study's traffic.
+
+- Lab: the prefix tree.
+- Sources: Zheng et al., "SGLang: Efficient Execution of Structured
+  Language Model Programs" (2024), RadixAttention.
+
+## 15. Batching
+
 Static batches, padding waste, ragged batches. Throughput rises,
-latency rises, and the roofline from Chapter 7 explains exactly why.
+latency rises, and Chapter 7's roofline predicts both.
 
-### 16. Continuous Batching
-Iteration-level scheduling: requests join and leave the batch every
-step. The scheduler loop, written out. The largest throughput jump
-after the KV cache. *Lab: watch requests stream in and out.*
+## 16. Continuous Batching
 
-### 17. Chunked Prefill and Scheduling Policies
-A long prompt stalls every other user's decode. Split prefill into
-chunks and interleave. Priorities, preemption, swapping, fairness, and
-the SLO-aware scheduler.
+Iteration-level scheduling: requests join and leave the batch at every
+step. The scheduler loop, written out. The largest throughput gain
+after the KV cache.
 
-### 18. Disaggregated Prefill and Decode
-Run the two phases on different GPUs and ship the KV cache between
-them. When it wins, what it costs, and how Dynamo does it. (Tier 3.)
+- Lab: requests streaming in and out of the batch.
+- Sources: Yu et al., "Orca: A Distributed Serving System for
+  Transformer-Based Generative Models" (OSDI 2022).
 
-## Part IV — Faster Kernels (understand, don't write)
+## 17. Chunked Prefill and Scheduling Policies
 
-### 19. Attention Kernels
-FlashAttention: tiling, IO awareness, why it is exact rather than
+One long prompt stalls every other user's decode. Split prefill into
+chunks and interleave. Priorities, preemption (recompute versus swap),
+fairness, and the SLO-aware scheduler.
+
+- Sources: Agrawal et al., "Taming Throughput-Latency Tradeoff in LLM
+  Inference with Sarathi-Serve" (OSDI 2024).
+
+## 18. Disaggregated Prefill and Decode
+
+Run the two phases on different GPUs and transfer the KV cache between
+them. When it wins, what the transfer costs, and how Dynamo and
+Mooncake do it. Tier 3.
+
+- Sources: Zhong et al., "DistServe" (OSDI 2024); Patel et al.,
+  "Splitwise" (ISCA 2024); Qin et al., "Mooncake" (2024).
+
+*Design decision record I: the case study's scheduler and cache
+policy, chosen from measurements.*
+
+# Part IV — Faster Kernels (understand, don't write)
+
+Tier 2. The goal is literacy: reading kernel code and profiler output.
+
+## 19. Attention Kernels
+
+FlashAttention: tiling, IO-awareness, why it is exact rather than
 approximate, and why it matters more for prefill than decode. Swap it
 into `tinyserve` and measure.
 
-### 20. Fused Operations and CUDA Graphs
+- Sources: Dao et al., "FlashAttention" (NeurIPS 2022); Dao,
+  "FlashAttention-2" (2023); Shah et al., "FlashAttention-3" (2024).
+
+## 20. Fused Operations and CUDA Graphs
+
 Kernel launch overhead dominates small-batch decode. Fusion,
 `torch.compile`, CUDA graph capture. Measure the latency floor drop.
 
-### 21. Precision and Tensor Cores
-FP32/FP16/BF16, what tensor cores actually accelerate, and the shapes
-that make a matmul fast or slow.
+- Sources: NVIDIA CUDA Programming Guide (graphs); PyTorch 2 paper
+  (Ansel et al., ASPLOS 2024).
 
-### 22. Reading a Real Kernel
-Walk through one production attention kernel (FlashInfer) and map each
-part to the reader's Python. The goal is literacy: reading kernel code
-and profiler output, not writing CUDA. *Build: profile `tinyserve` with
-Nsight and find the hot spot.*
+## 21. Precision and Tensor Cores
 
-## Part V — Smaller Models
+FP32/BF16/FP16/FP8, what tensor cores accelerate, and the shapes that
+make a matmul fast or slow.
 
-### 23. Quantization from the Ground Up
-Symmetric and asymmetric int8, scales and zero points, per-tensor vs
-per-channel, built by hand on a single layer. Error analysis before any
-library.
+- Sources: Micikevicius et al., "FP8 Formats for Deep Learning" (2022).
 
-### 24. Weight-Only Quantization
+## 22. Reading a Real Kernel
+
+Walk one production attention kernel (FlashInfer) end to end, mapping
+each part to the reader's Python. Profile `tinyserve` with Nsight
+Systems and find the hot spot.
+
+- Sources: Ye et al., "FlashInfer" (MLSys 2025).
+
+*Design decision record II: which kernel path the case study uses, and
+what it bought.*
+
+# Part V — Smaller Models
+
+## 23. Quantization from the Ground Up
+
+Symmetric and asymmetric int8, scales and zero points, per-tensor
+versus per-channel, built by hand on one layer. Error analysis before
+any library. Tier 0.
+
+- Sources: Jacob et al., "Quantization and Training of Neural Networks
+  for Efficient Integer-Arithmetic-Only Inference" (CVPR 2018).
+
+## 24. Weight-Only Quantization
+
 GPTQ, AWQ, INT4, calibration data, group size. Run each on the 8B
 model; measure memory, speed, and quality. Why weight-only helps
-decode (bandwidth) and not prefill.
+decode (bandwidth) and not prefill (compute).
 
-### 25. FP8 and Activation Quantization
-The H100/B200 default. Activation scaling, KV-cache quantization, and
-the near-free 2x. Where it breaks.
+- Sources: Frantar et al., "GPTQ" (ICLR 2023); Lin et al., "AWQ"
+  (MLSys 2024); Dettmers et al., "LLM.int8()" (NeurIPS 2022).
 
-### 26. Distillation and Pruning
-When a smaller model beats a quantized big one. Distilling onto a
+## 25. FP8 and Activation Quantization
+
+The H100/B200 default. Activation scaling, outlier channels, KV-cache
+quantization, the near-free 2×, and where it breaks.
+
+- Sources: Xiao et al., "SmoothQuant" (ICML 2023); Micikevicius et al.
+  (2022).
+
+## 26. Distillation and Pruning
+
+When a smaller model beats a quantized larger one. Distilling to a
 student, structured pruning, and the serving economics of each.
 
-### 27. Measuring What You Lost
+- Sources: Hinton et al., "Distilling the Knowledge in a Neural
+  Network" (2015); Muralidharan et al., "Minitron" (2024).
+
+## 27. Measuring What You Lost
+
 Evaluate before and after every compression step. The accuracy /
 latency / cost frontier drawn from the reader's own numbers, and the
-go/no-go decision a team actually has to make.
+go/no-go decision a team has to make.
 
-## Part VI — Faster Decoding
+*Design decision record III: the case study's model and precision.*
 
-### 28. Speculative Decoding
-A small draft model guesses; the big model verifies several tokens in
-one pass. Build it on `tinyserve`. Acceptance rate math, when it helps
-and when it hurts. *Lab: draft-and-verify.*
+# Part VI — Faster Decoding
 
-### 29. Self-Speculation and Draft Heads
-Medusa/EAGLE-style heads, n-gram and prompt-lookup drafting: speed
+## 28. Speculative Decoding
+
+A small draft model proposes; the target model verifies several tokens
+in one pass; sampling stays exact. Build it on `tinyserve`. Acceptance
+rate math, expected speedup, when it helps and when it hurts.
+
+- Lab: draft-and-verify.
+- Sources: Leviathan et al., "Fast Inference from Transformers via
+  Speculative Decoding" (ICML 2023); Chen et al., "Accelerating Large
+  Language Model Decoding with Speculative Sampling" (2023).
+
+## 29. Self-Speculation and Draft Heads
+
+Medusa and EAGLE-style heads, n-gram and prompt-lookup drafting: speed
 without a second model.
 
-### 30. Constrained Decoding
+- Sources: Cai et al., "Medusa" (ICML 2024); Li et al., "EAGLE" (ICML
+  2024).
+
+## 30. Constrained Decoding
+
 JSON and grammar-guided generation, structured outputs, and their real
 cost per token. How engines compile grammars to token masks.
 
-### 31. Caching Above the Model
+- Sources: Willard & Louf, "Efficient Guided Generation for Large
+  Language Models" (2023); Dong et al., "XGrammar" (2024).
+
+## 31. Caching Above the Model
+
 Exact-match and semantic caches, measured hit rates on agent and FAQ
 traffic, and the failure mode of serving a wrong cached answer.
 
-### 32. Long Context, Reasoning, and MoE
-Serving 128K+ prompts, thinking tokens and the new cost curve of
-reasoning models, and the basics of mixture-of-experts serving. Where
-the roofline moves for each.
+## 32. Long Context, Reasoning, and MoE
 
-## Part VII — The Production Stack
+Serving 128K+ prompts; thinking tokens and the new cost curve of
+reasoning models; mixture-of-experts serving and expert parallelism.
+Where the roofline moves for each.
 
-Tier 2. The reader now opens the real engines and recognizes every part.
+- Sources: Su et al., "RoFormer" (2021); Liu et al., "Ring Attention"
+  (2023); DeepSeek-AI, "DeepSeek-V3" (2024) and "DeepSeek-R1" (2025).
 
-### 33. vLLM
-Architecture tour with `tinyserve` as the map. Every flag traced back
-to a chapter. Deploy the 8B model and hit the baseline numbers.
+*Design decision record IV: decoding accelerations adopted by the case
+study, with the acceptance rates that justified them.*
 
-### 34. SGLang
+# Part VII — The Production Stack
+
+Tier 2–3. The reader opens the real engines and recognizes every part.
+
+## 33. vLLM
+
+Architecture tour with `tinyserve` as the map. Every flag traced to a
+chapter. Deploy the 8B model and reproduce the baseline numbers.
+
+- Sources: Kwon et al. (SOSP 2023); vLLM documentation at the pinned
+  version.
+
+## 34. SGLang
+
 RadixAttention, the frontend language, structured generation, and the
 workloads where it beats vLLM.
 
-### 35. TensorRT-LLM and Dynamo
-The NVIDIA path: compile-time optimization, engine builds, and
-disaggregated serving at rack scale.
+- Sources: Zheng et al. (2024).
 
-### 36. One Benchmark, Four Engines
-The same model, traffic, and hardware through all four engines. An
-honest, reproducible comparison table, and the decision framework for
-choosing one.
+## 35. TensorRT-LLM and Dynamo
 
-### 37. Multi-GPU Serving
+The NVIDIA path: ahead-of-time engine builds, compile-time
+optimization, and disaggregated serving at rack scale.
+
+## 36. One Benchmark, Four Engines
+
+The same model, traffic, and hardware through all four engines, from
+the harness. An honest, reproducible comparison and the decision
+framework for choosing.
+
+## 37. Multi-GPU Serving
+
 Tensor, pipeline, and expert parallelism; NCCL; when to shard and when
-to replicate. Serve a 70B model across a node. (Tier 3.)
+to replicate. Serve a 70B model across one node. Tier 3.
 
-### 38. Many Models, Many Tenants
+- Sources: Shoeybi et al., "Megatron-LM" (2019); Pope et al. (MLSys
+  2023).
+
+## 38. Many Models, Many Tenants
+
 Multi-LoRA serving, adapter routing, model routers, isolation and fair
 sharing between tenants.
 
-### 39. The Serving Layer
+- Sources: Sheng et al., "S-LoRA" (MLSys 2024); Chen et al., "Punica"
+  (MLSys 2024).
+
+## 39. The Serving Layer
+
 The gateway in front of the engine: OpenAI-compatible APIs, streaming,
-retries, backpressure, rate limits, timeouts, deployment on Kubernetes,
-autoscaling on the right signal.
+retries, backpressure, rate limits, timeouts; deployment on Kubernetes;
+autoscaling on the right signal (KV-cache pressure, not CPU).
 
-## Part VIII — Running Inference as a Business
+*Design decision record V: the case study's engine, topology, and
+gateway.*
 
-### 40. Capacity Planning
-Model the traffic, size the fleet from the SLO, and just enough
-queueing theory to predict p99 before buying hardware.
+# Part VIII — Running Inference as a Business
 
-### 41. GPU FinOps
+## 40. Capacity Planning
+
+Model the traffic; size the fleet from the SLO; just enough queueing
+theory (Little's law, M/M/c intuition, the tail) to predict p99 before
+buying hardware. The case study is sized here.
+
+- Sources: Harchol-Balter, *Performance Modeling and Design of
+  Computer Systems* (2013); Beyer et al., *SRE*, ch. 22.
+
+## 41. GPU FinOps
+
 Cost per million tokens from first principles: utilization, reserved
-vs spot, the build-vs-API decision with real numbers, and the
-break-even curve.
+versus spot, the build-versus-API decision with real numbers, and the
+break-even curve. The case study is priced here.
 
-### 42. Observability
-The metrics that matter, tracing one request end to end, dashboards,
-and catching a regression before users do.
+## 42. Observability
 
-### 43. Reliability and Incidents
+The metrics that matter (queue depth, KV utilization, TTFT/ITL
+percentiles, preemptions), tracing one request end to end,
+dashboards, and catching a regression before users do.
+
+- Sources: Beyer et al., *SRE*, ch. 6 and 10.
+
+## 43. Reliability and Incidents
+
 OOMs, stragglers, hot shards, bad rollouts, capacity cliffs. A runbook
-per failure, and the drills that make it routine.
+per failure and the drills that make them routine. Written as
+postmortems.
 
-### 44. Security and Compliance at the Serving Layer
+- Sources: Beyer et al., *SRE*, ch. 14–15; Dean & Barroso (2013).
+
+## 44. Security and Compliance at the Serving Layer
+
 Prompt and PII handling, tenant isolation, data residency, logging
 policy, and what an auditor will ask.
 
-### 45. Becoming an Inference Engineer
+## 45. The Inference Engineer
+
 The portfolio (the harness plus three write-ups), the interview
-questions mapped chapter by chapter, salary bands and how to negotiate,
-and the first ninety days on the job.
+questions mapped chapter by chapter, compensation bands and
+negotiation, and the first ninety days on the job.
 
-## Appendices
+*Design decision record VI: the case study's final architecture and
+its cost per million tokens — the number the capstone must beat.*
 
-- **A. The Benchmark Harness** — reference for `bench/`, every metric
-  defined, reproduction instructions.
+# Appendices
+
+- **A. The Benchmark Harness** — every metric defined, reproduction
+  instructions, JSON schema.
 - **B. Answers** to ★ and ★★ exercises.
-- **C. Hardware Cheat Sheet** — H100, H200, B200, MI300X, L40S, consumer
-  cards: memory, bandwidth, FLOPs by precision, price per hour.
+- **C. Hardware Cheat Sheet** — A100, H100, H200, B200, MI300X, L40S,
+  consumer cards: memory, bandwidth, FLOP/s by precision, rental price
+  at revision date.
 - **D. Engine Flag Crosswalk** — the same concept in vLLM, SGLang, and
   TensorRT-LLM.
 - **E. The Cost Model** — the spreadsheet and formulas behind Part VIII.
-- **F. Setting Up** — renting GPUs, Colab, local, and containers.
-- **G. For Instructors** — course-fit table, calendars, rubrics.
+- **F. Setting Up** — renting GPUs, Colab, local, containers,
+  `environment.lock`.
+- **G. For Instructors** — course-fit table, calendars, rubrics for
+  every ★★★ exercise.
 - **H. Capstone** — serve a given model under a given SLO at minimum
-  cost per million tokens; graded by the harness.
+  cost per million tokens; graded by the harness against Chapter 45's
+  number.
 - **I. Glossary.**
 
 ---
 
-## Suggested writing order
+# Writing order
 
-1. **Chapter 8 and Appendix A first.** The harness is what every other
-   chapter measures with; write it once and every number in the book
-   comes from it.
-2. **Part III** (the spine). If the engine works and the gains are
+1. **Chapter 8 and Appendix A** — the harness. Everything else
+   measures with it.
+2. **Part III** — the spine. If the engine works and the gains are
    measurable, the book works.
-3. **Parts I–II**, now that there is something concrete to point at.
+3. **Parts I–II**, once there is something concrete to point at.
 4. **Parts V–VI**, which extend the engine.
 5. **Part VII**, then **IV**, then **VIII** and Chapter 45.
 
-## Companion assets
+Each Part gets a design review against STANDARDS.md before writing
+begins (§8.2).
 
-- `llm-inference-book` (manuscript, own repo, per the series pattern)
-- `llm-inference-code`: `tinyserve/`, `bench/`, one notebook per code
-  chapter
-- Companion page at `books.wazeem.com/llm-inference/` with the labs, a
-  "what changed in the engines since print" page, and errata
+# Companion assets
+
+- `llm-inference-book` — manuscript, own repository per the series
+  pattern, with the review log.
+- `llm-inference-code` — `tinyserve/`, `bench/`, `environment.lock`,
+  one notebook per code chapter, CI per STANDARDS.md §3.3.
+- `books.wazeem.com/llm-inference/` — labs, "what changed in the
+  engines since print", errata-as-postmortems.
