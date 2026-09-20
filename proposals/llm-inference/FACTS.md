@@ -93,6 +93,24 @@ Format: claim · value · source · last verified.
 | SGLang `--max-prefill-tokens` | "The maximum number of tokens in a prefill batch"; default 16,384 | same | 2026-09 |
 | SGLang `--chunked-prefill-size` | chunk size for chunked prefill; -1 disables it; default `None` | same | 2026-09 |
 
+## Continuous batching and scheduling
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| Orca's headline result | "36.9x throughput improvement at the same level of latency" over NVIDIA FasterTransformer, on GPT-3 175B; the paper's two contributions are *iteration-level scheduling* and *selective batching* | Yu, Jeong, Kim, Kim and Chun, OSDI 2022, pp. 521-538 (usenix.org/conference/osdi22/presentation/yu) | 2026-09 |
+| vLLM `--scheduling-policy` | "The scheduling policy to use: - 'fcfs' means first come first served, i.e. requests are handled in order of arrival. - 'priority' means requests are handled based on given priority"; default `fcfs` | vLLM docs, `configuration/engine_args` | 2026-09 |
+| vLLM `--watermark` | "Fraction of total KV cache blocks to keep free when admitting waiting or preempted requests into running queue"; default `0.0` | same | 2026-09 |
+| vLLM `--gpu-memory-utilization` | "The fraction of GPU memory to be used for the model executor, ranging from 0 to 1"; default `0.92` | same | 2026-09 |
+| vLLM preemption mode | "In vLLM V1, the default preemption mode is `RECOMPUTE` rather than `SWAP`, as recomputation has lower overhead in the V1 architecture." Swap copied blocks to CPU memory; `vllm:num_requests_swapped` is "a legacy metric now deprecated, as CPU swapping is no longer used in V1" | vLLM docs, `configuration/optimization` and `design/metrics` | 2026-09 |
+| TensorRT-LLM's name for it | "TensorRT-LLM relies on a component, called the Batch Manager, to support in-flight batching of requests (also known in the community as continuous batching or iteration-level batching)" | NVIDIA/TensorRT-LLM, `docs/source/batch_manager.md` | 2026-09 |
+| vLLM preemption warning | "Sequence group 0 is preempted by PreemptionMode.RECOMPUTE mode because there is not enough KV cache space." | vLLM docs, `configuration/optimization` | 2026-09 |
+| vLLM remedies for frequent preemption | increase `gpu_memory_utilization`; decrease `max_num_seqs` or `max_num_batched_tokens`; increase `tensor_parallel_size` or `pipeline_parallel_size` | same | 2026-09 |
+| What a preempted request loses | "It will be re-scheduled in future and re-start its prefill phase"; the request "has been put back in the waiting queue in order to make room for other requests to complete" | vLLM docs, `design/metrics` | 2026-09 |
+| vLLM scheduler metrics | `vllm:num_requests_running` ("Number of requests currently running") and `vllm:num_requests_waiting`, both gauges; `vllm:time_to_first_token_seconds` and `vllm:inter_token_latency_seconds`, both histograms. No `vllm:num_preemptions_total` appears in the metrics design doc. | vLLM docs, `design/metrics` | 2026-09 |
+| SGLang `--schedule-policy` | "The scheduling policy of the requests"; default `fcfs`; also `lpm`, `random`, `dfs-weight`, `lof`, `priority`, `routing-key` | SGLang docs, `advanced_features/server_arguments` | 2026-09 |
+| SGLang `--schedule-conservativeness` | "How conservative the schedule policy is. A larger value means more conservative scheduling. Use a larger value if you see requests being retracted frequently."; default `1.0` | same | 2026-09 |
+| SGLang `--retraction-policy` | chooses which requests are removed when the KV cache fills: `length` prefers retracting requests with shorter outputs, `priority` retracts lower-priority ones first | same | 2026-09 |
+
 ## Prefix caching
 
 | Claim | Value | Source | Verified |

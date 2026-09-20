@@ -109,8 +109,8 @@ They are exceptions nonetheless.
 If you do serve it yourself, you will not write the server. Three
 open-source engines do this work, and they differ less than their
 documentation suggests — each has the KV cache of Chapter 12,
-the paging of Chapter 14 and the continuous batching of
-Chapter 17. What differs is the idea each one was
+the paging of Chapter 14 and the step-by-step
+scheduling of Chapter 17. What differs is the idea each one was
 built around.
 
 - **vLLM** — built around **paging the KV cache**. It introduced the

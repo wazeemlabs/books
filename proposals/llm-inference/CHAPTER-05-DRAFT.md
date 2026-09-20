@@ -57,6 +57,13 @@ producing a million tokens a second, all of them too late to be useful,
 has excellent throughput and zero goodput. Goodput is the honest
 number, and it is the one to put on a dashboard.
 
+Both are measured against the **offered load**
+<!-- defines: offered load -->: the work that arrives, whether or not
+the server can keep up with it. A server producing 1,000 tokens a
+second when 3,000 a second are being asked of it is not a server with
+1,000 tokens a second of throughput; it is a server falling behind at
+2,000 tokens a second, and the queue in front of it is growing.
+
 The first two belong to a user. The third belongs to your accountant.
 The fourth is the only one that belongs to both.
 

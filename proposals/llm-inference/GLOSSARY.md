@@ -60,6 +60,7 @@ explanation.
 | mixture-of-experts | 4 | A model that activates only a fraction of its parameters for each token, attacking the memory wall directly. |
 | percentile | 5 | A value below which a given share of measurements fall. The p99 is what the unluckiest request in a hundred experiences. |
 | goodput | 5 | Throughput that actually met the promise. Throughput that arrived too late to be useful counts for nothing. |
+| offered load | 5 | The work arriving at a server, whether or not it can keep up. Throughput is what came out; offered load is what was asked for. When the second exceeds the first, the queue grows and every latency number becomes a function of how long the test ran. |
 | service level objective | 5 | The stated promise a service makes about its latency and availability. Turns engineering into a constrained problem. |
 | concurrency | 1 | How many sequences are being served at the same time. |
 | queueing | 5 | Requests waiting because the server is busy. The reason a service degrades sharply rather than gradually. |
@@ -75,6 +76,7 @@ explanation.
 | warmup | 9 | Running work before timing it, so the measurement is not of first-run effects. |
 | median | 5 | The middle value. What the book reports, because an average is dragged by the tail. |
 | closed loop, open loop | 9 | Two ways to generate load. A closed loop slows its own clients when the server slows, so it can never reveal overload; an open loop sends at a fixed rate regardless. |
+| poisson process | 9 | The standard model of independent arrivals: a given average rate, with the gaps between arrivals varying rather than evenly spaced. It is what makes "twelve requests a second" bursty, and the bursts are what overload a server. |
 | differential testing | 10 | Checking one implementation against an independent one, rather than against a test written by the same author. |
 | baseline | 9 | The recorded "before" measurement, with provenance, that later work is compared against. |
 | contiguous | 13 | Occupying one unbroken run of memory. The requirement that paging removes. |
@@ -84,6 +86,7 @@ explanation.
 | paging | 3 | Storing a sequence's cache in fixed-size blocks that can be anywhere, so nothing need be reserved in advance. |
 | indirection | 14 | Reaching data through a table of addresses rather than directly. The cost paging pays for its flexibility. |
 | eviction, preemption | 12 | Taking memory back from a running sequence when the pool fills, and recomputing or restoring it later. |
+| scheduler | 12 | The part of a server that decides, over and over while it runs, which requests are worked on next and which wait. Not the model, and not the allocator; the thing that calls both. |
 | prefix | 3 | However much of a prompt's start another prompt also had. The unit prefix caching reuses. |
 | prefix caching | 3 | Reusing the keys and values of a prompt's opening because some earlier request already computed them. |
 | working set | 4 | The amount of data a piece of work actually touches, as opposed to how much it could touch. |
@@ -97,3 +100,7 @@ explanation.
 | least frequently used | 15 | The eviction rule that throws away whatever has been wanted least often. Blind to age, which is its weakness. |
 | copy-on-write | 15 | Sharing something until somebody writes to it, and copying only then. Prefix caching avoids needing it by sharing only blocks that are already full. |
 | side channel | 15 | Information leaked by how long something takes rather than by what it returns. |
+| continuous batching, iteration-level scheduling | 17 | Deciding which sequences are in the batch before every forward pass instead of once. Arrivals join at the next iteration; finished sequences leave immediately and free their slot. |
+| admission control | 17 | The decision about when to let new work into a system, as distinct from what to do with the work already in it. For a serving engine: when to start a waiting request's prefill. |
+| head-of-line blocking | 17 | Work stuck behind unrelated work in front of it, purely because of the order the two were put in. A static batch is head-of-line blocking by design. |
+| watermark | 17 | Memory a scheduler keeps free rather than handing out, so that the blocks freed by an eviction cannot immediately be spent re-admitting the sequence that was evicted. |

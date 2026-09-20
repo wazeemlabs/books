@@ -647,13 +647,129 @@ def ch16(d: dict) -> dict[str, str]:
     }
 
 
+def ch17(d: dict) -> dict[str, str]:
+    a, h = d["assumptions"], d["head_to_head"]
+    st, co = h["static"], h["continuous"]
+    rows = d["rows"]
+    keeps = lambda policy: [r["rate"] for r in rows
+                            if r["policy"] == policy and r["keeping_up"]]
+    static_ok, cont_ok = keeps("static"), keeps("continuous")
+    top = lambda policy: max(r["tokens_per_s"] for r in rows
+                             if r["policy"] == policy)
+    st_rows = sorted((r for r in rows if r["policy"] == "static"),
+                     key=lambda r: r["rate"])
+    co_rows = sorted((r for r in rows if r["policy"] == "continuous"),
+                     key=lambda r: r["rate"])
+    sweep = d["pool_sweep"]
+    full = sweep[0]
+    # The smallest pool that costs nothing: within 1% of the full pool's
+    # throughput and inside the time-to-first-token budget.
+    enough = [r for r in sweep
+              if r["tokens_per_s"] >= full["tokens_per_s"] * 0.99
+              and r["ttft_p99_ms"] <= a["ttft_budget_ms"]][-1]
+    worst = sweep[-1]
+    tl = d["timeline"]
+    ms = lambda x: f"{x:,.0f} ms"
+    s_ = lambda x: f"{x:,.1f} s"
+    return {
+        "rate": str(a["head_to_head_rate"]),
+        "requests": f"{a['n_requests']:,}",
+        "max_batch": str(a["max_batch"]),
+        "block": str(a["block"]),
+        "blocks": f"{a['blocks']:,}",
+        "pool_gb": f"{a['pool_bytes'] / 1e9:.0f} GB",
+        "ttft_budget": ms(a["ttft_budget_ms"]),
+        "itl_budget": f"{a['itl_budget_ms']:,.0f} ms",
+        "prompt_mean": f"{a['prompt_mean']:,}",
+        "output_mean": str(a["output_mean"]),
+        "offered": f"{st['offered_tokens_per_s']:,.0f}",
+        # the two policies, same trace, same second
+        "static_tok": f"{st['tokens_per_s']:,.0f}",
+        "cont_tok": f"{co['tokens_per_s']:,.0f}",
+        "tok_gain": f"{co['tokens_per_s'] / st['tokens_per_s']:.1f}x",
+        "static_ttft50": ms(st["ttft_p50_ms"]),
+        "static_ttft99": ms(st["ttft_p99_ms"]),
+        "cont_ttft50": ms(co["ttft_p50_ms"]),
+        "cont_ttft99": ms(co["ttft_p99_ms"]),
+        "ttft_gain": f"{st['ttft_p50_ms'] / co['ttft_p50_ms']:,.0f}x",
+        "static_ttft50_s": s_(st["ttft_p50_ms"] / 1e3),
+        "static_itl50": f"{st['itl_p50_ms']:.1f} ms",
+        "static_itl99": f"{st['itl_p99_ms']:.1f} ms",
+        "cont_itl50": f"{co['itl_p50_ms']:.1f} ms",
+        "cont_itl99": f"{co['itl_p99_ms']:.1f} ms",
+        "cont_itl_max": f"{co['itl_max_ms']:.0f} ms",
+        "static_itl_max": f"{st['itl_max_ms']:.0f} ms",
+        "pure_itl": f"{d['pure_decode_itl_ms']:.1f} ms",
+        "prefill_ms": f"{d['mean_prefill_ms']:.0f} ms",
+        "prefill_over_decode": f"{d['mean_prefill_ms'] / d['pure_decode_itl_ms']:.0f}x",
+        "itl_over_pure": f"{co['itl_p99_ms'] / d['pure_decode_itl_ms']:.0f}x",
+        "static_total50": s_(st["total_p50_s"]),
+        "cont_total50": s_(co["total_p50_s"]),
+        "static_total99": s_(st["total_p99_s"]),
+        "cont_total99": s_(co["total_p99_s"]),
+        "total_gain": f"{st['total_p50_s'] / co['total_p50_s']:.0f}x",
+        "static_batches": f"{st['prefill_iterations']:,}",
+        "static_formed": f"{st['mean_slots']:,.0f}",
+        "static_live": f"{st['mean_batch']:.1f}",
+        "cont_batch": f"{co['mean_batch']:.1f}",
+        "static_slots": f"{st['slot_utilization'] * 100:.0f}%",
+        "cont_slots": f"{co['slot_utilization'] * 100:.0f}%",
+        "static_idle": f"{st['idle_share'] * 100:.1f}%",
+        "cont_prefill_share": f"{co['prefill_share'] * 100:.0f}%",
+        "cont_decode_share": f"{co['decode_share'] * 100:.0f}%",
+        "static_span": s_(st["arrival_span_s"]),
+        "static_makespan": s_(st["makespan_s"]),
+        "cont_makespan": s_(co["makespan_s"]),
+        "static_drain": f"{st['drained_over_span']:.1f}x",
+        "cont_drain": f"{co['drained_over_span']:.2f}x",
+        "static_pool": f"{st['peak_pool_share'] * 100:.0f}%",
+        "cont_pool": f"{co['peak_pool_share'] * 100:.0f}%",
+        "pool_gain": f"{st['peak_blocks'] / co['peak_blocks']:.0f}x",
+        # rising load
+        "rate_low": str(min(r["rate"] for r in rows)),
+        "rate_high": str(max(r["rate"] for r in rows)),
+        "static_last_ok": (f"up to {max(static_ok)}" if static_ok
+                           else "none of the rates tested"),
+        "cont_last_ok": (f"{max(cont_ok)}" if cont_ok else "none"),
+        "static_itl99_low": f"{min(r['itl_p99_ms'] for r in st_rows):.0f} ms",
+        "static_itl99_high": f"{max(r['itl_p99_ms'] for r in st_rows):.0f} ms",
+        "static_ttft99_low": f"{st_rows[0]['ttft_p99_ms'] / 1e3:.0f} s",
+        "static_ttft99_high": f"{st_rows[-1]['ttft_p99_ms'] / 1e3:.0f} s",
+        "cont_itl99_low": f"{co_rows[0]['itl_p99_ms']:.0f} ms",
+        "cont_itl99_high": f"{max(r['itl_p99_ms'] for r in co_rows):.0f} ms",
+        "cont_ttft99_high": f"{co_rows[-1]['ttft_p99_ms']:,.0f} ms",
+        "static_top": f"{top('static'):,.0f}",
+        "cont_top": f"{top('continuous'):,.0f}",
+        "top_gain": f"{top('continuous') / top('static'):.1f}x",
+        # the pool
+        "sweep_rate": str(a["head_to_head_rate"]),
+        "enough_share": f"{enough['pool_share'] * 100:.0f}%",
+        "enough_gb": f"{enough['pool_gb']:.1f} GB",
+        "enough_tok": f"{enough['tokens_per_s']:,.0f}",
+        "enough_preempt": f"{enough['preemptions']:,}",
+        "worst_share": f"{worst['pool_share'] * 100:.0f}%",
+        "worst_gb": f"{worst['pool_gb']:.1f} GB",
+        "worst_tok": f"{worst['tokens_per_s']:,.0f}",
+        "worst_preempt": f"{worst['preemptions']:,}",
+        "worst_wasted": f"{worst['wasted_token_share'] * 100:.1f}%",
+        "worst_ttft99": s_(worst["ttft_p99_ms"] / 1e3),
+        "worst_batch": f"{worst['mean_batch']:.1f}",
+        "enough_batch": f"{enough['mean_batch']:.1f}",
+        "worst_drop": f"{full['tokens_per_s'] / worst['tokens_per_s']:.1f}x",
+        # the picture
+        "pic_n": str(len(tl["static"])),
+        "pic_static_last": s_(max(r["finish_s"] for r in tl["static"])),
+        "pic_cont_last": s_(max(r["finish_s"] for r in tl["continuous"])),
+    }
+
+
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
             "ch09": ch09, "ch10": ch10, "ch11": ch11,
             "ch12": ch12, "ch13": ch13, "ch14": ch14,
-            "ch15": ch15, "ch16": ch16}[chapter](d)
+            "ch15": ch15, "ch16": ch16, "ch17": ch17}[chapter](d)
 
 
 if __name__ == "__main__":

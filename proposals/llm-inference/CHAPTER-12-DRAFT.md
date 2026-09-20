@@ -352,7 +352,10 @@ what they do about the memory bill.
   taking memory back from a running sequence and recomputing or
   restoring it later, which is **preemption**. It must decide whose
   cache to drop and whether to recompute it or swap it out. That is
-  Chapter 18's scheduler.
+  the job of the **scheduler** <!-- defines: scheduler -->— the part of
+  a server that decides, over and over while it runs, which requests
+  are worked on next and which wait. Chapter 17 builds
+  one; Chapter 18 gives it a policy.
 
 ## Numbers to remember
 

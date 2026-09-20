@@ -184,6 +184,17 @@ something more, and the difference matters enough to name.
   rate regardless of whether the server is keeping up. This is how real traffic behaves, and it is
   the only way to find the load at which a service falls over.
 
+An open-loop generator needs a rule for *when* each request arrives,
+and the standard one is a **Poisson process**
+<!-- defines: poisson process -->: arrivals happen at some average
+rate, each one independent of the last, so the gaps between them vary
+instead of being evenly spaced. It is what "twelve requests a second"
+means when the twelve are real people rather than a metronome — some
+seconds bring three, some bring twenty-one. That clumping is the point.
+A generator that sends one request every 83 milliseconds never produces
+the bursts that overload a server, and so never finds the load at which
+it falls over.
+
 Use closed-loop to measure an operation, open-loop to measure a
 service. Chapter 41 needs the second, and exercise 9.5
 builds it.

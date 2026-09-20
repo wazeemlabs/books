@@ -137,6 +137,17 @@ def cross_chapter_consistency() -> list[str]:
         note("KV bytes per token", "ch15",
              r["ch15"]["assumptions"]["kv_bytes_per_token"])
         note("free pool bytes", "ch15", r["ch15"]["assumptions"]["pool_bytes"])
+        # Chapter 17's block pool is Chapter 15's bytes divided by a
+        # block; if either drifts, the two chapters describe different
+        # machines.
+        a15 = r["ch15"]["assumptions"]
+        note("block pool blocks", "ch15",
+             a15["pool_bytes"] // (a15["block"] * a15["kv_bytes_per_token"]))
+    if "ch17" in r:
+        a = r["ch17"]["assumptions"]
+        note("KV bytes per token", "ch17", a["kv_bytes_per_token"])
+        note("free pool bytes", "ch17", a["pool_bytes"])
+        note("block pool blocks", "ch17", a["blocks"])
     if "ch13" in r:
         note("KV bytes per token", "ch13", r["ch13"]["hardware"]["kv_bytes_per_token"])
         note("free pool bytes", "ch13", r["ch13"]["hardware"]["free_bytes"])

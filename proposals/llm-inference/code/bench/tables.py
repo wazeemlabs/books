@@ -547,6 +547,101 @@ def ch13_traffic(d: dict) -> str:
     ])
 
 
+def ch17_head_to_head(d: dict) -> str:
+    h, a = d["head_to_head"], d["assumptions"]
+    st, co = h["static"], h["continuous"]
+    ms = lambda x: f"{x:,.0f} ms"
+    rows = [
+        ("Output tokens a second",
+         f"{st['tokens_per_s']:,.0f}", f"{co['tokens_per_s']:,.0f}",
+         f"{co['tokens_per_s'] / st['tokens_per_s']:.1f}x"),
+        ("Time to first token, p50",
+         ms(st["ttft_p50_ms"]), ms(co["ttft_p50_ms"]),
+         f"{st['ttft_p50_ms'] / co['ttft_p50_ms']:,.0f}x"),
+        ("Time to first token, p99",
+         ms(st["ttft_p99_ms"]), ms(co["ttft_p99_ms"]),
+         f"{st['ttft_p99_ms'] / co['ttft_p99_ms']:,.0f}x"),
+        ("Between tokens, p50",
+         f"{st['itl_p50_ms']:.1f} ms", f"{co['itl_p50_ms']:.1f} ms",
+         f"{st['itl_p50_ms'] / co['itl_p50_ms']:.1f}x"),
+        ("Between tokens, p99",
+         f"{st['itl_p99_ms']:.1f} ms", f"{co['itl_p99_ms']:.1f} ms",
+         f"{co['itl_p99_ms'] / st['itl_p99_ms']:.1f}x worse"),
+        ("End to end, p50",
+         f"{st['total_p50_s']:.1f} s", f"{co['total_p50_s']:.1f} s",
+         f"{st['total_p50_s'] / co['total_p50_s']:.0f}x"),
+        ("Slots the batch held, mean",
+         f"{st['mean_slots']:,.0f}", f"{co['mean_slots']:,.1f}", "--"),
+        ("Sequences actually advancing, mean",
+         f"{st['mean_batch']:.1f}", f"{co['mean_batch']:.1f}", "--"),
+        ("Slots held that held live work",
+         f"{st['slot_utilization'] * 100:.0f}%",
+         f"{co['slot_utilization'] * 100:.0f}%", "--"),
+        ("Peak of the block pool",
+         f"{st['peak_pool_share'] * 100:.0f}%",
+         f"{co['peak_pool_share'] * 100:.0f}%",
+         f"{st['peak_blocks'] / co['peak_blocks']:.0f}x"),
+        ("Time to drain, over the arrival window",
+         f"{st['drained_over_span']:.1f}x", f"{co['drained_over_span']:.2f}x",
+         "--"),
+    ]
+    out = ["| | Static batching | Continuous batching | Ratio |", "|---|---|---|---|"]
+    out += [f"| {a_} | {b} | {c} | **{e}** |" for a_, b, c, e in rows]
+    out += ["", f"The same {a['n_requests']} requests, the same arrivals "
+                f"({a['head_to_head_rate']} a second, Poisson), the same "
+                f"prompt and output lengths, the same cost model for a "
+                f"prefill and a decode step. Only the scheduler differs. "
+                f"Static forms a batch when {a['max_batch']} requests have "
+                "arrived or one second has passed, whichever comes first, "
+                "and is given all the memory it asks for. Every ratio is "
+                "the better number over the worse one, except where it says "
+                "otherwise."]
+    return "\n".join(out)
+
+
+def ch17_load(d: dict) -> str:
+    a = d["assumptions"]
+    by = {}
+    for r in d["rows"]:
+        by.setdefault(r["rate"], {})[r["policy"]] = r
+    out = ["| Requests a second | Offered | Static: tokens/s | Static: TTFT p99 | "
+           "Continuous: tokens/s | Continuous: TTFT p99 | Continuous: between tokens, p99 |",
+           "|---|---|---|---|---|---|---|"]
+    for rate in sorted(by):
+        st, co = by[rate]["static"], by[rate]["continuous"]
+        mark = lambda r: "" if r["keeping_up"] else " \\*"
+        out.append(f"| {rate} | {st['offered_tokens_per_s']:,.0f} | "
+                   f"{st['tokens_per_s']:,.0f}{mark(st)} | "
+                   f"{st['ttft_p99_ms'] / 1e3:,.1f} s | "
+                   f"**{co['tokens_per_s']:,.0f}**{mark(co)} | "
+                   f"{co['ttft_p99_ms']:,.0f} ms | "
+                   f"{co['itl_p99_ms']:.0f} ms |")
+    out += ["", f"\\* not keeping up: the server took more than 10% longer to "
+                f"drain than the requests took to arrive, or missed the "
+                f"{a['ttft_budget_ms']:,} ms p99 time-to-first-token budget. "
+                f"Offered load is the arrival rate times the mean output "
+                f"length ({a['output_mean']} tokens), which is what the "
+                "service would have to produce to keep up."]
+    return "\n".join(out)
+
+
+def ch17_pool(d: dict) -> str:
+    a = d["assumptions"]
+    out = ["| Block pool | Sequences in flight | Tokens/s | TTFT p99 | "
+           "Preemptions | Tokens generated twice |",
+           "|---|---|---|---|---|---|"]
+    for r in d["pool_sweep"]:
+        out.append(f"| {r['pool_gb']:.1f} GB ({r['pool_share'] * 100:.0f}%) | "
+                   f"{r['mean_batch']:.1f} | **{r['tokens_per_s']:,.0f}** | "
+                   f"{r['ttft_p99_ms'] / 1e3:,.1f} s | {r['preemptions']:,} | "
+                   f"{r['wasted_token_share'] * 100:.1f}% |")
+    out += ["", f"Continuous batching at {a['head_to_head_rate']} requests a "
+                f"second through smaller and smaller pools. The full pool is "
+                f"{a['pool_bytes'] / 1e9:.0f} GB, which is what is left on one "
+                "accelerator after the weights. Nothing else changes."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -569,6 +664,8 @@ def main() -> None:
                  ("ch15-policies", ch15_policies)),
         "ch16": (("ch16-matmul", ch16_matmul), ("ch16-sweep", ch16_sweep),
                  ("ch16-waste", ch16_waste)),
+        "ch17": (("ch17-head-to-head", ch17_head_to_head),
+                 ("ch17-load", ch17_load), ("ch17-pool", ch17_pool)),
     }
     for chapter, entries in specs.items():
         path = RESULTS / f"{chapter}.json"

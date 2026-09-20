@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .reference import (HBM_BYTES_PER_S, KV_BYTES_PER_TOKEN, PARAMS,
+from .cost import flops_forward
+from .reference import (HBM_BYTES_PER_S, KV_BYTES_PER_TOKEN, MODEL, PARAMS,
                         PEAK_BF16_FLOPS, WEIGHT_BYTES)
 
 
@@ -82,3 +83,32 @@ def largest_batch_within(itl_ms: float, seq: int, ceiling: int) -> int:
         else:
             break
     return best
+
+
+def prefill_step(tokens: int, bytes_per_weight: int = 2) -> Step:
+    """Model the prefill of a prompt `tokens` long.
+
+    The same two costs as a decode step, with the numbers the other way
+    round: the arithmetic is over every token of the prompt at once, so
+    it dominates, and the weights are still fetched exactly once.
+
+    The FLOP count is Chapter 3's, which charges attention
+    `t_new * t_total` rather than the causal half. That makes this an
+    upper bound on prefill, which is the conservative direction for a
+    scheduler: it never under-states how long a prompt will stall
+    everyone else.
+    """
+    scale = bytes_per_weight / 2
+    bytes_read = int(WEIGHT_BYTES * scale)
+    flops = flops_forward(MODEL, tokens, tokens)
+    t_memory = bytes_read / HBM_BYTES_PER_S
+    t_compute = flops / PEAK_BF16_FLOPS
+    return Step(batch=1, seq=tokens, seconds=max(t_memory, t_compute),
+                bytes_read=bytes_read, flops=flops,
+                bound_by="memory" if t_memory >= t_compute else "compute")
+
+
+def test_prefill_is_compute_bound_and_decode_is_not() -> None:
+    """The division Chapter 3 measured, asserted where it is used."""
+    assert prefill_step(1200).bound_by == "compute"
+    assert decode_step(1, 1500).bound_by == "memory"

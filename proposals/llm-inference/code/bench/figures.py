@@ -35,6 +35,18 @@ def style(ax) -> None:
 
 def caption(d: dict) -> str:
     p = d["provenance"]
+    if "head_to_head" in d and "pool_sweep" in d:  # Chapter 17: the scheduler
+        a = d["assumptions"]
+        return (f"SIMULATION, not a measurement: {a['n_requests']} requests "
+                f"arriving as a Poisson process, prompt and output lengths "
+                f"from the case study (means {a['prompt_mean']:,} and "
+                f"{a['output_mean']}, seed {a['seed']}), driven through the "
+                f"schedulers in tinyserve/scheduler.py - what a prefill and a "
+                f"decode step cost is arithmetic over the reference model and "
+                f"published hardware specifications, not a timing run - block "
+                f"pool {a['pool_bytes'] / 1e9:.0f} GB, {a['blocks']:,} blocks "
+                f"of {a['block']} tokens - commit {p['commit']}, "
+                f"{p['measured_utc']}")
     if d.get("model_not_measurement"):  # a cost model, not a benchmark
         a = d["assumptions"]
         return (f"MODEL, not a measurement: arithmetic over published specs - "
@@ -1536,6 +1548,167 @@ def fig_static_batch(d: dict) -> None:
               f"what a batch of {len(rows)} pays for is work."))
 
 
+# --- Chapter 17: the batch decided again at every step -----------------
+
+def fig_scheduler_timeline(d: dict) -> None:
+    """The whole idea in one picture: when each request is being worked on."""
+    from matplotlib.patches import Patch
+
+    tl = d["timeline"]
+    end = max(r["finish_s"] for name in tl for r in tl[name])
+
+    fig, axes = plt.subplots(2, 1, figsize=(7.6, 5.2), dpi=200, sharex=True)
+    for ax, name, title in ((axes[0], "static", "Static: the batch is chosen once"),
+                            (axes[1], "continuous",
+                             "Continuous: the batch is chosen again every step")):
+        rows = tl[name]
+        for i, r in enumerate(rows):
+            y = len(rows) - i - 1
+            ax.barh(y, r["first_token_s"] - r["arrival_s"], left=r["arrival_s"],
+                    height=0.62, color="#DCE7FC", edgecolor="none")
+            ax.barh(y, r["finish_s"] - r["first_token_s"], left=r["first_token_s"],
+                    height=0.62, color=T.BLUE, edgecolor="none")
+            ax.plot([r["arrival_s"]], [y], marker="|", markersize=7,
+                    color=T.INK, markeredgewidth=1.2)
+        ax.set_ylim(-0.8, len(rows) - 0.2)
+        ax.set_yticks([])
+        ax.set_xlim(0, end * 1.02)
+        ax.set_ylabel("requests, in arrival order", fontsize=8)
+        ax.set_title(title, loc="left", fontsize=10)
+        ax.spines[["top", "right", "left"]].set_visible(False)
+        ax.grid(True, axis="x", alpha=0.25, linewidth=0.6)
+        ax.set_axisbelow(True)
+    axes[1].set_xlabel("seconds since the first request arrived")
+    axes[1].legend(handles=[Patch(facecolor="#DCE7FC", label="waiting"),
+                            Patch(facecolor=T.BLUE, label="generating"),
+                            plt.Line2D([], [], color=T.INK, marker="|",
+                                       linestyle="none", markersize=7,
+                                       label="arrived")],
+                   frameon=False, fontsize=7.6, ncol=3, loc="lower center",
+                   bbox_to_anchor=(0.5, -0.62))
+
+    st, co = tl["static"], tl["continuous"]
+    wait = lambda rows: sum(r["first_token_s"] - r["arrival_s"]
+                            for r in rows) / len(rows)
+    save(fig, "ch17-timeline", d,
+         alt=(f"Two stacked charts of the same {len(st)} requests. In the top "
+              "one, static batching, every request waits until the whole batch "
+              "is formed, then they all start and all keep their slot until the "
+              f"longest finishes; the mean wait for a first token is "
+              f"{wait(st):.1f} seconds and the last request finishes at "
+              f"{max(r['finish_s'] for r in st):.1f} seconds. In the bottom "
+              "one, continuous batching, each bar starts almost at its arrival "
+              "mark and ends when that request is done; the mean wait is "
+              f"{wait(co):.2f} seconds and the last finishes at "
+              f"{max(r['finish_s'] for r in co):.1f} seconds."))
+
+
+def fig_load(d: dict) -> None:
+    """What the two schedulers do as the traffic rises."""
+    a = d["assumptions"]
+    by = lambda policy: sorted((r for r in d["rows"] if r["policy"] == policy),
+                               key=lambda r: r["rate"])
+    st, co = by("static"), by("continuous")
+    x = [r["rate"] for r in st]
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(7.6, 3.5), dpi=200)
+
+    ax.plot(x, [r["offered_tokens_per_s"] for r in st], color=T.INK,
+            linestyle=":", linewidth=1.1, label="offered")
+    ax.plot(x, [r["tokens_per_s"] for r in st], color=T.AMBER, linestyle="-",
+            marker="o", markersize=4, linewidth=T.LINE_WIDTH, label="static")
+    ax.plot(x, [r["tokens_per_s"] for r in co], color=T.BLUE, linestyle="--",
+            marker="s", markersize=4, linewidth=T.LINE_WIDTH, label="continuous")
+    ax.set_xlabel("requests arriving a second")
+    ax.set_ylabel("output tokens a second")
+    ax.set_ylim(bottom=0)
+    ax.legend(frameon=False, fontsize=7.6, loc="upper left")
+    ax.set_title("What the server delivers", loc="left", fontsize=10)
+    T.style(ax)
+
+    ax2.plot(x, [r["ttft_p99_ms"] for r in st], color=T.AMBER, linestyle="-",
+             marker="o", markersize=4, linewidth=T.LINE_WIDTH, label="static")
+    ax2.plot(x, [r["ttft_p99_ms"] for r in co], color=T.BLUE, linestyle="--",
+             marker="s", markersize=4, linewidth=T.LINE_WIDTH, label="continuous")
+    ax2.axhline(a["ttft_budget_ms"], color=T.INK, linewidth=0.9, alpha=0.5)
+    ax2.annotate(f"the budget: {a['ttft_budget_ms']:,} ms",
+                 (x[0], a["ttft_budget_ms"]), textcoords="offset points",
+                 xytext=(2, 5), fontsize=7.2, color=T.INK)
+    ax2.set_yscale("log")
+    ax2.set_xlabel("requests arriving a second")
+    ax2.set_ylabel("wait for the first token, p99 (ms, log scale)")
+    ax2.legend(frameon=False, fontsize=7.6, loc="center right")
+    ax2.set_title("and what the user waits to see it start", loc="left",
+                  fontsize=10)
+    T.style(ax2)
+
+    save(fig, "ch17-load", d,
+         alt=("Two panels against arrival rate. Left: output tokens a second. "
+              f"The offered load rises to {st[-1]['offered_tokens_per_s']:,.0f} "
+              f"tokens a second; static flattens near "
+              f"{max(r['tokens_per_s'] for r in st):,.0f} and continuous "
+              f"reaches {max(r['tokens_per_s'] for r in co):,.0f}. Right: the "
+              "p99 wait for a first token on a log scale. Static is between "
+              f"{min(r['ttft_p99_ms'] for r in st) / 1e3:.0f} and "
+              f"{max(r['ttft_p99_ms'] for r in st) / 1e3:.0f} seconds "
+              "throughout, far above the one-second budget; continuous stays "
+              f"under {a['ttft_budget_ms']:,} milliseconds until "
+              f"{max(r['rate'] for r in co if r['ttft_p99_ms'] <= a['ttft_budget_ms'])} "
+              "requests a second."))
+
+
+def fig_itl(d: dict) -> None:
+    """The bill: your wait between tokens is now somebody else's prefill."""
+    a = d["assumptions"]
+    by = lambda policy: sorted((r for r in d["rows"] if r["policy"] == policy),
+                               key=lambda r: r["rate"])
+    st, co = by("static"), by("continuous")
+    x = [r["rate"] for r in co]
+    pure = d["pure_decode_itl_ms"]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.8), dpi=200)
+    ax.fill_between(x, [r["itl_p50_ms"] for r in co],
+                    [r["itl_p99_ms"] for r in co], color=T.BLUE, alpha=0.10)
+    ax.plot(x, [r["itl_p99_ms"] for r in co], color=T.BLUE, linestyle="--",
+            marker="s", markersize=4, linewidth=T.LINE_WIDTH,
+            label="continuous, p99")
+    ax.plot(x, [r["itl_p50_ms"] for r in co], color=T.BLUE, linestyle="-",
+            marker="s", markersize=3, linewidth=1.1, alpha=0.65,
+            label="continuous, p50")
+    ax.plot(x, [r["itl_p99_ms"] for r in st], color=T.AMBER, linestyle="-",
+            marker="o", markersize=4, linewidth=T.LINE_WIDTH,
+            label="static, p99")
+    ax.axhline(pure, color=T.INK, linewidth=0.9, alpha=0.55)
+    ax.annotate(f"the decode step alone: {pure:.1f} ms", (x[-1], pure),
+                textcoords="offset points", xytext=(-4, 5), ha="right",
+                fontsize=7.2, color=T.INK)
+    ax.axhline(a["itl_budget_ms"], color=T.INK, linewidth=0.9, linestyle=":",
+               alpha=0.7)
+    ax.annotate(f"the budget: {a['itl_budget_ms']} ms", (x[-1], a["itl_budget_ms"]),
+                textcoords="offset points", xytext=(-4, 5), ha="right",
+                fontsize=7.2, color=T.INK)
+    ax.set_xlabel("requests arriving a second")
+    ax.set_ylabel("wait between tokens (ms)")
+    ax.set_ylim(bottom=0)
+    ax.legend(frameon=False, fontsize=7.8, loc="upper left")
+    ax.set_title("Continuous batching puts other people's prefills "
+                 "inside your reply", loc="left", fontsize=10.5)
+    T.style(ax)
+
+    save(fig, "ch17-itl", d,
+         alt=("The wait between tokens against arrival rate. Continuous "
+              f"batching's median rises gently from {co[0]['itl_p50_ms']:.1f} "
+              f"to {co[-1]['itl_p50_ms']:.1f} milliseconds, close to the "
+              f"{pure:.1f} milliseconds a decode step alone would take, but "
+              f"its 99th percentile rises from {co[0]['itl_p99_ms']:.0f} to "
+              f"{max(r['itl_p99_ms'] for r in co):.0f} milliseconds and "
+              f"crosses the {a['itl_budget_ms']} millisecond budget. Static "
+              "batching's 99th percentile stays between "
+              f"{min(r['itl_p99_ms'] for r in st):.0f} and "
+              f"{max(r['itl_p99_ms'] for r in st):.0f} milliseconds: a fixed "
+              "batch has nothing to interrupt it."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -1547,7 +1720,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch10": [fig_framework],
             "ch11": [fig_waste], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory], "ch14": [fig_blocktable, fig_blocksize],
             "ch15": [fig_prefixtree, fig_prefill, fig_hitrate],
-            "ch16": [fig_matmul, fig_batch_tradeoff, fig_static_batch]}
+            "ch16": [fig_matmul, fig_batch_tradeoff, fig_static_batch],
+            "ch17": [fig_scheduler_timeline, fig_load, fig_itl]}
 
 
 def _check_no_shared_figure_functions() -> None:
