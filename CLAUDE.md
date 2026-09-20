@@ -1,51 +1,36 @@
 # CLAUDE.md
 
-## Re-verify before claiming anything is done
+## Never skip
 
-This applies to every chapter, outline, table, number, quote and
-citation — anything written here.
+Before calling anything done, in `proposals/llm-inference/code`:
 
-- **Numbers** come from a results file, never from memory or an earlier
-  draft. Re-run the check (`make check` in
-  `proposals/llm-inference/code`) and quote what it prints.
-- **Facts that age** — model names and sizes, prices, versions, hardware
-  specs, which books already exist — are re-checked by web search at
-  writing time, never recalled. Record value, source and date in
-  `FACTS.md`. My training has a cutoff; the field does not.
-- **Citations** — confirm the paper, authors and venue exist and say
-  what I claim they say. Never cite from memory alone.
-- **Prose** — re-read what I just wrote against the source it came
-  from, including cross-references and chapter numbers, before
-  committing.
-- **Code** — run it. A listing in a chapter must come from a file that
-  executes.
+    make check    # cross-references, code tests, manuscript audit, drift
 
-If something cannot be verified, mark it `UNVERIFIED` and say so.
-Never ship a confident-sounding guess.
+All four gates must pass. Then re-read the chapter against `OUTLINE.md`
+and `STANDARDS.md`, and check its numbers against the chapters around
+it. Only then start the next one.
 
-## Finish a chapter before starting the next
+## Never guess
 
-A chapter is not done when the prose is written. Before moving on:
+- **Numbers** — generated from a results file, never typed or recalled.
+- **Ageing facts** (models, prices, versions, specs, rival books) —
+  re-check by web search at writing time; record value, source and date
+  in `FACTS.md`. My training has a cutoff; the field does not.
+- **Citations** — confirm the authors, the venue, and that it says what
+  I claim.
+- **Code** — run it. Every listing comes from a file that executes.
 
-- Run `make check` in `proposals/llm-inference/code`. It runs the
-  cross-reference resolver, the code assertions, the whole-manuscript
-  audit and the drift check. All four must pass.
-- Re-read the chapter against the outline and the standards: is a
-  promised section missing, a figure generated but never shown, a
-  number quoted that nothing computes, a claim left unsourced?
-- Check the chapter's numbers against the chapters around it. The same
-  quantity must not have two answers in two places.
-- Say what you verified and what you changed. Only then start the next
-  chapter.
+Cannot verify it? Mark it `UNVERIFIED` and say so.
 
-Finding a mistake here is the system working. Fix the cause, not just
-the symptom: if a number could drift, make it generated; if a reference
-could go stale, make it symbolic; if a fact lived in four files, give
-it one home.
+## On finding a mistake
+
+Fix the cause, not the symptom: a number that could drift becomes
+generated, a reference that could go stale becomes symbolic, a fact
+living in four files gets one home.
 
 ## Reporting
 
-State what was verified and how. If a check was skipped or failed, say
-so plainly. Never report work as done when its check has not passed.
+Say what you verified and what you changed. Never report work as done
+when a check has not passed.
 
-Full rules for the inference book: `proposals/llm-inference/STANDARDS.md`.
+Full rules: `proposals/llm-inference/STANDARDS.md`.
