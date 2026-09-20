@@ -223,3 +223,10 @@ Format: claim · value · source · last verified.
 | vLLM on when speculation applies | speculative decoding is for reducing "inter-token latency under medium-to-low QPS (queries per second), memory-bound workloads" | vLLM docs, Speculative Decoding | 2026-09-21 |
 | vLLM `num_speculative_tokens` | "Number of speculative tokens to propose per step", integer > 0, default `None`, "Required for methods that do not infer it from model metadata" | vLLM docs, Speculative Decoding | 2026-09-21 |
 | vLLM on lighter draft methods | simpler methods "provide modest speedups without increasing workload during peak traffic"; Dynamic Speculative Decoding is "Useful for RL or workload with fluctuating QPS" | vLLM docs, Speculative Decoding | 2026-09-21 |
+
+## Capacity planning
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| Little's law, original | John D. C. Little, "A Proof for the Queuing Formula: L = λW", *Operations Research* 9(3), 1961, pp. 383-387, doi:10.1287/opre.9.3.383 | INFORMS listing and abstract | 2026-09-21 |
+| What it assumes | "if the three means are finite and the corresponding stochastic processes strictly stationary, and, if the arrival process is metrically transitive with nonzero mean, then L = λW" -- nothing about the service discipline, but stationarity is required | Little 1961, abstract | 2026-09-21 |

@@ -1231,6 +1231,98 @@ def ch29_reference(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch41_load(d: dict) -> str:
+    """What each offered load does to the server."""
+    a, cap = d["assumptions"], d["capacity"]
+    theory = {r["rate"]: r for r in d["theory"]["rows"]}
+    out = ["| Requests a second | Of capacity | In the system | "
+           "End to end, mean | p99 | TTFT p99 | Between tokens, p99 | "
+           "Tokens/s |", "|---|---|---|---|---|---|---|---|"]
+    for r in d["sweep"]:
+        t = theory[r["rate"]]
+        meets = (r["ttft_p99_ms"] <= a["ttft_budget_ms"]
+                 and r["itl_p99_ms"] <= a["itl_budget_ms"]
+                 and r["drained_over_span"] < 1.10)
+        rate = f"**{r['rate']}**" if meets else f"{r['rate']} *"
+        out.append(f"| {rate} | {t['utilization'] * 100:.0f}% "
+                   f"| {r['in_system']:.0f} | {r['mean_time_s']:.2f} s "
+                   f"| {r['p99_s']:.2f} s | {r['ttft_p99_ms']:,.0f} ms "
+                   f"| {r['itl_p99_ms']:.1f} ms "
+                   f"| {r['tokens_per_s']:,.0f} |")
+    out += ["", f"One machine, {a['n_requests']:,} requests at each rate, "
+                f"seed {a['seed']}. Bold rows keep both of the case study's "
+                f"promises -- {a['ttft_budget_ms']:,} ms to a first token "
+                f"and {a['itl_budget_ms']} ms between tokens, at the 99th "
+                f"percentile -- and finish soon after the traffic stops. "
+                f"Rows marked * break at least one. Capacity is "
+                f"{cap['tokens_per_s']:,.0f} tokens a second, which at "
+                f"{cap['output_mean']} tokens a reply is "
+                f"{cap['requests_per_s']:.1f} requests a second, and "
+                f"\"of capacity\" is measured against that."]
+    return "\n".join(out)
+
+
+def ch41_theory(d: dict) -> str:
+    """Measured slowdown against what classical queueing predicts."""
+    t = d["theory"]
+    out = ["| Of capacity | What this server does | "
+           "What a classical queue would do | Over-predicted by |",
+           "|---|---|---|---|"]
+    for r in t["rows"]:
+        if r["classical_slowdown"] is None:
+            out.append(f"| {r['utilization'] * 100:.0f}% "
+                       f"| {r['measured_slowdown']:.2f}x "
+                       f"| over capacity | -- |")
+        else:
+            out.append(f"| {r['utilization'] * 100:.0f}% "
+                       f"| {r['measured_slowdown']:.2f}x "
+                       f"| {r['classical_slowdown']:.2f}x "
+                       f"| **{r['over_prediction']:.1f}x** |")
+    out += ["", f"Slowdown is time in the system divided by "
+                f"{t['alone_seconds']:.2f} s, which is what one request "
+                "takes with the machine to itself. The classical column is "
+                "1 / (1 - utilization), the standard result for a "
+                "single-server queue and the arithmetic behind every rule "
+                "of thumb about not running servers hot. It does not "
+                "describe this server, and the last column is how much "
+                "hardware believing it would buy."]
+    return "\n".join(out)
+
+
+def ch41_sizing(d: dict) -> str:
+    """Three ways to size the same fleet."""
+    s_ = d["sizing"]
+    names = {
+        "throughput_only": "Throughput alone, ignoring the promise",
+        "classical_rule_of_thumb": "The 70% rule from classical queueing",
+        "measured_promise": "The load at which the promise still holds",
+    }
+    out = ["| How it was sized | Load a machine | Machines | Cost an hour |",
+           "|---|---|---|---|"]
+    loads = {
+        "throughput_only": s_["per_machine_at_capacity"],
+        "classical_rule_of_thumb": s_["per_machine_at_capacity"] * 0.70,
+        "measured_promise": s_["highest_rate_meeting_both_promises"],
+    }
+    for key, label in names.items():
+        n = s_["machines"][key]
+        cost = s_["usd_per_hour"][key]
+        row = f"| {label} | {loads[key]:.1f} req/s | {n} | ${cost:,.2f} |"
+        if key == "measured_promise":
+            row = (f"| **{label}** | **{loads[key]:.1f} req/s** | **{n}** "
+                   f"| **${cost:,.2f}** |")
+        out.append(row)
+    out += ["", f"For {s_['demand_requests_per_s']} requests a second. The "
+                f"promise holds up to {s_['highest_rate_meeting_both_promises']} "
+                f"requests a machine, which is "
+                f"{s_['utilization_there'] * 100:.0f}% of what the machine "
+                "can do -- far past where the classical rule would stop. "
+                "Sizing on throughput alone meets no promise at all; sizing "
+                "on the rule of thumb buys machines the measurement says "
+                "are not needed."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -1271,6 +1363,8 @@ def main() -> None:
         "ch29": (("ch29-acceptance", ch29_acceptance),
                  ("ch29-speedup", ch29_speedup),
                  ("ch29-reference", ch29_reference)),
+        "ch41": (("ch41-load", ch41_load), ("ch41-theory", ch41_theory),
+                 ("ch41-sizing", ch41_sizing)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),

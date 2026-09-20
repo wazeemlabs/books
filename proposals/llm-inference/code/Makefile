@@ -2,14 +2,14 @@
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make ddr1   - re-derive a Part's design decision record from its chapters
 #   make lock   - refresh environment.lock
-.PHONY: all venv ddr1 ch22 ch24 ch29 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all venv ddr1 ch22 ch24 ch29 ch41 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch41 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ddr1
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch41 ddr1
 
 ch01:
 	python3 -m bench.run_ch01
@@ -101,6 +101,10 @@ ch24:
 
 ch29:
 	python3 -m bench.run_ch29
+	$(MAKE) figures tables manuscript
+
+ch41:
+	python3 -m bench.run_ch41
 	$(MAKE) figures tables manuscript
 
 ddr1:

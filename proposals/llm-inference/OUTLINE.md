@@ -618,8 +618,10 @@ Chapter 22 needs only exact arithmetic on bit fields. Its measurement
 code is written and exercised; only the numbers wait.
 **24, Quantization from the Ground Up** follows it, for the same
 reason: it needs only exact arithmetic on the model's own weights.
-Next: **21** and **23** when a GPU is free; meanwhile the Tier 0
-chapters of Parts VI and VIII.
+Then **29, Speculative Decoding** and **41, Capacity Planning**, both
+Tier 0 and both built on machinery Part III already has.
+Next: **21** and **23** when a GPU is free; meanwhile the remaining
+Tier 0 chapters of Parts VI and VIII.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of

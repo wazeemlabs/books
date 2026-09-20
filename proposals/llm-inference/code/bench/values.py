@@ -1388,6 +1388,61 @@ def ch29(d: dict) -> dict[str, str]:
     }
 
 
+def ch41(d: dict) -> dict[str, str]:
+    a, cap, t, s_ = (d["assumptions"], d["capacity"], d["theory"], d["sizing"])
+    sweep = {r["rate"]: r for r in d["sweep"]}
+    rows = {r["rate"]: r for r in t["rows"]}
+    at = lambda u: min(t["rows"], key=lambda r: abs(r["utilization"] - u))
+    best = at(0.90)
+    worst = max((r for r in t["rows"] if r["classical_slowdown"]),
+                key=lambda r: r["over_prediction"])
+    hot = s_["highest_rate_meeting_both_promises"]
+    return {
+        "alone": f"{t['alone_seconds']:.2f} s",
+        "capacity_tokens": f"{cap['tokens_per_s']:,.0f}",
+        "capacity_requests": f"{cap['requests_per_s']:.1f}",
+        "output_mean": str(cap["output_mean"]),
+        "requests": f"{a['n_requests']:,}",
+        "rates": str(len(a["rates"])),
+        # Little's law
+        "little_steady": f"{t['largest_little_gap_while_steady'] * 100:.1f}%",
+        "little_broken": f"{t['largest_little_gap_overall'] * 100:.0f}%",
+        "little_breaks_at": str(t["first_unsteady_rate"]),
+        # theory against measurement
+        "at90_util": f"{best['utilization'] * 100:.0f}%",
+        "at90_measured": f"{best['measured_slowdown']:.2f}x",
+        "at90_classical": f"{best['classical_slowdown']:.1f}x",
+        "at90_over": f"{best['over_prediction']:.1f}x",
+        "worst_util": f"{worst['utilization'] * 100:.0f}%",
+        "worst_over": f"{worst['over_prediction']:.1f}x",
+        "worst_classical": f"{worst['classical_slowdown']:.0f}x",
+        "worst_measured": f"{worst['measured_slowdown']:.2f}x",
+        "half_measured": f"{at(0.50)['measured_slowdown']:.2f}x",
+        "half_classical": f"{at(0.50)['classical_slowdown']:.2f}x",
+        # sizing
+        "demand": str(s_["demand_requests_per_s"]),
+        "hot_rate": f"{hot:.0f}",
+        "hot_util": f"{s_['utilization_there'] * 100:.0f}%",
+        "hot_p99": f"{sweep[hot]['p99_s']:.2f} s",
+        "hot_mean": f"{sweep[hot]['mean_time_s']:.2f} s",
+        "hot_from_little": f"{sweep[hot]['in_system'] / hot:.2f} s",
+        "hot_ttft": f"{sweep[hot]['ttft_p99_ms']:,.0f} ms",
+        "hot_itl": f"{sweep[hot]['itl_p99_ms']:.1f} ms",
+        "hot_in_system": f"{sweep[hot]['in_system']:.0f}",
+        "machines_throughput": str(s_["machines"]["throughput_only"]),
+        "machines_rule": str(s_["machines"]["classical_rule_of_thumb"]),
+        "machines_measured": str(s_["machines"]["measured_promise"]),
+        "machines_saved": str(s_["machines"]["classical_rule_of_thumb"]
+                              - s_["machines"]["measured_promise"]),
+        "cost_measured": f"${s_['usd_per_hour']['measured_promise']:,.2f}",
+        "cost_rule": f"${s_['usd_per_hour']['classical_rule_of_thumb']:,.2f}",
+        "cost_saved": f"${s_['usd_per_hour']['classical_rule_of_thumb'] - s_['usd_per_hour']['measured_promise']:,.2f}",
+        "ttft_budget": f"{a['ttft_budget_ms']:,} ms",
+        "itl_budget": f"{a['itl_budget_ms']} ms",
+        "gpu_hour": f"${s_['gpu_usd_per_hour']:.2f}",
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -1507,7 +1562,8 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
             "ch20": ch20, "ch22": ch22,
-            "ch24": ch24, "ch29": ch29, "ddr1": ddr1}[chapter](d)
+            "ch24": ch24, "ch29": ch29, "ch41": ch41,
+            "ddr1": ddr1}[chapter](d)
 
 
 if __name__ == "__main__":

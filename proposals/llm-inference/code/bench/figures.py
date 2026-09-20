@@ -114,6 +114,20 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "sizing" in d and "theory" in d:  # Chapter 41: capacity planning
+        a = d["assumptions"]
+        return (f"SIMULATION, not a measurement: {a['n_requests']:,} requests "
+                f"arriving as a Poisson process at each of "
+                f"{len(a['rates'])} offered loads (means {a['prompt_mean']:,} "
+                f"prompt and {a['output_mean']} output tokens, seed "
+                f"{a['seed']}), driven through the scheduler of Chapter 18 "
+                f"at a {a['token_budget']}-token budget over "
+                f"{a['blocks']:,} blocks - what a step costs is arithmetic "
+                f"over the reference model, not a timing run - everything is "
+                f"measured in a window from {a['window'][0]:.0%} to "
+                f"{a['window'][1]:.0%} of the arrival span, past the ramp "
+                f"and before the drain - commit {p['commit']}, "
+                f"{p['measured_utc']}")
     if "exactness" in d and "speedups" in d:  # Chapter 29: speculation
         a = d["assumptions"]
         return (f"SAMPLING AND ARITHMETIC, not a timing run: the acceptance "
@@ -2940,6 +2954,128 @@ def fig_speculative_speedup(d: dict) -> None:
               "draft costing half a target step is barely worth running."))
 
 
+# --- Chapter 41: how much hardware, and how hot ------------------------
+
+def fig_little(d: dict) -> None:
+    """Little's law on a server it was not derived for."""
+    rows = d["theory"]["rows"]
+    sweep = {r["rate"]: r for r in d["sweep"]}
+    steady = [r for r in rows if r["steady"]]
+    broken = [r for r in rows if not r["steady"]]
+
+    fig, ax = plt.subplots(figsize=(6.6, 4.2), dpi=200)
+    top = max(sweep[r["rate"]]["lambda_times_w"] for r in rows) * 1.12
+    ax.plot([0, top], [0, top], color=T.MUTED, linewidth=0.9, linestyle=":")
+    for group, colour, mark, label in (
+            (steady, T.BLUE, "o", "in steady state"),
+            (broken, T.AMBER, "s", "still draining when the traffic stopped")):
+        if not group:
+            continue
+        ax.plot([sweep[r["rate"]]["in_system"] for r in group],
+                [sweep[r["rate"]]["lambda_times_w"] for r in group],
+                linestyle="none", marker=mark, markersize=6,
+                color=colour, label=label)
+    ax.set_xlabel("requests in the system, counted")
+    ax.set_ylabel("arrival rate x time in the system")
+    ax.set_title("Little's law holds until the system stops being steady",
+                 loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=7.8, loc="upper left")
+    T.style(ax)
+
+    t = d["theory"]
+    save(fig, "ch41-little", d,
+         alt=("The number of requests in the system plotted against the "
+              "arrival rate times the average time each spends there. "
+              "Little's law says these are equal, and the dotted line is "
+              "where equal would be. Every point taken while the server was "
+              "in steady state sits on it, to within "
+              f"{t['largest_little_gap_while_steady'] * 100:.1f}%. The "
+              "points that leave the line are the offered loads at which "
+              "the server was still working after the traffic stopped -- "
+              f"from {t['first_unsteady_rate']} requests a second -- where "
+              "the law's own assumption no longer holds. It is a check on "
+              "the measurement, not a property of the server."))
+
+
+def fig_utilization(d: dict) -> None:
+    """What a batching server does with load, against what theory says."""
+    rows = [r for r in d["theory"]["rows"] if r["classical_slowdown"]]
+
+    fig, ax = plt.subplots(figsize=(6.9, 4.3), dpi=200)
+    u = [r["utilization"] * 100 for r in rows]
+    ax.plot(u, [r["classical_slowdown"] for r in rows], marker="s",
+            markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.AMBER,
+            linestyle="--", label="what a classical queue would do")
+    ax.plot(u, [r["measured_slowdown"] for r in rows], marker="o",
+            markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE,
+            label="what this server does")
+    ax.set_yscale("log")
+    ax.set_xlabel("how full the machine is (% of its capacity)")
+    ax.set_ylabel("times slower than a request with the machine to itself")
+    ax.set_title("A server that batches does not queue",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+
+    ax.set_xlim(0, 104)
+    # A legend, not end labels: the classical curve turns vertical at
+    # the right and the two converge at the left, so there is nowhere
+    # beside either line to write.
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+
+    at90 = min(rows, key=lambda r: abs(r["utilization"] - 0.90))
+    save(fig, "ch41-utilization", d,
+         alt=("Slowdown against how full the machine is, on a log y axis. "
+              "The dashed line is the textbook single-server queue, where "
+              "time in the system grows as one over one minus utilization. "
+              "The solid line is measured. At "
+              f"{at90['utilization'] * 100:.0f}% of capacity the classical "
+              f"model predicts {at90['classical_slowdown']:.1f} times the "
+              f"service time and the server delivers "
+              f"{at90['measured_slowdown']:.2f} -- an over-prediction of "
+              f"{at90['over_prediction']:.1f} times. Requests do not wait in "
+              "a line for this server; they join the batch and everyone "
+              "slows down together, which degrades far more gently than "
+              "waiting does."))
+
+
+def fig_sizing(d: dict) -> None:
+    """Three ways to size the same fleet."""
+    s_ = d["sizing"]
+    labels = {
+        "throughput_only": "throughput alone\n(ignores the promise)",
+        "classical_rule_of_thumb": "the 70% rule\n(classical queueing)",
+        "measured_promise": "measured against\nthe promise",
+    }
+    keys = list(labels)
+    counts = [s_["machines"][k] for k in keys]
+    costs = [s_["usd_per_hour"][k] for k in keys]
+    colours = [T.RULE, T.AMBER, T.BLUE]
+
+    fig, ax = plt.subplots(figsize=(6.6, 3.9), dpi=200)
+    pos = list(range(len(keys)))
+    ax.bar(pos, counts, width=0.58, color=colours)
+    ax.set_xticks(pos, [labels[k] for k in keys], fontsize=7.8)
+    ax.set_ylabel("machines")
+    ax.set_ylim(0, max(counts) * 1.32)
+    ax.set_title(f"Sizing for {s_['demand_requests_per_s']} requests a "
+                 "second, three ways", loc="left", fontsize=10.5)
+    T.style(ax)
+    for x, (n, c) in enumerate(zip(counts, costs)):
+        ax.text(x, n + max(counts) * 0.04, f"{n}\n${c:,.2f}/hour",
+                ha="center", va="bottom", fontsize=8.0, color=T.INK)
+
+    save(fig, "ch41-sizing", d,
+         alt=("Three answers to how many machines the case study needs. "
+              f"Throughput alone says {counts[0]}, which meets no promise. "
+              f"The classical rule of never running above 70% says "
+              f"{counts[1]}. Measuring the load at which both promises "
+              f"actually still hold -- "
+              f"{s_['highest_rate_meeting_both_promises']} requests a "
+              f"machine, {s_['utilization_there'] * 100:.0f}% of capacity -- "
+              f"says {counts[2]}, at ${costs[2]:,.2f} an hour. The rule of "
+              f"thumb buys {counts[1] - counts[2]} machines nobody needs."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -2958,7 +3094,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch20": [fig_score_matrix, fig_traffic, fig_tiles],
             "ch22": [fig_bits, fig_accumulation, fig_range],
             "ch24": [fig_grid, fig_outlier, fig_margin],
-            "ch29": [fig_rule, fig_exactness, fig_speculative_speedup]}
+            "ch29": [fig_rule, fig_exactness, fig_speculative_speedup],
+            "ch41": [fig_little, fig_utilization, fig_sizing]}
 
 
 def _check_no_shared_figure_functions() -> None:
