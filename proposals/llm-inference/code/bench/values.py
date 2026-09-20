@@ -154,6 +154,40 @@ def ch01(d: dict) -> dict[str, str]:
     }
 
 
+def ch02(d: dict) -> dict[str, str]:
+    cfg, v, nt = d["model"]["config"], d["vocabulary"], d["next_token"]
+    t, r = d["cost"]["tiny"], d["cost"]["reference_8b"]
+    words = d["prompt"]["words"]
+    last_row = d["layers"][0]["attention_head_1"][-1]
+    top = nt["top_k"][0]
+    return {
+        "prompt": " ".join(words),
+        "tokens": str(d["prompt"]["tokens"]),
+        "n_tokens": str(len(words)),
+        "vocab": str(v["size"]),
+        "params": f"{d['model']['params']:,}",
+        "d_model": str(cfg["d_model"]),
+        "n_layers": str(cfg["n_layers"]),
+        "n_heads": str(cfg["n_heads"]),
+        "head_dim": str(d["model"]["head_dim"]),
+        "chosen": nt["chosen"],
+        "chosen_prob": f"{top['probability'] * 100:.1f}%",
+        "uniform_prob": f"{100 / v['size']:.1f}%",
+        # The worked reading of the last row of the attention figure.
+        "row_words": ", ".join(f"{w} {x:.2f}" for w, x in zip(words, last_row)),
+        "row_sum": f"{sum(last_row):.2f}",
+        "row_biggest_word": words[max(range(len(last_row)), key=lambda i: last_row[i])],
+        "row_biggest": f"{max(last_row):.2f}",
+        "tiny_mb": f"{t['weight_bytes_read_per_token'] / 1e6:.1f} MB",
+        "tiny_kv": f"{t['kv_bytes_per_token']:,} bytes",
+        "ref_gb": f"{r['weight_bytes_read_per_token'] / 1e9:.0f} GB",
+        "ref_kv": f"{r['kv_bytes_per_token'] / 1024:.0f} KiB",
+        "ref_flops": f"{r['flops_per_token'] / 1e9:.0f} billion",
+        "ffn_share": f"{d['parameter_split']['feed_forward_share'] * 100:.0f}%",
+        "ref_floor_ms": f"{r['decode_floor_ms']:.1f} milliseconds",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -189,7 +223,7 @@ def ch13(d: dict) -> dict[str, str]:
 
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
-    return {"ch01": ch01, "ch12": ch12, "ch13": ch13}[chapter](d)
+    return {"ch01": ch01, "ch02": ch02, "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

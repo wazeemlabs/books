@@ -140,7 +140,8 @@ class KVCache:
         return 2 * c.n_layers * c.n_kv_heads * c.head_dim * np.dtype(DType).itemsize
 
 
-def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None) -> np.ndarray:
+def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None,
+            trace: dict | None = None) -> np.ndarray:
     """Run the model over `tokens` and return logits, shape (len(tokens), vocab).
 
     With no cache, `tokens` is the whole sequence and the model recomputes
@@ -150,6 +151,10 @@ def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None) -> n
     and values of earlier tokens out of the cache instead of recomputing
     them, and the new keys and values are appended. This one function
     serves both prefill (many new tokens) and decode (one new token).
+
+    Pass a dict as `trace` to record the intermediate tensors. Chapter 2
+    uses it to show what actually happens to a prompt; nothing else does,
+    and it costs nothing when it is None.
     """
     cfg = model.cfg
     t = len(tokens)
@@ -157,6 +162,10 @@ def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None) -> n
     n_rep = cfg.n_heads // cfg.n_kv_heads
 
     x = model.tok_emb[tokens] + model.pos_emb[start : start + t]
+    if trace is not None:
+        trace["tokens"] = tokens.tolist()
+        trace["embedding"] = x.copy()
+        trace["layers"] = []
 
     # Query position start+i may attend to key position j <= start+i.
     total = start + t
@@ -182,13 +191,27 @@ def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None) -> n
             v = np.repeat(v, n_rep, axis=0)
 
         scores = (q @ k.transpose(0, 2, 1)) * cfg.head_dim**-0.5 + mask
-        attn = (softmax(scores) @ v).transpose(1, 0, 2).reshape(t, -1)
+        weights = softmax(scores)
+        attn = (weights @ v).transpose(1, 0, 2).reshape(t, -1)
         x = x + attn @ layer.wo
+        if trace is not None:
+            after_attention = x.copy()
 
         h = rms_norm(x, layer.g2)
         x = x + gelu(h @ layer.w1) @ layer.w2
+        if trace is not None:
+            trace["layers"].append({
+                "attention_weights": weights.copy(),   # (heads, new, seen)
+                "keys": k.copy(), "values": v.copy(),
+                "after_attention": after_attention,
+                "after_feed_forward": x.copy(),
+            })
 
     if cache is not None:
         cache.length = total
 
-    return rms_norm(x, model.g_out) @ model.tok_emb.T
+    logits = rms_norm(x, model.g_out) @ model.tok_emb.T
+    if trace is not None:
+        trace["final"] = x.copy()
+        trace["logits"] = logits.copy()
+    return logits

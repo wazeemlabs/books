@@ -8,6 +8,7 @@ Working materials for the third *from the Ground Up* book.
 | [STANDARDS.md](STANDARDS.md) | The bar every chapter is held to — evidence, sourcing, reproducibility, pedagogy, currency |
 | [FACTS.md](FACTS.md) | The facts register: every time-sensitive claim with its source and verification date |
 | [CHAPTER-01-DRAFT.md](CHAPTER-01-DRAFT.md) | **Generated.** Chapter 1, "The Cost of a Token" |
+| [CHAPTER-02-DRAFT.md](CHAPTER-02-DRAFT.md) | **Generated.** Chapter 2, "What a Model Does When It Answers" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -40,6 +41,12 @@ track of by hand:
   `bench/figures.py` with provenance written beside them. Change a
   measurement and every sentence quoting it changes too, or the build
   fails.
+- **Figures cannot be drawn by eye.** `bench/theme.py` holds one
+  validated palette. The categorical pair passes every check of the
+  visualization validator; the book's brand navy is deliberately *not*
+  a series colour, because the validator fails it as one (it reads as
+  near-black grey). Sequential ramps are asserted monotonic in
+  perceptual lightness, so they stay readable in greyscale.
 - **Cross-references cannot go stale.** Chapters are referenced
   symbolically (`{{ch:paged-attention}}`), resolved against `OUTLINE.md`
   at render time. `bench/xref.py` rejects any literal "Chapter 14" in a

@@ -1,0 +1,2 @@
+ALT: Horizontal bars showing the ten highest-scoring next words out of 48, led by 'river' at 10.1%. A dotted line marks 2.1%, the score every word would get from pure chance. The model is untrained, so the ranking carries no meaning; the shape of the output does.
+PROVENANCE: one forward pass of tinyserve, 801,920 params (4L/4H/d=128), 48-word vocabulary, untrained (seed 0) - prompt ['the', 'cat', 'sat', 'on', 'the'] - commit c58d105, traced 2026-09-20T11:46:17Z

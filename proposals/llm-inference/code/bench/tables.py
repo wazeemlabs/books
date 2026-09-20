@@ -80,6 +80,43 @@ def ch01_cost(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch02_shapes(d: dict) -> str:
+    sh, cfg, v = d["shapes"], d["model"]["config"], d["vocabulary"]
+    n = sh["tokens"][0]
+    rows = [
+        ("The prompt, as text", '"' + " ".join(d["prompt"]["words"]) + '"', "-"),
+        ("As token numbers", str(d["prompt"]["tokens"]), f"{n}"),
+        ("After the lookup table", "a vector per token",
+         f"{n} x {cfg['d_model']}"),
+        (f"Through each of the {cfg['n_layers']} layers", "same shape in, same shape out",
+         f"{n} x {cfg['d_model']}"),
+        ("Keys and values kept per layer", "what attention reads later",
+         f"{sh['keys_per_layer'][0]} x {n} x {d['model']['head_dim']}"),
+        ("Scores for the next token", f"one per word in the vocabulary",
+         f"{n} x {v['size']}"),
+        ("Used to write a token", "only the last row matters", f"{v['size']}"),
+    ]
+    out = ["| Stage | What it is | Shape |", "|---|---|---|"]
+    out += [f"| {a} | {b} | `{c}` |" for a, b, c in rows]
+    return "\n".join(out)
+
+
+def ch02_cost(d: dict) -> str:
+    t, r = d["cost"]["tiny"], d["cost"]["reference_8b"]
+    tp, tf = d["model"]["params"], 2 * d["model"]["params"]
+    return "\n".join([
+        "| Per token written | This chapter's model | A production 8B model |",
+        "|---|---|---|",
+        f"| Parameters | {tp:,} | {r['params'] / 1e9:.0f} billion |",
+        f"| Weights read | {t['weight_bytes_read_per_token'] / 1e6:.1f} MB (fp32) | "
+        f"{r['weight_bytes_read_per_token'] / 1e9:.0f} GB (bf16) |",
+        f"| Arithmetic | {tf / 1e6:.1f} million operations | "
+        f"{r['flops_per_token'] / 1e9:.0f} billion operations |",
+        f"| Keys and values stored | {t['kv_bytes_per_token']:,} bytes | "
+        f"{r['kv_bytes_per_token'] / 1024:.0f} KiB |",
+    ])
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -117,6 +154,7 @@ def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
         "ch01": (("ch01-cost", ch01_cost),),
+        "ch02": (("ch02-shapes", ch02_shapes), ("ch02-cost", ch02_cost)),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),
