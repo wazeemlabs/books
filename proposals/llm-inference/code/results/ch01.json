@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "measured_utc": "2026-09-20T12:02:04Z",
+    "measured_utc": "2026-09-20T12:18:31Z",
     "hardware": {
       "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
       "cores_available": 4,
@@ -12,7 +12,7 @@
       "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
       "blas": "scipy-openblas"
     },
-    "commit": "0a7a6e8"
+    "commit": "6efc295"
   },
   "model_not_measurement": true,
   "note": "Arithmetic over published specs and prices; not a benchmark. Part VII measures the real thing.",

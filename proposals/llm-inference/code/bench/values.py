@@ -251,6 +251,44 @@ def ch04(d: dict) -> dict[str, str]:
     }
 
 
+def ch05(d: dict) -> dict[str, str]:
+    m, cs, c = d["measured"], d["case_study"], d["curve"]
+    tight = min(d["budgets"], key=lambda b: b["itl_budget_ms"])
+    binding = [b for b in d["budgets"] if not b["limited_by_memory_not_budget"]]
+    loosest_binding = max(binding, key=lambda b: b["itl_budget_ms"]) if binding else tight
+    return {
+        "samples": f"{m['samples']:,}",
+        "mean_ms": f"{m['mean_ms']:.2f} ms",
+        "p50_ms": f"{m['p50_ms']:.2f} ms",
+        "p99_ms": f"{m['p99_ms']:.2f} ms",
+        "p999_ms": f"{m['p999_ms']:.2f} ms",
+        "max_ms": f"{m['max_ms']:.2f} ms",
+        "tail_ratio": f"{m['p99_over_p50']:.1f}x",
+        "mean_ratio": f"{m['mean_over_p50']:.2f}x",
+        "batch1_tps": f"{c[0]['tokens_per_s']:,.0f}",
+        "batch1_itl": f"{c[0]['inter_token_ms']:.1f} ms",
+        "batchmax": str(c[-1]["batch"]),
+        "batchmax_tps": f"{c[-1]['tokens_per_s']:,.0f}",
+        "batchmax_itl": f"{c[-1]['inter_token_ms']:.0f} ms",
+        "throughput_gain": f"{c[-1]['tokens_per_s'] / c[0]['tokens_per_s']:.0f}x",
+        "latency_cost": f"{c[-1]['inter_token_ms'] / c[0]['inter_token_ms']:.0f}x",
+        "tight_budget": f"{tight['itl_budget_ms']} ms",
+        "tight_batch": str(tight["largest_batch"]),
+        "binding_budget": f"{loosest_binding['itl_budget_ms']} ms",
+        "ttft_ms": f"{cs['achieved_ttft_ms']:.0f} ms",
+        "ttft_allowed": f"{cs['ttft_ms']:,} ms",
+        "ttft_headroom": f"{cs['ttft_headroom']:.0f}x",
+        "case_itl": f"{cs['itl_ms']} ms",
+        "case_batch": str(cs["operating_batch"]),
+        "case_achieved_itl": f"{cs['achieved_itl_ms']:.0f} ms",
+        "case_tps": f"{cs['tokens_per_s']:,.0f}",
+        "reply_s": f"{cs['reply_seconds']:.1f} seconds",
+        "words_per_s": f"{1000 / cs['achieved_itl_ms']:.0f}",
+        "output": str(cs["output"]),
+        "prompt": f"{cs['prompt']:,}",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -287,7 +325,7 @@ def ch13(d: dict) -> dict[str, str]:
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
-            "ch12": ch12, "ch13": ch13}[chapter](d)
+            "ch05": ch05, "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

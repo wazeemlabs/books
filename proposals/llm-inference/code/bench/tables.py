@@ -176,6 +176,34 @@ def ch04_wall(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch05_budgets(d: dict) -> str:
+    out = ["| Latency budget | Largest batch it allows | Throughput | Cost per 1M output tokens | What stops you |",
+           "|---|---|---|---|---|"]
+    for b in d["budgets"]:
+        stop = "memory runs out first" if b["limited_by_memory_not_budget"] else "the budget"
+        out.append(f"| {b['itl_budget_ms']} ms | {b['largest_batch']} | "
+                   f"{b['tokens_per_s']:,.0f} tok/s | "
+                   f"**${b['usd_per_m_tokens']:.3f}** | {stop} |")
+    out += ["", "Arithmetic over published specs, not a measurement. The "
+                "batch is also capped at "
+                f"{d['case_study']['max_concurrent']} sequences by the memory "
+                "accounting in Chapter 13."]
+    return "\n".join(out)
+
+
+def ch05_percentiles(d: dict) -> str:
+    m = d["measured"]
+    rows = [("Mean", m["mean_ms"]), ("p50 (median)", m["p50_ms"]),
+            ("p90", m["p90_ms"]), ("p99", m["p99_ms"]),
+            ("p99.9", m["p999_ms"]), ("Slowest seen", m["max_ms"])]
+    out = ["| | Time for one decode step | Relative to the median |", "|---|---|---|"]
+    for name, v in rows:
+        out.append(f"| {name} | {v:.2f} ms | {v / m['p50_ms']:.2f}x |")
+    out += ["", f"{m['samples']:,} consecutive decode steps on tinyserve, "
+                "nothing else running."]
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -216,6 +244,7 @@ def main() -> None:
         "ch02": (("ch02-shapes", ch02_shapes), ("ch02-cost", ch02_cost)),
         "ch03": (("ch03-measured", ch03_measured), ("ch03-reference", ch03_reference)),
         "ch04": (("ch04-machine", ch04_machine), ("ch04-wall", ch04_wall)),
+        "ch05": (("ch05-percentiles", ch05_percentiles), ("ch05-budgets", ch05_budgets)),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),

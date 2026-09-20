@@ -77,6 +77,8 @@ def cross_chapter_consistency() -> list[str]:
     if "ch02" in r:
         note("8B weight bytes", "ch02",
              r["ch02"]["cost"]["reference_8b"]["weight_bytes_read_per_token"])
+    if "ch05" in r:
+        note("concurrent sequences", "ch05", r["ch05"]["case_study"]["max_concurrent"])
     if "ch13" in r:
         note("KV bytes per token", "ch13", r["ch13"]["hardware"]["kv_bytes_per_token"])
         paged = next((x for x in r["ch13"]["policies"] if x["policy"] == "paged_16"), None)

@@ -11,6 +11,7 @@ rest of the book exists.
 
 from __future__ import annotations
 
+from tinyserve import serving
 from tinyserve.reference import (GPU_BYTES, GPU_USD_PER_HOUR, HBM_BYTES_PER_S,
                                  KV_BYTES_PER_TOKEN, PARAMS, PEAK_BF16_FLOPS,
                                  WEIGHT_BYTES)
@@ -29,25 +30,17 @@ API_INPUT_USD_PER_M = 0.02
 
 
 def decode_step(batch: int, seq: int = SEQ_LEN) -> dict:
-    """One decode step for `batch` sequences, under a roofline model.
-
-    Each step reads every weight once for the whole batch -- that cost is
-    shared -- plus each sequence's own KV cache, which is not shared. It
-    does two floating-point operations per parameter per token.
-    """
-    bytes_read = WEIGHT_BYTES + batch * seq * KV_BYTES_PER_TOKEN
-    flops = 2 * PARAMS * batch
-    t_memory = bytes_read / HBM_BYTES_PER_S
-    t_compute = flops / PEAK_BF16_FLOPS
-    t = max(t_memory, t_compute)
+    """One decode step for `batch` sequences, under the shared roofline
+    model in tinyserve/serving.py."""
+    step = serving.decode_step(batch, seq)
     return {
         "batch": batch,
-        "tokens_per_s": batch / t,
-        "step_ms": t * 1e3,
-        "bound_by": "memory" if t_memory >= t_compute else "compute",
-        "usd_per_m_tokens": (GPU_USD_PER_HOUR / 3600) / (batch / t) * 1e6,
-        "flop_utilization": flops / PEAK_BF16_FLOPS / t,
-        "weight_share_of_bytes": WEIGHT_BYTES / bytes_read,
+        "tokens_per_s": step.tokens_per_s,
+        "step_ms": step.inter_token_ms,
+        "bound_by": step.bound_by,
+        "usd_per_m_tokens": step.usd_per_m_tokens(GPU_USD_PER_HOUR),
+        "flop_utilization": step.flop_utilization,
+        "weight_share_of_bytes": WEIGHT_BYTES / step.bytes_read,
     }
 
 

@@ -1,0 +1,2 @@
+ALT: Distribution of 1,500 decode-step times. The bulk sits near the median of 0.77 milliseconds, with a right tail reaching 1.78. The 99th percentile is 1.09 milliseconds, 1.4 times the median, and the 99.9th is 1.23.
+PROVENANCE: tail measured over 1,500 decode steps on tinyserve - Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU, NumPy 2.4.6 - the throughput curve and budgets are arithmetic over published specs, not measurements - commit 6efc295, 2026-09-20T12:19:07Z

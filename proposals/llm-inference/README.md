@@ -11,6 +11,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-02-DRAFT.md](CHAPTER-02-DRAFT.md) | **Generated.** Chapter 2, "What a Model Does When It Answers" |
 | [CHAPTER-03-DRAFT.md](CHAPTER-03-DRAFT.md) | **Generated.** Chapter 3, "Prefill and Decode" |
 | [CHAPTER-04-DRAFT.md](CHAPTER-04-DRAFT.md) | **Generated.** Chapter 4, "The Memory Wall" |
+| [CHAPTER-05-DRAFT.md](CHAPTER-05-DRAFT.md) | **Generated.** Chapter 5, "Latency, Throughput, and the SLO" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -98,6 +99,10 @@ committed numbers.
   bandwidth — 1.6x above the prediction at 3.3 MiB, 1.09x at 753 MiB.
   The memory hierarchy is measured rather than described: 46 GB/s while
   the working set fits in cache, 13 GB/s once it does not.
+- Chapter 5 states the case study's promise and finds that the promise
+  does not bind: every latency budget looser than 15 ms permits the
+  same batch, because memory runs out before latency does. The first
+  job of an SLO is to say which constraint is actually binding.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

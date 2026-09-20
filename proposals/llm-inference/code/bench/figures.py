@@ -68,6 +68,13 @@ def caption(d: dict) -> str:
                 f"{mc['flops'] / 1e9:.0f} GFLOP/s, breaks even at "
                 f"{mc['ridge_flop_per_byte']:.0f} FLOP/byte - "
                 f"commit {p['commit']}, {p['measured_utc']}")
+    if "curve" in d and "budgets" in d:  # Chapter 5: measured tail + modelled curve
+        mm = d["measured"]
+        return (f"tail measured over {mm['samples']:,} decode steps on tinyserve - "
+                f"{p['hardware']['cpu']}, {p['hardware']['cores_available']} vCPU, "
+                f"NumPy {p['software']['numpy']} - the throughput curve and "
+                f"budgets are arithmetic over published specs, not measurements - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -607,9 +614,87 @@ def fig_wall(d: dict) -> None:
               "the time to fetch the weights."))
 
 
+
+
+# --- Chapter 5: latency, throughput, and what a budget buys -------------
+
+def fig_tradeoff(d: dict) -> None:
+    """Throughput is bought with latency. A budget decides how much."""
+    c = d["curve"]
+    x = [r["tokens_per_s"] for r in c]
+    y = [r["inter_token_ms"] for r in c]
+
+    fig, ax = plt.subplots(figsize=(7.2, 4.0), dpi=200)
+    ax.plot(x, y, color=T.BLUE, marker="o", markersize=4,
+            linewidth=T.LINE_WIDTH, zorder=3)
+    for r in c:
+        if r["batch"] in (1, 16, 64, 174, 325) or r is c[-1]:
+            ax.annotate(f"batch {r['batch']}", (r["tokens_per_s"], r["inter_token_ms"]),
+                        textcoords="offset points", xytext=(7, -3), fontsize=7.2,
+                        color=T.MUTED)
+
+    for b in d["budgets"]:
+        ax.axhline(b["itl_budget_ms"], color=T.AMBER, linestyle=":", linewidth=1.1)
+        ax.text(min(x) * 1.05, b["itl_budget_ms"],
+                f" {b['itl_budget_ms']} ms budget -> batch {b['largest_batch']}",
+                fontsize=7.2, color=T.AMBER, va="bottom")
+
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlabel("throughput (tokens per second, log)")
+    ax.set_ylabel("what one user waits between words (ms, log)")
+    ax.set_title("Throughput is bought with latency", loc="left", fontsize=11)
+    last = c[-1]
+    ax.annotate("the curve stops here because\nmemory runs out, not latency",
+                xy=(last["tokens_per_s"], last["inter_token_ms"]),
+                xytext=(last["tokens_per_s"] * 0.34, last["inter_token_ms"] * 2.3),
+                fontsize=7.2, color=T.INK,
+                arrowprops=dict(arrowstyle="->", lw=0.8, color=T.INK))
+    T.style(ax)
+
+    save(fig, "ch05-tradeoff", d,
+         alt=("Inter-token latency against throughput as the batch grows, both "
+              "axes logarithmic. Serving more sequences at once raises "
+              f"throughput from {x[0]:,.0f} to {x[-1]:,.0f} tokens per second and raises "
+              f"what each user waits between words from {y[0]:.1f} to {y[-1]:.0f} "
+              "milliseconds. Dotted lines mark latency budgets; the loosest "
+              "budgets all permit the same batch, because memory, not "
+              "latency, is what finally stops the curve."))
+
+
+def fig_tail(d: dict) -> None:
+    """The average is not the experience."""
+    m = d["measured"]
+    edges, counts = m["histogram_edges"], m["histogram"]
+    centres = [(edges[i] + edges[i + 1]) / 2 for i in range(len(counts))]
+    width = (edges[1] - edges[0]) * 0.92
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.6), dpi=200)
+    ax.bar(centres, counts, width=width, color=T.BLUE)
+    for label, key, style, h in (("p50", "p50_ms", "-", 0.97),
+                                 ("p99", "p99_ms", "--", 0.80),
+                                 ("p99.9", "p999_ms", ":", 0.63)):
+        ax.axvline(m[key], color=T.AMBER, linestyle=style, linewidth=1.4)
+        ax.text(m[key], max(counts) * h, f" {label} {m[key]:.2f} ms",
+                fontsize=7.4, color=T.AMBER, va="top")
+
+    ax.set_xlabel("time for one decode step (ms)")
+    ax.set_ylabel(f"steps (of {m['samples']:,})")
+    ax.set_title("Most steps are quick; the ones users remember are not",
+                 loc="left", fontsize=11)
+    T.style(ax)
+
+    save(fig, "ch05-tail", d,
+         alt=(f"Distribution of {m['samples']:,} decode-step times. The bulk sits near "
+              f"the median of {m['p50_ms']:.2f} milliseconds, with a right tail reaching "
+              f"{m['max_ms']:.2f}. The 99th percentile is {m['p99_ms']:.2f} milliseconds, "
+              f"{m['p99_over_p50']:.1f} times the median, and the 99.9th is "
+              f"{m['p999_ms']:.2f}."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
-            "ch04": [fig_cliff, fig_wall], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch04": [fig_cliff, fig_wall],
+            "ch05": [fig_tradeoff, fig_tail], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def main() -> None:

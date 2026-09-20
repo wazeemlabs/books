@@ -1,0 +1,250 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T12:19:07Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "6efc295"
+  },
+  "measured": {
+    "samples": 1500,
+    "prompt": 128,
+    "mean_ms": 0.7667260973318358,
+    "p50_ms": 0.7668954999644484,
+    "p90_ms": 0.9253216999240977,
+    "p99_ms": 1.092381920027492,
+    "p999_ms": 1.2334103879143312,
+    "max_ms": 1.7800670000269747,
+    "min_ms": 0.5100469998069457,
+    "p99_over_p50": 1.4244208240602956,
+    "mean_over_p50": 0.9997791059764721,
+    "histogram": [
+      21,
+      45,
+      73,
+      84,
+      112,
+      115,
+      129,
+      160,
+      162,
+      193,
+      108,
+      73,
+      69,
+      66,
+      43,
+      16,
+      8,
+      6,
+      6,
+      1,
+      6,
+      2,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "histogram_edges": [
+      0.5100469998069457,
+      0.5417974998124464,
+      0.5735479998179471,
+      0.6052984998234479,
+      0.6370489998289486,
+      0.6687994998344493,
+      0.70054999983995,
+      0.7323004998454508,
+      0.7640509998509515,
+      0.7958014998564522,
+      0.8275519998619529,
+      0.8593024998674537,
+      0.8910529998729544,
+      0.9228034998784551,
+      0.9545539998839558,
+      0.9863044998894566,
+      1.0180549998949573,
+      1.049805499900458,
+      1.0815559999059587,
+      1.1133064999114595,
+      1.1450569999169602,
+      1.176807499922461,
+      1.2085579999279616,
+      1.2403084999334624,
+      1.272058999938963,
+      1.3038094999444638,
+      1.3355599999499645,
+      1.3673104999554653,
+      1.399060999960966,
+      1.4308114999664667,
+      1.4625619999719675,
+      1.4943124999774682,
+      1.526062999982969,
+      1.5578134999884696,
+      1.5895639999939704,
+      1.621314499999471,
+      1.6530650000049718,
+      1.6848155000104725,
+      1.7165660000159733,
+      1.748316500021474,
+      1.7800670000269747
+    ]
+  },
+  "model_note": "the curve and budgets below are arithmetic over published specs, not measurements",
+  "curve": [
+    {
+      "batch": 1,
+      "inter_token_ms": 4.836126414328358,
+      "tokens_per_s": 206.77705963955452,
+      "usd_per_m_tokens": 4.365947457379768,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 2,
+      "inter_token_ms": 4.894815369552239,
+      "tokens_per_s": 408.5955953396774,
+      "usd_per_m_tokens": 2.209465270978441,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 4,
+      "inter_token_ms": 5.01219328,
+      "tokens_per_s": 798.0538212604603,
+      "usd_per_m_tokens": 1.1312241777777776,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 8,
+      "inter_token_ms": 5.246949100895523,
+      "tokens_per_s": 1524.6955604418959,
+      "usd_per_m_tokens": 0.592103631177446,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 16,
+      "inter_token_ms": 5.716460742686567,
+      "tokens_per_s": 2798.9346415909217,
+      "usd_per_m_tokens": 0.3225433578772802,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 32,
+      "inter_token_ms": 6.655484026268657,
+      "tokens_per_s": 4808.0650293349945,
+      "usd_per_m_tokens": 0.18776322122719735,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 64,
+      "inter_token_ms": 8.533530593432834,
+      "tokens_per_s": 7499.8266308733455,
+      "usd_per_m_tokens": 0.12037315290215587,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 96,
+      "inter_token_ms": 10.411577160597014,
+      "tokens_per_s": 9220.505070386014,
+      "usd_per_m_tokens": 0.09790979679380873,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 128,
+      "inter_token_ms": 12.289623727761194,
+      "tokens_per_s": 10415.290397447978,
+      "usd_per_m_tokens": 0.08667811873963516,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 192,
+      "inter_token_ms": 16.045716862089552,
+      "tokens_per_s": 11965.810044525293,
+      "usd_per_m_tokens": 0.07544644068546157,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 256,
+      "inter_token_ms": 19.80180999641791,
+      "tokens_per_s": 12928.11111945371,
+      "usd_per_m_tokens": 0.06983060165837479,
+      "bound_by": "memory"
+    },
+    {
+      "batch": 325,
+      "inter_token_ms": 23.851347906865673,
+      "tokens_per_s": 13626.064290750122,
+      "usd_per_m_tokens": 0.06625374418573797,
+      "bound_by": "memory"
+    }
+  ],
+  "ttft_ms": 18.888349013333332,
+  "budgets": [
+    {
+      "itl_budget_ms": 15,
+      "largest_batch": 174,
+      "achieved_itl_ms": 14.989315668059701,
+      "tokens_per_s": 11608.268439550684,
+      "usd_per_m_tokens": 0.07777023614494576,
+      "limited_by_memory_not_budget": false
+    },
+    {
+      "itl_budget_ms": 25,
+      "largest_batch": 325,
+      "achieved_itl_ms": 23.851347906865673,
+      "tokens_per_s": 13626.064290750122,
+      "usd_per_m_tokens": 0.06625374418573797,
+      "limited_by_memory_not_budget": true
+    },
+    {
+      "itl_budget_ms": 50,
+      "largest_batch": 325,
+      "achieved_itl_ms": 23.851347906865673,
+      "tokens_per_s": 13626.064290750122,
+      "usd_per_m_tokens": 0.06625374418573797,
+      "limited_by_memory_not_budget": true
+    },
+    {
+      "itl_budget_ms": 100,
+      "largest_batch": 325,
+      "achieved_itl_ms": 23.851347906865673,
+      "tokens_per_s": 13626.064290750122,
+      "usd_per_m_tokens": 0.06625374418573797,
+      "limited_by_memory_not_budget": true
+    }
+  ],
+  "case_study": {
+    "itl_ms": 50,
+    "ttft_ms": 1000,
+    "prompt": 1200,
+    "output": 300,
+    "operating_batch": 325,
+    "achieved_itl_ms": 23.851347906865673,
+    "achieved_ttft_ms": 18.888349013333332,
+    "ttft_headroom": 52.94268965985844,
+    "tokens_per_s": 13626.064290750122,
+    "reply_seconds": 7.174292721073035,
+    "max_concurrent": 325
+  }
+}
