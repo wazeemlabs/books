@@ -12,6 +12,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-03-DRAFT.md](CHAPTER-03-DRAFT.md) | **Generated.** Chapter 3, "Prefill and Decode" |
 | [CHAPTER-04-DRAFT.md](CHAPTER-04-DRAFT.md) | **Generated.** Chapter 4, "The Memory Wall" |
 | [CHAPTER-05-DRAFT.md](CHAPTER-05-DRAFT.md) | **Generated.** Chapter 5, "Latency, Throughput, and the SLO" |
+| [CHAPTER-06-DRAFT.md](CHAPTER-06-DRAFT.md) | **Generated.** Chapter 6, "The Serving Landscape" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -103,6 +104,12 @@ committed numbers.
   does not bind: every latency budget looser than 15 ms permits the
   same batch, because memory runs out before latency does. The first
   job of an SLO is to say which constraint is actually binding.
+- Chapter 6 closes Part I by pricing the build-versus-buy decision and
+  finding that the obvious way to self-host — full precision, GPU
+  rented by the hour — cannot beat a published API price at any
+  utilization. It would need 133% of a machine that has 100%. Only two
+  of four configurations can win, and the techniques in this book are
+  what separate them.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

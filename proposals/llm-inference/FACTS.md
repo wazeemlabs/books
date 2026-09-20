@@ -33,8 +33,8 @@ Format: claim · value · source · last verified.
 |---|---|---|---|
 | vLLM stable release | v0.28.0 (2026-08-26); Rust frontend available | github.com/vllm-project/vllm/releases | 2026-09 |
 | SGLang release model | stable tags lag; new model support lands in nightlies (0.5.21.dev, 2026-09-20) | github.com/sgl-project/sglang, sgl-project/whl | 2026-09 |
-| TensorRT-LLM current version | UNVERIFIED | NVIDIA release notes | — |
-| NVIDIA Dynamo current version | UNVERIFIED | github.com/ai-dynamo/dynamo | — |
+| TensorRT-LLM | last stable 2026-04-20; pre-release 1.3.0rc27 (2026-09-17). Since 1.0 the PyTorch architecture is the default and the LLM API is stable | NVIDIA release notes; PyPI | 2026-09 |
+| NVIDIA Dynamo | **not a serving engine.** An orchestration layer that schedules other backends (TensorRT-LLM, vLLM, SGLang, PyTorch) across many accelerators and handles disaggregated serving | NVIDIA product pages and newsroom | 2026-09 |
 
 ## Models
 
@@ -73,6 +73,15 @@ Format: claim · value · source · last verified.
 | Inference / GPU specialists | $300K-$500K+ total comp | 2026 compensation surveys and salary guides | 2026-09 |
 | LLM fine-tuning and inference, broader | $220K-$350K total comp | same | 2026-09 |
 | CUDA / GPU optimization | $300K-$500K+ | same | 2026-09 |
+
+## Build versus buy
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| Utilization needed for self-hosting to pay | ~60%+; at 10% utilization every self-hosted figure is ~10x worse | 2026 cost-analysis write-ups | 2026-09 |
+| All-in cost versus raw GPU bill | engineering and ops run 3-5x the hardware cost | same | 2026-09 |
+| Break-even vs frontier closed APIs | roughly 2-5M tokens/day on reserved GPUs | same | 2026-09 |
+| Break-even vs cheap open-model APIs | often 50M+ tokens/day | same | 2026-09 |
 
 ## Books and competing titles
 

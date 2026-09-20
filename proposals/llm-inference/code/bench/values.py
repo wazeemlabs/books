@@ -289,6 +289,31 @@ def ch05(d: dict) -> dict[str, str]:
     }
 
 
+def ch06(d: dict) -> dict[str, str]:
+    sc = {(s["precision"], s["pricing"]): s for s in d["scenarios"]}
+    naive = sc[("bf16 (two bytes)", "on-demand median")]
+    best = sc[("fp8 (one byte)", "cheapest marketplace")]
+    fp8_od = sc[("fp8 (one byte)", "on-demand median")]
+    a, eng = d["assumptions"], d["assumptions"]["engineering_multiple"]
+    return {
+        "api_price": f"${d['api']['usd_per_m_output']:.2f}",
+        "naive_cost": f"${naive['usd_per_m_at_full']:.3f}",
+        "naive_needed": f"{naive['breakeven_utilization'] * 100:.0f}%",
+        "fp8_od_cost": f"${fp8_od['usd_per_m_at_full']:.3f}",
+        "fp8_od_needed": f"{fp8_od['breakeven_utilization'] * 100:.0f}%",
+        "best_cost": f"${best['usd_per_m_at_full']:.3f}",
+        "best_needed": f"{best['breakeven_utilization'] * 100:.0f}%",
+        "n_achievable": str(d["summary"]["n_achievable"]),
+        "n_total": str(d["summary"]["n_total"]),
+        "eng_low": str(eng[0]), "eng_high": str(eng[1]),
+        "batch": str(a["batch"]),
+        "on_demand": f"${a['prices_usd_per_hour']['on-demand median']:.2f}",
+        "marketplace": f"${a['prices_usd_per_hour']['cheapest marketplace']:.2f}",
+        "tokens_day": f"{naive['tokens_per_s'] * 86400 / 1e9:.1f} billion",
+        "at_ten_pct": f"${naive['usd_per_m_at_full'] / 0.1:.2f}",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -325,7 +350,7 @@ def ch13(d: dict) -> dict[str, str]:
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
-            "ch05": ch05, "ch12": ch12, "ch13": ch13}[chapter](d)
+            "ch05": ch05, "ch06": ch06, "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

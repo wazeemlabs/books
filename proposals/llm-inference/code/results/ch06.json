@@ -1,0 +1,216 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T12:23:34Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "cab6b91"
+  },
+  "model_note": "arithmetic over the shared serving model and verified prices; not a measurement",
+  "api": {
+    "usd_per_m_output": 0.05,
+    "note": "cheapest tracked hosted 8B, September 2026"
+  },
+  "assumptions": {
+    "batch": 325,
+    "context": 1500,
+    "prices_usd_per_hour": {
+      "on-demand median": 3.25,
+      "cheapest marketplace": 1.49
+    },
+    "engineering_multiple": [
+      3,
+      5
+    ]
+  },
+  "scenarios": [
+    {
+      "precision": "bf16 (two bytes)",
+      "pricing": "on-demand median",
+      "usd_per_hour": 3.25,
+      "tokens_per_s": 13626.064290750122,
+      "inter_token_ms": 23.851347906865673,
+      "usd_per_m_at_full": 0.06625374418573797,
+      "breakeven_utilization": 1.3250748837147592,
+      "achievable": false,
+      "curve": [
+        {
+          "utilization": 0.05,
+          "usd_per_m": 1.3250748837147592
+        },
+        {
+          "utilization": 0.1,
+          "usd_per_m": 0.6625374418573796
+        },
+        {
+          "utilization": 0.2,
+          "usd_per_m": 0.3312687209286898
+        },
+        {
+          "utilization": 0.4,
+          "usd_per_m": 0.1656343604643449
+        },
+        {
+          "utilization": 0.6,
+          "usd_per_m": 0.11042290697622996
+        },
+        {
+          "utilization": 0.8,
+          "usd_per_m": 0.08281718023217245
+        },
+        {
+          "utilization": 1.0,
+          "usd_per_m": 0.06625374418573797
+        }
+      ],
+      "tokens_per_day_at_breakeven": null
+    },
+    {
+      "precision": "bf16 (two bytes)",
+      "pricing": "cheapest marketplace",
+      "usd_per_hour": 1.49,
+      "tokens_per_s": 13626.064290750122,
+      "inter_token_ms": 23.851347906865673,
+      "usd_per_m_at_full": 0.03037479348823064,
+      "breakeven_utilization": 0.6074958697646128,
+      "achievable": true,
+      "curve": [
+        {
+          "utilization": 0.05,
+          "usd_per_m": 0.6074958697646128
+        },
+        {
+          "utilization": 0.1,
+          "usd_per_m": 0.3037479348823064
+        },
+        {
+          "utilization": 0.2,
+          "usd_per_m": 0.1518739674411532
+        },
+        {
+          "utilization": 0.4,
+          "usd_per_m": 0.0759369837205766
+        },
+        {
+          "utilization": 0.6,
+          "usd_per_m": 0.05062465581371774
+        },
+        {
+          "utilization": 0.8,
+          "usd_per_m": 0.0379684918602883
+        },
+        {
+          "utilization": 1.0,
+          "usd_per_m": 0.03037479348823064
+        }
+      ],
+      "tokens_per_day_at_breakeven": 715200000.0
+    },
+    {
+      "precision": "fp8 (one byte)",
+      "pricing": "on-demand median",
+      "usd_per_hour": 3.25,
+      "tokens_per_s": 27252.128581500245,
+      "inter_token_ms": 11.925673953432836,
+      "usd_per_m_at_full": 0.033126872092868985,
+      "breakeven_utilization": 0.6625374418573796,
+      "achievable": true,
+      "curve": [
+        {
+          "utilization": 0.05,
+          "usd_per_m": 0.6625374418573796
+        },
+        {
+          "utilization": 0.1,
+          "usd_per_m": 0.3312687209286898
+        },
+        {
+          "utilization": 0.2,
+          "usd_per_m": 0.1656343604643449
+        },
+        {
+          "utilization": 0.4,
+          "usd_per_m": 0.08281718023217245
+        },
+        {
+          "utilization": 0.6,
+          "usd_per_m": 0.05521145348811498
+        },
+        {
+          "utilization": 0.8,
+          "usd_per_m": 0.041408590116086226
+        },
+        {
+          "utilization": 1.0,
+          "usd_per_m": 0.033126872092868985
+        }
+      ],
+      "tokens_per_day_at_breakeven": 1559999999.9999998
+    },
+    {
+      "precision": "fp8 (one byte)",
+      "pricing": "cheapest marketplace",
+      "usd_per_hour": 1.49,
+      "tokens_per_s": 27252.128581500245,
+      "inter_token_ms": 11.925673953432836,
+      "usd_per_m_at_full": 0.01518739674411532,
+      "breakeven_utilization": 0.3037479348823064,
+      "achievable": true,
+      "curve": [
+        {
+          "utilization": 0.05,
+          "usd_per_m": 0.3037479348823064
+        },
+        {
+          "utilization": 0.1,
+          "usd_per_m": 0.1518739674411532
+        },
+        {
+          "utilization": 0.2,
+          "usd_per_m": 0.0759369837205766
+        },
+        {
+          "utilization": 0.4,
+          "usd_per_m": 0.0379684918602883
+        },
+        {
+          "utilization": 0.6,
+          "usd_per_m": 0.02531232790685887
+        },
+        {
+          "utilization": 0.8,
+          "usd_per_m": 0.01898424593014415
+        },
+        {
+          "utilization": 1.0,
+          "usd_per_m": 0.01518739674411532
+        }
+      ],
+      "tokens_per_day_at_breakeven": 715200000.0
+    }
+  ],
+  "summary": {
+    "best": {
+      "precision": "fp8 (one byte)",
+      "pricing": "cheapest marketplace",
+      "usd_per_m_at_full": 0.01518739674411532,
+      "breakeven_utilization": 0.3037479348823064
+    },
+    "worst": {
+      "precision": "bf16 (two bytes)",
+      "pricing": "on-demand median",
+      "usd_per_m_at_full": 0.06625374418573797,
+      "breakeven_utilization": 1.3250748837147592
+    },
+    "n_achievable": 3,
+    "n_total": 4
+  }
+}

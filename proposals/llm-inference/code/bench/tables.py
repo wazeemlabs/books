@@ -204,6 +204,24 @@ def ch05_percentiles(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch06_breakeven(d: dict) -> str:
+    out = ["| Precision | GPU pricing | Cost per 1M tokens at full tilt | Utilization needed to beat the API |",
+           "|---|---|---|---|"]
+    for sc in d["scenarios"]:
+        b = sc["breakeven_utilization"]
+        verdict = (f"**{b * 100:.0f}%**" if b <= 1
+                   else f"**never** — would need {b * 100:.0f}%")
+        out.append(f"| {sc['precision']} | {sc['pricing']} | "
+                   f"${sc['usd_per_m_at_full']:.3f} | {verdict} |")
+    out += ["", f"Against a published API price of "
+                f"${d['api']['usd_per_m_output']:.2f} per million output tokens "
+                f"({d['api']['note']}). Hardware only: engineering and operations "
+                f"typically add another "
+                f"{d['assumptions']['engineering_multiple'][0]}-"
+                f"{d['assumptions']['engineering_multiple'][1]}x on top."]
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -245,6 +263,7 @@ def main() -> None:
         "ch03": (("ch03-measured", ch03_measured), ("ch03-reference", ch03_reference)),
         "ch04": (("ch04-machine", ch04_machine), ("ch04-wall", ch04_wall)),
         "ch05": (("ch05-percentiles", ch05_percentiles), ("ch05-budgets", ch05_budgets)),
+        "ch06": (("ch06-breakeven", ch06_breakeven),),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),

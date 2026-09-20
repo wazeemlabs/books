@@ -180,12 +180,14 @@ running case study is stated here.
 
 ## 6. The Serving Landscape
 
-API versus self-hosting, the four engines (vLLM, SGLang, TensorRT-LLM,
-Dynamo), the hardware tiers from consumer cards to racks, who runs
-what and why. A map of the rest of the book.
+API versus self-hosting, the three serving engines (vLLM, SGLang,
+TensorRT-LLM) and the orchestration layer that runs them at rack scale
+(Dynamo, which is not a fourth engine but a tier above them), the
+hardware tiers from consumer cards to racks, who runs what and why. A
+map of the rest of the book.
 
 - Objectives: place a workload on the API/self-host decision tree;
-  name each engine's defining idea.
+  name each engine's defining idea; say where an orchestrator sits.
 
 # Part II — Foundations
 
@@ -310,7 +312,7 @@ fairness, and the SLO-aware scheduler.
 
 Run the two phases on different GPUs and transfer the KV cache between
 them. When it wins, what the transfer costs, and how Dynamo and
-Mooncake do it. Tier 3.
+Mooncake orchestrate it. Tier 3.
 
 - Sources: Zhong et al., "DistServe" (OSDI 2024); Patel et al.,
   "Splitwise" (ISCA 2024); Qin et al., "Mooncake" (2024).
@@ -466,16 +468,19 @@ workloads where it beats vLLM.
 
 - Sources: Zheng et al. (2024).
 
-## 36. TensorRT-LLM and Dynamo
+## 36. TensorRT-LLM, and Orchestration with Dynamo
 
-The NVIDIA path: ahead-of-time engine builds, compile-time
-optimization, and disaggregated serving at rack scale.
+The NVIDIA path: ahead-of-time engine builds and compile-time
+optimization. Then the tier above the engine — Dynamo schedules
+whichever engine you chose (TensorRT-LLM, vLLM or SGLang) across many
+accelerators, and handles disaggregated serving at rack scale. It
+replaces none of them.
 
-## 37. One Benchmark, Four Engines
+## 37. One Benchmark, Three Engines
 
-The same model, traffic, and hardware through all four engines, from
-the harness. An honest, reproducible comparison and the decision
-framework for choosing.
+The same model, traffic, and hardware through vLLM, SGLang and
+TensorRT-LLM, from the harness. An honest, reproducible comparison and
+the decision framework for choosing.
 
 ## 38. Multi-GPU Serving
 

@@ -48,14 +48,19 @@ class Step:
         return (usd_per_hour / 3600) / self.tokens_per_s * 1e6
 
 
-def decode_step(batch: int, seq: int) -> Step:
+def decode_step(batch: int, seq: int, bytes_per_weight: int = 2) -> Step:
     """Model one decode step under the roofline.
 
     The weights are fetched once and shared by the whole batch; each
     sequence's cache is its own and is not shared. That asymmetry is
     why batching helps and why long contexts blunt it.
+
+    `bytes_per_weight` is the precision the model is served at. Halving
+    it halves what must be fetched, which is the whole of Part V's
+    argument; the arithmetic is unchanged.
     """
-    bytes_read = WEIGHT_BYTES + batch * seq * KV_BYTES_PER_TOKEN
+    scale = bytes_per_weight / 2
+    bytes_read = int(WEIGHT_BYTES * scale + batch * seq * KV_BYTES_PER_TOKEN * scale)
     flops = 2 * PARAMS * batch
     t_memory = bytes_read / HBM_BYTES_PER_S
     t_compute = flops / PEAK_BF16_FLOPS

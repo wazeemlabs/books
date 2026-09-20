@@ -75,6 +75,12 @@ def caption(d: dict) -> str:
                 f"NumPy {p['software']['numpy']} - the throughput curve and "
                 f"budgets are arithmetic over published specs, not measurements - "
                 f"commit {p['commit']}, {p['measured_utc']}")
+    if "scenarios" in d and "api" in d:  # Chapter 6: build or buy
+        a = d["assumptions"]
+        return (f"arithmetic over the shared serving model, not a measurement - "
+                f"batch {a['batch']}, {a['context']:,}-token context, GPU prices "
+                f"and the ${d['api']['usd_per_m_output']:.2f}/M API price verified "
+                f"September 2026 (FACTS.md) - commit {p['commit']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -691,10 +697,59 @@ def fig_tail(d: dict) -> None:
               f"{m['p999_ms']:.2f}."))
 
 
+
+
+# --- Chapter 6: where self-hosting crosses an API price ----------------
+
+def fig_breakeven(d: dict) -> None:
+    api = d["api"]["usd_per_m_output"]
+    styles = [("-", "o"), ("--", "s"), ("-.", "^"), (":", "D")]
+
+    fig, ax = plt.subplots(figsize=(7.4, 4.2), dpi=200)
+    for i, sc in enumerate(d["scenarios"]):
+        x = [c["utilization"] * 100 for c in sc["curve"]]
+        y = [c["usd_per_m"] for c in sc["curve"]]
+        ls, mk = styles[i % len(styles)]
+        ax.plot(x, y, label=f"{sc['precision']}, {sc['pricing']}",
+                color=T.CATEGORICAL[i % 2], linestyle=ls, marker=mk,
+                markersize=4, linewidth=T.LINE_WIDTH)
+
+    ax.axhline(api, color=T.INK, linewidth=1.6)
+    ax.text(99, api * 1.18, f"buy it: ${api:.2f} per million output tokens",
+            fontsize=8, color=T.INK, ha="right")
+
+    for sc in d["scenarios"]:
+        b = sc["breakeven_utilization"]
+        if b <= 1.0:
+            ax.plot([b * 100], [api], marker="o", markersize=7,
+                    markerfacecolor="#FFFFFF", markeredgecolor=T.INK,
+                    markeredgewidth=1.4, zorder=5)
+            ax.annotate(f"{b * 100:.0f}%", (b * 100, api),
+                        textcoords="offset points", xytext=(0, -15),
+                        ha="center", fontsize=7.6, color=T.INK)
+
+    ax.set_yscale("log")
+    ax.set_xlabel("how busy you keep the accelerator (%)")
+    ax.set_ylabel("cost per million output tokens (log)")
+    ax.set_title("Self-hosting is a bet on utilization", loc="left", fontsize=11)
+    ax.legend(frameon=False, fontsize=7.8, loc="upper right")
+    T.style(ax)
+
+    save(fig, "ch06-breakeven", d,
+         alt=("Cost per million output tokens against accelerator utilization, "
+              "y axis logarithmic, for four self-hosting configurations "
+              "(colour shows the GPU pricing, line style shows the precision), "
+              f"against a flat published API price of ${api:.2f}. Each curve falls "
+              "as the accelerator is kept busier. Circles mark where a "
+              "configuration crosses the API price; the most expensive "
+              "configuration never crosses it at all."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
-            "ch05": [fig_tradeoff, fig_tail], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch05": [fig_tradeoff, fig_tail],
+            "ch06": [fig_breakeven], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def main() -> None:
