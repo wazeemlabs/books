@@ -1150,6 +1150,99 @@ def ch20(d: dict) -> dict[str, str]:
     }
 
 
+def ch22(d: dict) -> dict[str, str]:
+    a = d["assumptions"]
+    fmt = {r["name"]: r for r in d["formats"]}
+    hw = {r["name"]: r for r in d["hardware"]["rows"]}
+    tens = {r["tensor"]: r for r in d["tensors"]["rows"]}
+    acc = d["accumulation"]["rows"]
+    rng = d["range"]
+    f32, tf32, f16, b16 = (fmt["float32"], fmt["tensorfloat32"],
+                           fmt["float16"], fmt["bfloat16"])
+    e4m3, e5m2 = fmt["float8 e4m3"], fmt["float8 e5m2"]
+
+    def at(name, k):
+        return next(r for r in acc if r["format"] == name and r["k"] == k)
+
+    longest = max(r["k"] for r in acc)
+    b_long, f_long = at("bfloat16", longest), at("float16", longest)
+    b_short = at("bfloat16", min(r["k"] for r in acc))
+    weights = tens["attention weights (wq)"]
+    g = lambda x: f"{x:,.0f} GB"
+    return {
+        # the formats
+        "fp32_mantissa": str(f32["mantissa_bits"]),
+        "fp32_exponent": str(f32["exponent_bits"]),
+        "fp16_exponent": str(f16["exponent_bits"]),
+        "fp16_mantissa": str(f16["mantissa_bits"]),
+        "bf16_exponent": str(b16["exponent_bits"]),
+        "bf16_mantissa": str(b16["mantissa_bits"]),
+        "fp16_max": f"{f16['max_value']:,.0f}",
+        "bf16_max": f"{b16['max_value']:.3g}",
+        "fp32_max": f"{f32['max_value']:.3g}",
+        "e4m3_max": f"{e4m3['max_value']:,.0f}",
+        "e5m2_max": f"{e5m2['max_value']:,.0f}",
+        "fp16_eps": f"{f16['eps']:.3g}",
+        "bf16_eps": f"{b16['eps']:.3g}",
+        "bf16_over_fp16_eps": f"{b16['eps'] / f16['eps']:.0f}x",
+        "fp16_digits": f"{f16['decimal_digits']:.1f}",
+        "bf16_digits": f"{b16['decimal_digits']:.1f}",
+        "fp32_digits": f"{f32['decimal_digits']:.1f}",
+        "e4m3_digits": f"{e4m3['decimal_digits']:.1f}",
+        "tf32_bits": str(tf32["bits"]),
+        # the hardware
+        "fp32_tflops": f"{f32['peak_tflops']:,.0f}",
+        "bf16_tflops": f"{b16['peak_tflops']:,.0f}",
+        "fp8_tflops": f"{e4m3['peak_tflops']:,.0f}",
+        "tensorcore_gain": f"{b16['peak_tflops'] / f32['peak_tflops']:.0f}x",
+        "fp32_weights": g(hw["float32"]["weight_gb"]),
+        "bf16_weights": g(hw["bfloat16"]["weight_gb"]),
+        "fp8_weights": g(hw["float8 e4m3"]["weight_gb"]),
+        "bf16_read_ms": f"{hw['bfloat16']['weight_read_ms']:.2f} ms",
+        "fp8_read_ms": f"{hw['float8 e4m3']['weight_read_ms']:.2f} ms",
+        "bf16_kv": f"{hw['bfloat16']['kv_bytes_per_token'] / 1024:,.0f} KiB",
+        "fp8_kv": f"{hw['float8 e4m3']['kv_bytes_per_token'] / 1024:,.0f} KiB",
+        "bf16_ridge": f"{hw['bfloat16']['ridge_flops_per_byte']:,.0f}",
+        "fp8_ridge": f"{hw['float8 e4m3']['ridge_flops_per_byte']:,.0f}",
+        "fp32_ridge": f"{hw['float32']['ridge_flops_per_byte']:,.0f}",
+        "bf16_crossover": f"{hw['bfloat16']['compute_bound_above_batch']:,.0f}",
+        "fp8_crossover": f"{hw['float8 e4m3']['compute_bound_above_batch']:,.0f}",
+        # what rounding does to the model
+        "weights_fp16_err": f"{weights['float16']:.1e}",
+        "weights_bf16_err": f"{weights['bfloat16']:.1e}",
+        "weights_e4m3_err": f"{weights['float8 e4m3']:.1e}",
+        "bf16_over_fp16_err":
+            f"{weights['bfloat16'] / weights['float16']:.0f}x",
+        "tensors_measured": str(len(d["tensors"]["rows"])),
+        "checked_values": f"{d['verification']['values_compared']:,}",
+        "checked_agree": ("every one" if d["verification"]["all_agree"]
+                          else f"{d['verification']['values_agreeing']:,}"),
+        "largest_in_model": f"{max(r['largest'] for r in d['tensors']['rows']):.3g}",
+        # accumulation
+        "acc_k_short": f"{b_short['k']:,}",
+        "acc_k_long": f"{longest:,}",
+        "bf16_wide_long": f"{b_long['wide_accumulator']:.1e}",
+        "bf16_narrow_long": f"{b_long['narrow_accumulator']:.1e}",
+        "bf16_acc_ratio_long": f"{b_long['ratio']:.0f}x",
+        "bf16_acc_ratio_short": f"{b_short['ratio']:.0f}x",
+        "fp16_wide_long": f"{f_long['wide_accumulator']:.1e}",
+        "fp16_acc_ratio_long": f"{f_long['ratio']:.0f}x",
+        "fp16_over_bf16_wide":
+            f"{b_long['wide_accumulator'] / f_long['wide_accumulator']:.0f}x",
+        "e4m3_wide_long": f"{at('float8 e4m3', longest)['wide_accumulator']:.1e}",
+        # range
+        "range_k": f"{rng['k']:,}",
+        "fp16_fails_at": str(rng["first_scale_fp16_fails"]),
+        "bf16_ever_fails": "no" if not rng["bf16_ever_fails"] else "yes",
+        "range_top_scale": str(max(r["input_scale"] for r in rng["rows"])),
+        "range_top_exact":
+            f"{abs(next(r for r in rng['rows'] if r['input_scale'] == max(x['input_scale'] for x in rng['rows']))['exact']):.3g}",
+        # standing
+        "params": f"{a['model']['params'] / 1e9:.0f}B",
+        "d_model": f"{a['model']['d_model']:,}",
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -1268,7 +1361,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch12": ch12, "ch13": ch13, "ch14": ch14,
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
-            "ch20": ch20, "ddr1": ddr1}[chapter](d)
+            "ch20": ch20, "ch22": ch22, "ddr1": ddr1}[chapter](d)
 
 
 if __name__ == "__main__":

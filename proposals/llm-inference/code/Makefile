@@ -2,14 +2,14 @@
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make ddr1   - re-derive a Part's design decision record from its chapters
 #   make lock   - refresh environment.lock
-.PHONY: all venv ddr1 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all venv ddr1 ch22 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ddr1
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ddr1
 
 ch01:
 	python3 -m bench.run_ch01
@@ -91,6 +91,10 @@ ch20:
 	python3 -m bench.run_ch20
 	$(MAKE) figures tables manuscript
 
+ch22:
+	python3 -m bench.run_ch22
+	$(MAKE) figures tables manuscript
+
 ddr1:
 	python3 -m bench.run_ddr1
 	$(MAKE) figures tables manuscript
@@ -142,7 +146,11 @@ from tinyserve.flash import test_swapping_the_kernel_changes_no_token as w; w();
 from tinyserve.flash import test_a_decode_step_has_almost_no_square_term_to_save as x; x(); \
 from tinyserve.flash import test_keeping_the_block_resident_is_strictly_a_bound as y; y(); \
 from tinyserve.device import test_the_accelerator_guard_refuses_what_it_should as z; z(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard')"
+from tinyserve.precision import test_the_hand_rounding_matches_numpys_float16 as aa; aa(); \
+from tinyserve.precision import test_each_format_reports_the_range_its_bits_allow as ab; ab(); \
+from tinyserve.precision import test_rounding_is_unbiased as ac; ac(); \
+from tinyserve.precision import test_a_value_that_fits_is_left_alone as ad; ad(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats')"
 
 # One environment per machine the book measures on. The venv is never
 # committed; requirements.txt says what to install and the lock records

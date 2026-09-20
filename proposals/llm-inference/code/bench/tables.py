@@ -1004,6 +1004,86 @@ def ch20_tiles(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch22_formats(d: dict) -> str:
+    """Each format's reach and resolution, from its field widths."""
+    out = ["| Format | Bits | Sign/exponent/mantissa | Largest | "
+           "Smallest with full precision | Gap either side of 1.0 | "
+           "Decimal digits | Peak on one H100 |",
+           "|---|---|---|---|---|---|---|---|"]
+    for r in d["formats"]:
+        name = f"**{r['name']}**" if r["name"] in ("bfloat16", "float16") else r["name"]
+        note = " *" if r["compute_only"] else ""
+        out.append(f"| {name}{note} | {r['bits']} "
+                   f"| 1 / {r['exponent_bits']} / {r['mantissa_bits']} "
+                   f"| {r['max_value']:.4g} | {r['min_normal']:.3g} "
+                   f"| {r['eps']:.3g} | {r['decimal_digits']:.1f} "
+                   f"| {r['peak_tflops']:,.0f} TFLOP/s |")
+    out += ["", "Every column but the last is arithmetic on the three "
+                "field widths, computed in `tinyserve/precision.py`. "
+                "\\* tensorfloat32 is a compute format: 19 meaningful bits "
+                "held in a 32-bit slot, so it changes how a multiply is "
+                "done and not what a weight costs to store. Peak figures "
+                "are the H100 SXM datasheet's, halved from the quoted "
+                "\"with sparsity\" rows to the dense throughput that dense "
+                "inference gets; float32 is the one that never reaches a "
+                "tensor core (FACTS.md)."]
+    return "\n".join(out)
+
+
+def ch22_tensors(d: dict) -> str:
+    """What rounding does to the numbers the model is made of."""
+    t = d["tensors"]
+    names = [r["name"] for r in d["formats"][1:]]
+    out = ["| The model's numbers | Largest | " + " | ".join(names) + " |",
+           "|---|---|" + "---|" * len(names)]
+    for r in t["rows"]:
+        out.append(f"| {r['tensor']} | {r['largest']:.3g} | "
+                   + " | ".join(f"{r[n]:.2e}" for n in names) + " |")
+    c = t["config"]
+    out += ["", f"Root-mean-square error after a round trip through each "
+                f"format, as a fraction of the largest value in the tensor. "
+                f"From a {c['layers']}-layer model of width {c['d_model']:,} "
+                f"over {c['tokens']} tokens. Nothing here overflows: every "
+                "number in this model is small. float16 and tensorfloat32 "
+                "agree down the column because they have the same number of "
+                "mantissa bits, which is what error at this scale depends "
+                "on -- the extra exponent bits buy range, and range is not "
+                "what is being tested."]
+    return "\n".join(out)
+
+
+def ch22_hardware(d: dict) -> str:
+    """What the choice of format is worth on the accelerator."""
+    h = d["hardware"]
+    out = ["| Format | Bytes a number | Weights | Time to read them | "
+           "KV cache a token | Ridge point | Compute-bound above batch | "
+           "Peak |",
+           "|---|---|---|---|---|---|---|---|"]
+    for r in h["rows"]:
+        out.append(f"| {r['name']} | {r['bytes_per_number']:.0f} "
+                   f"| {r['weight_gb']:.0f} GB "
+                   f"| {r['weight_read_ms']:.2f} ms "
+                   f"| {r['kv_bytes_per_token'] / 1024:,.0f} KiB "
+                   f"| {r['ridge_flops_per_byte']:,.0f} FLOP/byte "
+                   f"| {r['compute_bound_above_batch']:,.0f} "
+                   f"| {r['peak_tflops']:,.0f} TFLOP/s |")
+    out += ["", f"The book's {h['params'] / 1e9:.0f}B model on one H100, by "
+                f"the format its weights and cache are kept in. \"Time to "
+                f"read them\" is the weights over "
+                f"{h['hbm_bytes_per_s'] / 1e12:.2f} TB/s, which "
+                "Chapter 4 showed is the floor under every decode step. The "
+                "ridge point is where the accelerator stops being limited by "
+                "memory and starts being limited by arithmetic; it depends "
+                "on the arithmetic the format reaches and not at all on how "
+                "many bytes a number takes. The last column puts the two "
+                "together: a decode step at batch B does 2PB arithmetic and "
+                "reads P times the format's bytes, so halving the format "
+                "doubles its intensity exactly as it doubles the ridge, and "
+                "the batch at which the step turns compute-bound does not "
+                "move."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -1035,6 +1115,9 @@ def main() -> None:
         "ch20": (("ch20-counted", ch20_counted),
                  ("ch20-reference", ch20_reference),
                  ("ch20-tiles", ch20_tiles)),
+        "ch22": (("ch22-formats", ch22_formats),
+                 ("ch22-tensors", ch22_tensors),
+                 ("ch22-hardware", ch22_hardware)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),

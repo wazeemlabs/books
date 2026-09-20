@@ -114,6 +114,21 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "formats" in d and "accumulation" in d:  # Chapter 22: number formats
+        a = d["assumptions"]
+        return (f"EXACT ARITHMETIC, not a timing run: rounding is done by "
+                f"hand on the bit fields in tinyserve/precision.py, checked "
+                f"against NumPy's float16 over "
+                f"{d['verification']['values_compared']:,} values; errors are "
+                f"root-mean-square over a {a['accumulation_shape'][0]}x"
+                f"{a['accumulation_shape'][1]} product, seed {a['seed']} - "
+                f"peak arithmetic is the H100 SXM datasheet's dense figures "
+                f"(its tensor-core rows are quoted with sparsity and halved "
+                f"here), memory bandwidth "
+                f"{d['hardware']['hbm_bytes_per_s'] / 1e12:.2f} TB/s, both "
+                f"from FACTS.md - model {a['model']['params'] / 1e9:.0f}B "
+                f"parameters, width {a['model']['d_model']:,} - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     if d.get("model_not_measurement"):  # a cost model, not a benchmark
         a = d["assumptions"]
         return (f"MODEL, not a measurement: arithmetic over published specs - "
@@ -2462,6 +2477,160 @@ def fig_tiles(d: dict) -> None:
               "size comes from: not tuning, but the size of the scratchpad."))
 
 
+# --- Chapter 22: where the bits go -------------------------------------
+
+def fig_bits(d: dict) -> None:
+    """A diagram: the same 32 bits, divided up four ways."""
+    from matplotlib.patches import Rectangle
+
+    rows = [r for r in d["formats"]
+            if r["name"] in ("float32", "float16", "bfloat16",
+                             "float8 e4m3", "float8 e5m2")]
+    fig, ax = plt.subplots(figsize=(7.2, 3.6), dpi=200)
+    unit, height, gap = 1.0, 0.62, 0.42
+    ax.set_xlim(-9.5, 33.5)
+    ax.set_ylim(len(rows) * (height + gap), -0.5)
+    ax.axis("off")
+
+    kinds = [("sign", 1, "#9AA6B8"), ("exponent", None, T.AMBER),
+             ("mantissa", None, T.BLUE)]
+    for i, r in enumerate(rows):
+        y = i * (height + gap)
+        widths = [1, r["exponent_bits"], r["mantissa_bits"]]
+        x = 0.0
+        for (label, _, colour), w in zip(kinds, widths):
+            ax.add_patch(Rectangle((x, y), w * unit, height, facecolor=colour,
+                                   edgecolor="#FFFFFF", linewidth=0.8))
+            if w >= 3:
+                ax.text(x + w * unit / 2, y + height / 2, str(w),
+                        ha="center", va="center", fontsize=7.4,
+                        color="#FFFFFF", fontweight="bold")
+            x += w * unit
+        ax.text(-0.7, y + height / 2, r["name"], ha="right", va="center",
+                fontsize=8.2, color=T.INK)
+        ax.text(x + 0.5, y + height / 2,
+                f"max {r['max_value']:.3g}", ha="left", va="center",
+                fontsize=7.2, color=T.MUTED)
+
+    for (label, _, colour), x in zip(kinds, (0.5, 5, 18)):
+        ax.text(x, -0.9, label, ha="left", va="bottom", fontsize=7.6,
+                color=colour, fontweight="bold")
+
+    fp16 = next(r for r in rows if r["name"] == "float16")
+    bf16 = next(r for r in rows if r["name"] == "bfloat16")
+    save(fig, "ch22-bits", d,
+         alt=("Bit layouts drawn to scale. Every format is a sign bit, "
+              "then exponent bits, then mantissa bits. float16 and "
+              "bfloat16 are both sixteen bits and divide them "
+              f"differently: float16 keeps {fp16['exponent_bits']} for "
+              f"the exponent and {fp16['mantissa_bits']} for the "
+              f"mantissa, bfloat16 keeps {bf16['exponent_bits']} and "
+              f"{bf16['mantissa_bits']}. The exponent sets how large a "
+              f"number can be -- {fp16['max_value']:,.0f} against "
+              f"{bf16['max_value']:.3g} -- and the mantissa sets how "
+              "many digits survive. bfloat16 is float32's exponent with "
+              "most of the mantissa thrown away."))
+
+
+def fig_accumulation(d: dict) -> None:
+    """What the wide accumulator inside a tensor core is worth."""
+    rows = d["accumulation"]["rows"]
+    formats = []
+    for r in rows:
+        if r["format"] not in formats:
+            formats.append(r["format"])
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.2), dpi=200)
+    styles = {formats[0]: (T.BLUE, "-", "o"), formats[1]: (T.AMBER, "--", "s")}
+    ends = []
+    for name in formats[:2]:
+        rs = [r for r in rows if r["format"] == name]
+        ks = [r["k"] for r in rs]
+        colour, dash, mark = styles[name]
+        ax.plot(ks, [r["narrow_accumulator"] for r in rs], marker=mark,
+                markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+                color=colour, linestyle=dash)
+        ax.plot(ks, [r["wide_accumulator"] for r in rs], marker=mark,
+                markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+                color=colour, linestyle=":", alpha=0.75)
+        ends.append((ks[-1], rs[-1]["narrow_accumulator"],
+                     f"{name} in,\n{name} sum", colour))
+        ends.append((ks[-1], rs[-1]["wide_accumulator"],
+                     f"{name} in,\nfloat32 sum", colour))
+    ax.set_xscale("log", base=2); ax.set_yscale("log")
+    ks = sorted({r["k"] for r in rows})
+    ax.set_xticks(ks, [f"{k:,}" for k in ks])
+    ax.set_xlabel("length of the dot product")
+    ax.set_ylabel("error, relative to the result's own size")
+    ax.set_title("What a tensor core's wide accumulator is worth",
+                 loc="left", fontsize=10.5)
+    lo = min(r["wide_accumulator"] for r in rows if r["format"] in formats[:2])
+    hi = max(r["narrow_accumulator"] for r in rows if r["format"] in formats[:2])
+    ax.set_ylim(lo / 3, hi * 3)
+    T.style(ax)
+    # Labelled at the right-hand end rather than in a legend: four
+    # series on one panel leaves a legend nowhere to sit that is not on
+    # top of one of them.
+    ax.set_xlim(ks[0] * 0.85, ks[-1] * 5.5)
+    for x, y, text, colour in ends:
+        ax.annotate(text, (x, y), textcoords="offset points", xytext=(9, -2),
+                    fontsize=7.2, color=colour, va="center", ha="left")
+
+    worst = max(rows, key=lambda r: r["ratio"])
+    save(fig, "ch22-accumulation", d,
+         alt=("Error against the length of the dot product, on log axes. "
+              "The dotted lines, where the running total is kept in "
+              "float32 as the hardware keeps it, are flat: the error is "
+              "set by rounding the inputs and does not grow. The solid "
+              "lines, where the running total is kept in the small "
+              "format too, climb with every doubling, reaching "
+              f"{worst['ratio']:.0f} times worse at "
+              f"{worst['k']:,} terms in {worst['format']}. Keeping the "
+              "inputs small is cheap; keeping the sum small is not."))
+
+
+def fig_range(d: dict) -> None:
+    """Where float16 runs out of room and bfloat16 does not."""
+    r = d["range"]
+    rows = r["rows"]
+    scales = [x["input_scale"] for x in rows]
+    exact = [abs(x["exact"]) for x in rows]
+    biggest = [x["largest_product"] for x in rows]
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.2), dpi=200)
+    ax.plot(scales, biggest, marker="o", markersize=T.MARKER_SIZE,
+            linewidth=T.LINE_WIDTH, color=T.BLUE,
+            label="largest single product")
+    ax.plot(scales, exact, marker="s", markersize=T.MARKER_SIZE,
+            linewidth=T.LINE_WIDTH, color=T.AMBER, linestyle="--",
+            label="the answer itself")
+    ax.axhline(r["fp16_max"], color=T.INK, linewidth=1.0, linestyle=":")
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xticks(scales, [str(s) for s in scales])
+    ax.set_xlabel("scale of the numbers going in")
+    ax.set_ylabel("magnitude")
+    ax.set_title("float16 does not run out of precision first.\nIt runs "
+                 "out of room", loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=7.8, loc="upper left")
+    T.style(ax)
+
+    first = r["first_scale_fp16_fails"]
+    L.label_points(ax, [
+        (scales[0], r["fp16_max"], f"float16 stops here: {r['fp16_max']:,.0f}"),
+    ], fontsize=7.4, color=T.INK)
+
+    save(fig, "ch22-range", d,
+         alt=("The size of the numbers inside one dot product across "
+              f"{r['k']:,} terms, against the scale of the inputs, on "
+              "log axes. A dotted line marks float16's largest "
+              f"representable value, {r['fp16_max']:,.0f}. Both the "
+              "individual products and the answer pass it once the "
+              f"inputs reach a scale of about {first}, and a float16 "
+              "accumulator returns infinity from there on. bfloat16, "
+              "which has float32's exponent, never overflows anywhere "
+              "in this sweep -- it just answers coarsely."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -2477,7 +2646,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch17": [fig_scheduler_timeline, fig_load, fig_itl],
             "ch18": [fig_interference, fig_budget, fig_policy],
             "ch19": [fig_transfer, fig_split, fig_second_token],
-            "ch20": [fig_score_matrix, fig_traffic, fig_tiles]}
+            "ch20": [fig_score_matrix, fig_traffic, fig_tiles],
+            "ch22": [fig_bits, fig_accumulation, fig_range]}
 
 
 def _check_no_shared_figure_functions() -> None:

@@ -116,3 +116,6 @@ explanation.
 | SRAM | 20 | The small, fast scratchpad attached to each core of an accelerator, a few hundred kilobytes, against the tens of gigabytes of HBM everything shares. |
 | kernel launch | 20 | One instruction from the host processor telling the accelerator to run one program. Results pass between launches through HBM, which is why fusing two kernels into one saves traffic. |
 | online softmax | 20 | Finishing a softmax without having seen all of its inputs, by carrying a running maximum and rescaling what is already accumulated whenever the maximum moves. Exact, not approximate. |
+| mantissa | 22 | The digits of a floating-point number, as distinct from its scale. More mantissa bits means more digits survive. |
+| exponent | 22 | The scale of a floating-point number: the power of two the mantissa is multiplied by. More exponent bits means a wider range of sizes. |
+| accumulator | 22 | The running total a dot product adds into. Its format need not match the inputs', and on a tensor core it does not: small inputs, a float32 total. |

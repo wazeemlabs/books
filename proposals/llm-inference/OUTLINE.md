@@ -612,7 +612,12 @@ measurement of its own — how few machines the traffic needs. Part IV
 has begun with Chapter 20, which counts the bytes attention moves
 rather than timing it, so the result holds on hardware the book cannot
 rent.
-Next: **21, Fused Operations and CUDA Graphs**.
+**22, Precision and Tensor Cores** is drafted too, out of order:
+Chapter 21 needs a GPU quiet enough to time a few microseconds on, and
+Chapter 22 needs only exact arithmetic on bit fields. Its measurement
+code is written and exercised; only the numbers wait.
+Next: **21, Fused Operations and CUDA Graphs**, then **23, Reading a
+Real Kernel**.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of

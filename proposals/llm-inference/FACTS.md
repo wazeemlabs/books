@@ -184,3 +184,24 @@ Format: claim · value · source · last verified.
 | vLLM FlashAttention version default | "Default is FA4 on SM100+ (Blackwell), FA3 on SM90 (Hopper), FA2 otherwise"; override `--attention-config.flash_attn_version` | vLLM docs, Attention Backend Feature Support | 2026-09-20 |
 | A100 memory hierarchy | "HBM: 1.5 TB/s (40 GB)" against "SRAM: 19 TB/s (20 MB)" -- about 13x the bandwidth, aggregate across all multiprocessors | Dao et al., arXiv:2205.14135, Figure 1 (left) | 2026-09-20 |
 | Online softmax | The running-maximum rescaling FlashAttention's one pass depends on | Milakov and Gimelshein, "Online normalizer calculation for softmax", arXiv:1805.02867 | 2026-09-20 |
+
+## Precision and tensor cores
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| H100 SXM FP64 | "34 teraFLOPS" (no sparsity footnote: CUDA cores) | NVIDIA H100 product page, specifications table | 2026-09-21 |
+| H100 SXM FP32 | "67 teraFLOPS" (no sparsity footnote: CUDA cores) | NVIDIA H100 product page | 2026-09-21 |
+| H100 SXM TF32 tensor core | "989 teraFLOPS" with sparsity, so ~494 dense | NVIDIA H100 product page, footnote "* With sparsity" | 2026-09-21 |
+| H100 SXM BFLOAT16 tensor core | "1,979 teraFLOPS" with sparsity, so ~990 dense | NVIDIA H100 product page, footnote "* With sparsity" | 2026-09-21 |
+| H100 SXM FP16 tensor core | "1,979 teraFLOPS" with sparsity, so ~990 dense | NVIDIA H100 product page | 2026-09-21 |
+| H100 SXM FP8 tensor core | "3,958 teraFLOPS" with sparsity, so ~1,979 dense | NVIDIA H100 product page | 2026-09-21 |
+| H100 SXM INT8 tensor core | "3,958 TOPS" with sparsity, so ~1,979 dense | NVIDIA H100 product page | 2026-09-21 |
+| Sparsity footnote | Every H100 tensor-core figure on the product page carries "* With sparsity"; the page gives no dense figures | NVIDIA H100 product page | 2026-09-21 |
+| FP8 formats | "an 8-bit floating point (FP8) binary interchange format consisting of two encodings": E4M3 (4 exponent, 3 mantissa) and E5M2 (5 exponent, 2 mantissa) | Micikevicius et al., arXiv:2209.05433, abstract | 2026-09-21 |
+| E4M3 deviates from IEEE | "E4M3's dynamic range is extended by not representing infinities and having only one mantissa bit-pattern for NaNs" | arXiv:2209.05433, abstract | 2026-09-21 |
+| E5M2 follows IEEE | "E5M2 follows IEEE 754 conventions for representation of special values" | arXiv:2209.05433, abstract | 2026-09-21 |
+| FP8 matches 16-bit quality | "effectively matching the result quality achieved by 16-bit training sessions", on models "up to 175B parameter" | arXiv:2209.05433, abstract | 2026-09-21 |
+| vLLM `--dtype` values | `auto`, `bfloat16`, `float`, `float16`, `float32`, `half`; default `auto` | vLLM docs, Engine Arguments | 2026-09-21 |
+| vLLM `--dtype auto` | "\"auto\" will use FP16 precision for FP32 and FP16 models, and BF16 precision for BF16 models" -- it does not simply follow the checkpoint | vLLM docs, Engine Arguments | 2026-09-21 |
+| vLLM `--kv-cache-dtype` | default `auto`, which "will use model data type"; accepts `fp8`, `fp8_e4m3`, `fp8_e5m2` among others | vLLM docs, Engine Arguments | 2026-09-21 |
+| vLLM fp8 KV cache by platform | "CUDA 11.8+ supports fp8 (=fp8_e4m3) and fp8_e5m2. ROCm (AMD GPU) supports fp8 (=fp8_e4m3)." | vLLM docs, Engine Arguments | 2026-09-21 |

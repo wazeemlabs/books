@@ -51,7 +51,11 @@ def strip_uncounted(text: str) -> str:
 # listed in the glossary for the reader but their order is not enforced.
 # Any term added here must still be defined somewhere.
 ORDINARY_ENGLISH = {"value", "block", "key", "head", "weight", "precision",
-                    "latency", "median", "matrix", "vector", "concurrency"}
+                    "latency", "median", "matrix", "vector", "concurrency",
+                    # "at different exponents", "grows exponentially":
+                    # Chapter 4 means the ordinary word, not the field of a
+                    # floating-point number that Chapter 22 names.
+                    "exponent"}
 
 
 def glossary() -> dict[str, int]:

@@ -1,0 +1,561 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T19:16:31Z",
+    "hardware": {
+      "cpu": "Apple M4 Max",
+      "cores_available": 16,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.14.7",
+      "numpy": "2.5.3",
+      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "blas": "accelerate"
+    },
+    "commit": "0378e50"
+  },
+  "formats": [
+    {
+      "name": "float32",
+      "bits": 32,
+      "exponent_bits": 8,
+      "mantissa_bits": 23,
+      "max_value": 3.4028234663852886e+38,
+      "min_normal": 1.1754943508222875e-38,
+      "min_subnormal": 1.401298464324817e-45,
+      "eps": 1.1920928955078125e-07,
+      "decimal_digits": 7.224719895935548,
+      "has_infinity": true,
+      "storage_bytes": 4.0,
+      "compute_only": false,
+      "orders_of_magnitude": 76.46161887276526,
+      "peak_tflops": 67.0,
+      "over_float32_flops": 1.0
+    },
+    {
+      "name": "tensorfloat32",
+      "bits": 19,
+      "exponent_bits": 8,
+      "mantissa_bits": 10,
+      "max_value": 3.4011621342146535e+38,
+      "min_normal": 1.1754943508222875e-38,
+      "min_subnormal": 1.1479437019748901e-41,
+      "eps": 0.0009765625,
+      "decimal_digits": 3.3113299523037933,
+      "has_infinity": true,
+      "storage_bytes": 4,
+      "compute_only": true,
+      "orders_of_magnitude": 76.46140678900994,
+      "peak_tflops": 495.0,
+      "over_float32_flops": 7.388059701492537
+    },
+    {
+      "name": "float16",
+      "bits": 16,
+      "exponent_bits": 5,
+      "mantissa_bits": 10,
+      "max_value": 65504.0,
+      "min_normal": 6.103515625e-05,
+      "min_subnormal": 5.960464477539063e-08,
+      "eps": 0.0009765625,
+      "decimal_digits": 3.3113299523037933,
+      "has_infinity": true,
+      "storage_bytes": 2.0,
+      "compute_only": false,
+      "orders_of_magnitude": 9.030687760278148,
+      "peak_tflops": 990.0,
+      "over_float32_flops": 14.776119402985074
+    },
+    {
+      "name": "bfloat16",
+      "bits": 16,
+      "exponent_bits": 8,
+      "mantissa_bits": 7,
+      "max_value": 3.3895313892515355e+38,
+      "min_normal": 1.1754943508222875e-38,
+      "min_subnormal": 9.183549615799121e-41,
+      "eps": 0.0078125,
+      "decimal_digits": 2.4082399653118496,
+      "has_infinity": true,
+      "storage_bytes": 2.0,
+      "compute_only": false,
+      "orders_of_magnitude": 76.45991911377334,
+      "peak_tflops": 990.0,
+      "over_float32_flops": 14.776119402985074
+    },
+    {
+      "name": "float8 e4m3",
+      "bits": 8,
+      "exponent_bits": 4,
+      "mantissa_bits": 3,
+      "max_value": 448.0,
+      "min_normal": 0.015625,
+      "min_subnormal": 0.001953125,
+      "eps": 0.125,
+      "decimal_digits": 1.2041199826559248,
+      "has_infinity": false,
+      "storage_bytes": 1.0,
+      "compute_only": false,
+      "orders_of_magnitude": 4.457457987982031,
+      "peak_tflops": 1980.0,
+      "over_float32_flops": 29.55223880597015
+    },
+    {
+      "name": "float8 e5m2",
+      "bits": 8,
+      "exponent_bits": 5,
+      "mantissa_bits": 2,
+      "max_value": 57344.0,
+      "min_normal": 6.103515625e-05,
+      "min_subnormal": 1.52587890625e-05,
+      "eps": 0.25,
+      "decimal_digits": 0.9030899869919435,
+      "has_infinity": true,
+      "storage_bytes": 1.0,
+      "compute_only": false,
+      "orders_of_magnitude": 8.972907922941749,
+      "peak_tflops": 1980.0,
+      "over_float32_flops": 29.55223880597015
+    }
+  ],
+  "verification": {
+    "values_compared": 601024,
+    "values_agreeing": 601024,
+    "halfway_cases": 1024,
+    "all_agree": true
+  },
+  "tensors": {
+    "rows": [
+      {
+        "tensor": "attention weights (wq)",
+        "count": 16384,
+        "largest": 0.35560035705566406,
+        "smallest_nonzero": 5.6751573538349476e-06,
+        "tensorfloat32": 5.148132035140325e-05,
+        "tensorfloat32 overflowed": 0,
+        "tensorfloat32 to zero": 0,
+        "float16": 5.148132035593758e-05,
+        "float16 overflowed": 0,
+        "float16 to zero": 0,
+        "bfloat16": 0.00041631143317060875,
+        "bfloat16 overflowed": 0,
+        "bfloat16 to zero": 0,
+        "float8 e4m3": 0.006544645294605265,
+        "float8 e4m3 overflowed": 0,
+        "float8 e4m3 to zero": 118,
+        "float8 e5m2": 0.013101933063920759,
+        "float8 e5m2 overflowed": 0,
+        "float8 e5m2 to zero": 1
+      },
+      {
+        "tensor": "feed-forward weights (w1)",
+        "count": 65536,
+        "largest": 0.3898082971572876,
+        "smallest_nonzero": 2.852546231224551e-06,
+        "tensorfloat32": 4.6944543723692375e-05,
+        "tensorfloat32 overflowed": 0,
+        "tensorfloat32 to zero": 0,
+        "float16": 4.694454373339257e-05,
+        "float16 overflowed": 0,
+        "float16 to zero": 0,
+        "bfloat16": 0.00037589752179654275,
+        "bfloat16 overflowed": 0,
+        "bfloat16 to zero": 0,
+        "float8 e4m3": 0.006024424026419271,
+        "float8 e4m3 overflowed": 0,
+        "float8 e4m3 to zero": 594,
+        "float8 e5m2": 0.012068603080150944,
+        "float8 e5m2 overflowed": 0,
+        "float8 e5m2 to zero": 4
+      },
+      {
+        "tensor": "token embeddings",
+        "count": 65536,
+        "largest": 0.40253186225891113,
+        "smallest_nonzero": 2.168725814044592e-06,
+        "tensorfloat32": 4.570555264026698e-05,
+        "tensorfloat32 overflowed": 0,
+        "tensorfloat32 to zero": 0,
+        "float16": 4.570555264686669e-05,
+        "float16 overflowed": 0,
+        "float16 to zero": 0,
+        "bfloat16": 0.0003674681138052831,
+        "bfloat16 overflowed": 0,
+        "bfloat16 to zero": 0,
+        "float8 e4m3": 0.005878605791674848,
+        "float8 e4m3 overflowed": 0,
+        "float8 e4m3 to zero": 557,
+        "float8 e5m2": 0.011586393339085552,
+        "float8 e5m2 overflowed": 0,
+        "float8 e5m2 to zero": 2
+      },
+      {
+        "tensor": "activations, after a layer",
+        "count": 8192,
+        "largest": 3.2933268547058105,
+        "smallest_nonzero": 6.9588422775268555e-06,
+        "tensorfloat32": 2.3311203146336735e-05,
+        "tensorfloat32 overflowed": 0,
+        "tensorfloat32 to zero": 0,
+        "float16": 2.331120314639034e-05,
+        "float16 overflowed": 0,
+        "float16 to zero": 0,
+        "bfloat16": 0.00018822061733182014,
+        "bfloat16 overflowed": 0,
+        "bfloat16 to zero": 0,
+        "float8 e4m3": 0.0029936243193156857,
+        "float8 e4m3 overflowed": 0,
+        "float8 e4m3 to zero": 19,
+        "float8 e5m2": 0.006102493477646536,
+        "float8 e5m2 overflowed": 0,
+        "float8 e5m2 to zero": 1
+      },
+      {
+        "tensor": "attention weights, after softmax",
+        "count": 16384,
+        "largest": 1.0,
+        "smallest_nonzero": 0.00023660098668187857,
+        "tensorfloat32": 8.162556762409667e-06,
+        "tensorfloat32 overflowed": 0,
+        "tensorfloat32 to zero": 0,
+        "float16": 8.162556762409667e-06,
+        "float16 overflowed": 0,
+        "float16 to zero": 0,
+        "bfloat16": 6.68135032470491e-05,
+        "bfloat16 overflowed": 0,
+        "bfloat16 to zero": 0,
+        "float8 e4m3": 0.0011484086787060372,
+        "float8 e4m3 overflowed": 0,
+        "float8 e4m3 to zero": 42,
+        "float8 e5m2": 0.002004522202398599,
+        "float8 e5m2 overflowed": 0,
+        "float8 e5m2 to zero": 0
+      },
+      {
+        "tensor": "logits",
+        "count": 32768,
+        "largest": 4.069170951843262,
+        "smallest_nonzero": 3.052104511880316e-05,
+        "tensorfloat32": 5.195645639303112e-05,
+        "tensorfloat32 overflowed": 0,
+        "tensorfloat32 to zero": 0,
+        "float16": 5.19564563930424e-05,
+        "float16 overflowed": 0,
+        "float16 to zero": 0,
+        "bfloat16": 0.0004192142669606621,
+        "bfloat16 overflowed": 0,
+        "bfloat16 to zero": 0,
+        "float8 e4m3": 0.006645870255427702,
+        "float8 e4m3 overflowed": 0,
+        "float8 e4m3 to zero": 20,
+        "float8 e5m2": 0.013277381296426022,
+        "float8 e5m2 overflowed": 0,
+        "float8 e5m2 to zero": 0
+      }
+    ],
+    "config": {
+      "layers": 4,
+      "d_model": 128,
+      "heads": 4,
+      "tokens": 64
+    }
+  },
+  "accumulation": {
+    "rows": [
+      {
+        "format": "bfloat16",
+        "k": 128,
+        "wide_accumulator": 0.0023584591521741364,
+        "narrow_accumulator": 0.013484203810567133,
+        "ratio": 5.717378568179471,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "bfloat16",
+        "k": 512,
+        "wide_accumulator": 0.0023472640207177937,
+        "narrow_accumulator": 0.02570030881565415,
+        "ratio": 10.949049015711061,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "bfloat16",
+        "k": 2048,
+        "wide_accumulator": 0.0022808723691547183,
+        "narrow_accumulator": 0.050742901086776405,
+        "ratio": 22.247146211684573,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "bfloat16",
+        "k": 8192,
+        "wide_accumulator": 0.002372838474132084,
+        "narrow_accumulator": 0.0975418363726692,
+        "ratio": 41.107659638883426,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "float16",
+        "k": 128,
+        "wide_accumulator": 0.0003012224267889889,
+        "narrow_accumulator": 0.0016752238843860676,
+        "ratio": 5.561418192675237,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "float16",
+        "k": 512,
+        "wide_accumulator": 0.0002925293909533923,
+        "narrow_accumulator": 0.0033850435667053063,
+        "ratio": 11.571635778794732,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "float16",
+        "k": 2048,
+        "wide_accumulator": 0.0002940681292007838,
+        "narrow_accumulator": 0.0065961325803746765,
+        "ratio": 22.430627209761212,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "float16",
+        "k": 8192,
+        "wide_accumulator": 0.00029585919604524594,
+        "narrow_accumulator": 0.012567734182429778,
+        "ratio": 42.47876811139508,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "float8 e4m3",
+        "k": 128,
+        "wide_accumulator": 0.03725273145449625,
+        "narrow_accumulator": 0.18944298281856004,
+        "ratio": 5.085344763241382,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "float8 e4m3",
+        "k": 512,
+        "wide_accumulator": 0.03803469153482793,
+        "narrow_accumulator": 0.33618053743295706,
+        "ratio": 8.83878700909459,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "float8 e4m3",
+        "k": 2048,
+        "wide_accumulator": 0.03713847548271541,
+        "narrow_accumulator": 0.5315599470311632,
+        "ratio": 14.312917806186094,
+        "rows": 64,
+        "cols": 64
+      },
+      {
+        "format": "float8 e4m3",
+        "k": 8192,
+        "wide_accumulator": 0.03771342411666768,
+        "narrow_accumulator": 0.746600012384875,
+        "ratio": 19.79666471215247,
+        "rows": 64,
+        "cols": 64
+      }
+    ],
+    "note_rows": 64,
+    "note_cols": 64
+  },
+  "range": {
+    "rows": [
+      {
+        "input_scale": 1,
+        "exact": -18.137741166761018,
+        "largest_product": 6.538943767547607,
+        "float16 holds the products": true,
+        "float16 accumulator": -18.375,
+        "float16 overflowed": false,
+        "bfloat16 holds the products": true,
+        "bfloat16 accumulator": -13.9375,
+        "bfloat16 overflowed": false
+      },
+      {
+        "input_scale": 10,
+        "exact": -887.9185367592277,
+        "largest_product": 865.0820922851562,
+        "float16 holds the products": true,
+        "float16 accumulator": -888.0,
+        "float16 overflowed": false,
+        "bfloat16 holds the products": true,
+        "bfloat16 accumulator": -988.0,
+        "bfloat16 overflowed": false
+      },
+      {
+        "input_scale": 30,
+        "exact": 1972.3343102809522,
+        "largest_product": 6850.0869140625,
+        "float16 holds the products": true,
+        "float16 accumulator": 1864.0,
+        "float16 overflowed": false,
+        "bfloat16 holds the products": true,
+        "bfloat16 accumulator": 1080.0,
+        "bfloat16 overflowed": false
+      },
+      {
+        "input_scale": 100,
+        "exact": 65790.78277825791,
+        "largest_product": 92758.4140625,
+        "float16 holds the products": false,
+        "float16 accumulator": null,
+        "float16 overflowed": true,
+        "bfloat16 holds the products": true,
+        "bfloat16 accumulator": 66048.0,
+        "bfloat16 overflowed": false
+      },
+      {
+        "input_scale": 300,
+        "exact": -3609721.800252799,
+        "largest_product": 819523.9375,
+        "float16 holds the products": false,
+        "float16 accumulator": null,
+        "float16 overflowed": true,
+        "bfloat16 holds the products": true,
+        "bfloat16 accumulator": -3670016.0,
+        "bfloat16 overflowed": false
+      },
+      {
+        "input_scale": 1000,
+        "exact": 13607112.317048285,
+        "largest_product": 7778909.5,
+        "float16 holds the products": false,
+        "float16 accumulator": null,
+        "float16 overflowed": true,
+        "bfloat16 holds the products": true,
+        "bfloat16 accumulator": 14548992.0,
+        "bfloat16 overflowed": false
+      }
+    ],
+    "k": 4096,
+    "fp16_max": 65504.0,
+    "bf16_max": 3.3895313892515355e+38,
+    "first_scale_fp16_fails": 100,
+    "bf16_ever_fails": false
+  },
+  "hardware": {
+    "rows": [
+      {
+        "name": "float32",
+        "bytes_per_number": 4.0,
+        "peak_tflops": 67.0,
+        "weight_gb": 32.008830976,
+        "weight_read_ms": 9.554874918208954,
+        "kv_bytes_per_token": 262144.0,
+        "kv_gb_at_context": 0.393216,
+        "ridge_flops_per_byte": 20.0,
+        "compute_bound_above_batch": 40.0,
+        "prefill_ms_at_peak": 286.6462475462687
+      },
+      {
+        "name": "tensorfloat32",
+        "bytes_per_number": 4,
+        "peak_tflops": 495.0,
+        "weight_gb": 32.008830976,
+        "weight_read_ms": 9.554874918208954,
+        "kv_bytes_per_token": 262144,
+        "kv_gb_at_context": 0.393216,
+        "ridge_flops_per_byte": 147.76119402985074,
+        "compute_bound_above_batch": 295.5223880597015,
+        "prefill_ms_at_peak": 38.798583001212116
+      },
+      {
+        "name": "float16",
+        "bytes_per_number": 2.0,
+        "peak_tflops": 990.0,
+        "weight_gb": 16.004415488,
+        "weight_read_ms": 4.777437459104477,
+        "kv_bytes_per_token": 131072.0,
+        "kv_gb_at_context": 0.196608,
+        "ridge_flops_per_byte": 295.5223880597015,
+        "compute_bound_above_batch": 295.5223880597015,
+        "prefill_ms_at_peak": 19.399291500606058
+      },
+      {
+        "name": "bfloat16",
+        "bytes_per_number": 2.0,
+        "peak_tflops": 990.0,
+        "weight_gb": 16.004415488,
+        "weight_read_ms": 4.777437459104477,
+        "kv_bytes_per_token": 131072.0,
+        "kv_gb_at_context": 0.196608,
+        "ridge_flops_per_byte": 295.5223880597015,
+        "compute_bound_above_batch": 295.5223880597015,
+        "prefill_ms_at_peak": 19.399291500606058
+      },
+      {
+        "name": "float8 e4m3",
+        "bytes_per_number": 1.0,
+        "peak_tflops": 1980.0,
+        "weight_gb": 8.002207744,
+        "weight_read_ms": 2.3887187295522385,
+        "kv_bytes_per_token": 65536.0,
+        "kv_gb_at_context": 0.098304,
+        "ridge_flops_per_byte": 591.044776119403,
+        "compute_bound_above_batch": 295.5223880597015,
+        "prefill_ms_at_peak": 9.699645750303029
+      },
+      {
+        "name": "float8 e5m2",
+        "bytes_per_number": 1.0,
+        "peak_tflops": 1980.0,
+        "weight_gb": 8.002207744,
+        "weight_read_ms": 2.3887187295522385,
+        "kv_bytes_per_token": 65536.0,
+        "kv_gb_at_context": 0.098304,
+        "ridge_flops_per_byte": 591.044776119403,
+        "compute_bound_above_batch": 295.5223880597015,
+        "prefill_ms_at_peak": 9.699645750303029
+      }
+    ],
+    "hbm_bytes_per_s": 3350000000000.0,
+    "params": 8002207744,
+    "prompt_tokens": 1200,
+    "context_tokens": 1500
+  },
+  "assumptions": {
+    "seed": 0,
+    "accumulation_lengths": [
+      128,
+      512,
+      2048,
+      8192
+    ],
+    "accumulation_shape": [
+      64,
+      64
+    ],
+    "range_scales": [
+      1,
+      10,
+      30,
+      100,
+      300,
+      1000
+    ],
+    "peak_flops_are_dense": true,
+    "model": {
+      "params": 8002207744,
+      "d_model": 4096,
+      "layers": 32
+    },
+    "model_not_measurement": true
+  },
+  "model_not_measurement": true
+}
