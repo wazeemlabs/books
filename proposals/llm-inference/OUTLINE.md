@@ -573,13 +573,30 @@ its cost per million tokens — the number the capstone must beat.*
 
 # Writing order
 
-1. **Chapter 9 and Appendix A** — the harness. Everything else
-   measures with it.
-2. **Part III** — the spine. If the engine works and the gains are
-   measurable, the book works.
-3. **Parts I–II**, once there is something concrete to point at.
-4. **Parts V–VI**, which extend the engine.
-5. **Part VII**, then **IV**, then **VIII** and Chapter 46.
+The first three chapters were written out of order, on purpose, to
+retire the biggest risk first: whether the engine spine works as a
+teaching device and whether the measurement pipeline can hold the
+standards. It does, so that reason has expired.
+
+**Done:**
+
+1. **Chapter 9 and Appendix A** — the harness, which everything else
+   measures with.
+2. **Chapters 11–13** — the spine's first stretch: naive loop, KV
+   cache, and what the cache costs in memory. Chapters 12 and 13 are
+   drafted; Chapter 11 is implemented and awaits prose.
+3. **Chapter 1** — written once there were real numbers to open with.
+
+**From here, front to back.** The remaining risk is pedagogical rather
+than mechanical, and it lives in Part I and the early chapters of
+Part III: whether a reader new to the field is carried or lost. That
+cannot be judged out of order, because it depends on what the previous
+chapter left them holding.
+
+Two exceptions, where a chapter needs a measurement a later chapter
+produces: quote it from the results file that will own it, and let
+`make check` fail until that chapter's experiment exists. Never write
+a placeholder number.
 
 Each Part gets a design review against STANDARDS.md before writing
 begins (§8.2).

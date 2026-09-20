@@ -1,12 +1,18 @@
 # Regenerate everything the manuscript includes, from measurement to figure.
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make lock   - refresh environment.lock
-.PHONY: ch13 ch12 figures tables manuscript check xref lock clean
+.PHONY: all ch01 ch13 ch12 figures tables manuscript check xref lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
+
+all: ch01 ch13 ch12
+
+ch01:
+	python3 -m bench.run_ch01
+	$(MAKE) figures tables manuscript
 
 ch13:
 	python3 -m bench.run_ch13

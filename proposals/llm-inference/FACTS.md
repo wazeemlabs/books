@@ -57,6 +57,23 @@ Format: claim · value · source · last verified.
 | Tokens in flight to reach the ridge, 8B | ≈ 300 / 2 ≈ 150 | ridge, 2 FLOP/param/token |
 | Prefill, 8B, 1,000 tokens, ideal | 2 × 8e9 × 1e3 = 16 TFLOP ≈ 16 ms at peak | H100 BF16 peak |
 
+## API prices (per million tokens, cheapest tracked provider)
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| Hosted Llama-3.1-8B | $0.02 input / $0.05 output | published price-comparison indexes | 2026-09 |
+| Open-weight floor, direct-stack hosts | ~$0.02-$0.20 per 1M input | same | 2026-09 |
+| Same open weights across providers | differ severalfold on hardware, batching, quantization and margin | same | 2026-09 |
+| Output vs input price | output typically 2-5x input | same | 2026-09 |
+
+## Compensation
+
+| Claim | Value | Source | Verified |
+|---|---|---|---|
+| Inference / GPU specialists | $300K-$500K+ total comp | 2026 compensation surveys and salary guides | 2026-09 |
+| LLM fine-tuning and inference, broader | $220K-$350K total comp | same | 2026-09 |
+| CUDA / GPU optimization | $300K-$500K+ | same | 2026-09 |
+
 ## Books and competing titles
 
 | Claim | Value | Verified |

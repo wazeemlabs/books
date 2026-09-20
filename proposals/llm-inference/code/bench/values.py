@@ -120,6 +120,40 @@ def ch12(d: dict) -> dict[str, str]:
     }
 
 
+def ch01(d: dict) -> dict[str, str]:
+    a, api, sp = d["assumptions"], d["api_reference"], d["spread"]
+    lo, hi = d["batches"][0], d["batches"][-1]
+    # The case study: 200 req/s x 300 output tokens, run for a day.
+    tok_per_s = 200 * 300
+    tok_per_day_m = tok_per_s * 86400 / 1e6
+    return {
+        "gpu": a["gpu"],
+        "gpu_price": f"${a['gpu_usd_per_hour']:.2f}",
+        "bandwidth": f"{a['hbm_bytes_per_s'] / 1e12:.2f} TB/s",
+        "params_b": f"{a['params'] / 1e9:.0f}B",
+        "weight_gb": f"{a['weight_bytes'] / 1e9:.0f} GB",
+        "seq_len": f"{a['seq_len']:,}",
+        "max_batch": str(a["max_concurrent"]),
+        "worst_cost": f"${sp['worst_usd_per_m']:.2f}",
+        "best_cost": f"${sp['best_usd_per_m']:.3f}",
+        "spread": f"{sp['ratio']:.0f}x",
+        "worst_tps": f"{lo['tokens_per_s']:,.0f}",
+        "best_tps": f"{hi['tokens_per_s']:,.0f}",
+        "worst_util": f"{lo['flop_utilization'] * 100:.1f}%",
+        "best_util": f"{hi['flop_utilization'] * 100:.0f}%",
+        "best_itl": f"{hi['step_ms']:.0f} ms",
+        "kv_share": f"{(1 - hi['weight_share_of_bytes']) * 100:.0f}%",
+        "api_out": f"${api['output_usd_per_m']:.2f}",
+        "api_in": f"${api['input_usd_per_m']:.2f}",
+        "best_vs_api": f"{sp['best_vs_api']:.1f}x",
+        "day_tokens_m": f"{tok_per_day_m:,.0f}",
+        "day_tokens": f"{tok_per_s * 86400 / 1e9:.1f} billion",
+        "day_worst": f"${tok_per_day_m * sp['worst_usd_per_m']:,.0f}",
+        "day_best": f"${tok_per_day_m * sp['best_usd_per_m']:,.0f}",
+        "year_gap": f"${(tok_per_day_m * (sp['worst_usd_per_m'] - sp['best_usd_per_m']) * 365) / 1e6:,.1f} million",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -155,7 +189,7 @@ def ch13(d: dict) -> dict[str, str]:
 
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
-    return {"ch12": ch12, "ch13": ch13}[chapter](d)
+    return {"ch01": ch01, "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

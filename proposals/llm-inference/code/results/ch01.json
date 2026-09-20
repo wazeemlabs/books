@@ -1,0 +1,135 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T11:36:29Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "bd75e35"
+  },
+  "model_not_measurement": true,
+  "note": "Arithmetic over published specs and prices; not a benchmark. Part VII measures the real thing.",
+  "assumptions": {
+    "gpu": "H100 SXM 80GB",
+    "hbm_bytes_per_s": 3350000000000.0,
+    "peak_bf16_flops": 990000000000000.0,
+    "gpu_usd_per_hour": 3.25,
+    "params": 8000000000.0,
+    "weight_bytes": 16000000000.0,
+    "kv_bytes_per_token": 131072,
+    "seq_len": 1500,
+    "max_concurrent": 325,
+    "facts_verified": "2026-09"
+  },
+  "api_reference": {
+    "model": "hosted Llama-3.1-8B, cheapest tracked provider",
+    "output_usd_per_m": 0.05,
+    "input_usd_per_m": 0.02
+  },
+  "batches": [
+    {
+      "batch": 1,
+      "tokens_per_s": 206.83343080230134,
+      "step_ms": 4.834808358208955,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 4.364757545605307,
+      "flop_utilization": 0.0033427625180169913,
+      "weight_share_of_bytes": 0.9878611620408422
+    },
+    {
+      "batch": 2,
+      "tokens_per_s": 408.7056499469048,
+      "step_ms": 4.893497313432836,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 2.2088703150912106,
+      "flop_utilization": 0.006605343837525734,
+      "weight_share_of_bytes": 0.976013492410519
+    },
+    {
+      "batch": 4,
+      "tokens_per_s": 798.2637406209968,
+      "step_ms": 5.010875223880597,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 1.1309266998341623,
+      "flop_utilization": 0.012901232171652474,
+      "weight_share_of_bytes": 0.9531507350698469
+    },
+    {
+      "batch": 8,
+      "tokens_per_s": 1525.0786667443622,
+      "step_ms": 5.245631044776119,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 0.5919548922056385,
+      "flop_utilization": 0.024647736028191713,
+      "weight_share_of_bytes": 0.9104947264145447
+    },
+    {
+      "batch": 16,
+      "tokens_per_s": 2799.5801465475743,
+      "step_ms": 5.715142686567164,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 0.3224689883913765,
+      "flop_utilization": 0.045245739742183017,
+      "weight_share_of_bytes": 0.8356955661336043
+    },
+    {
+      "batch": 32,
+      "tokens_per_s": 4809.0174100785525,
+      "step_ms": 6.654165970149253,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 0.18772603648424543,
+      "flop_utilization": 0.07772149349621903,
+      "weight_share_of_bytes": 0.7177637925490377
+    },
+    {
+      "batch": 64,
+      "tokens_per_s": 7500.985204026798,
+      "step_ms": 8.532212537313432,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 0.12035456053067992,
+      "flop_utilization": 0.1212280437014432,
+      "weight_share_of_bytes": 0.5597750152258805
+    },
+    {
+      "batch": 128,
+      "tokens_per_s": 10416.407552050943,
+      "step_ms": 12.288305671641792,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 0.08666882255389718,
+      "flop_utilization": 0.16834598063920717,
+      "weight_share_of_bytes": 0.38867192358399044
+    },
+    {
+      "batch": 256,
+      "tokens_per_s": 12928.971702919245,
+      "step_ms": 19.80049194029851,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 0.0698259535655058,
+      "flop_utilization": 0.20895307802697768,
+      "weight_share_of_bytes": 0.2412121586365531
+    },
+    {
+      "batch": 325,
+      "tokens_per_s": 13626.817326177506,
+      "step_ms": 23.85002985074627,
+      "bound_by": "memory",
+      "usd_per_m_tokens": 0.06625008291873964,
+      "flop_utilization": 0.2202313911301415,
+      "weight_share_of_bytes": 0.20025632809996796
+    }
+  ],
+  "spread": {
+    "worst_usd_per_m": 4.364757545605307,
+    "best_usd_per_m": 0.06625008291873964,
+    "ratio": 65.88305030438961,
+    "worst_vs_api": 87.29515091210612,
+    "best_vs_api": 1.3250016583747928
+  }
+}

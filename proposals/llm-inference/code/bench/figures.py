@@ -33,6 +33,13 @@ def style(ax) -> None:
 
 def caption(d: dict) -> str:
     p = d["provenance"]
+    if d.get("model_not_measurement"):  # a cost model, not a benchmark
+        a = d["assumptions"]
+        return (f"MODEL, not a measurement: arithmetic over published specs - "
+                f"{a['gpu']}, {a['hbm_bytes_per_s']/1e12:.2f} TB/s, "
+                f"${a['gpu_usd_per_hour']}/GPU-hour, {a['params']/1e9:.0f}B params bf16, "
+                f"{a['seq_len']:,}-token sequences - facts verified "
+                f"{a['facts_verified']} (FACTS.md) - commit {p['commit']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -104,6 +111,39 @@ def fig_scaling(d: dict) -> None:
               f"{s[-1]['speedup']:.0f}x at {s[-1]['n_new']}."))
 
 
+def fig_cost(d: dict) -> None:
+    rows = d["batches"]
+    x = [r["batch"] for r in rows]
+    y = [r["usd_per_m_tokens"] for r in rows]
+    api = d["api_reference"]["output_usd_per_m"]
+
+    fig, ax = plt.subplots(figsize=(7, 3.8), dpi=200)
+    ax.plot(x, y, color="#0B1F3A", marker="o", markersize=4, linewidth=1.8,
+            label="Modelled cost, one H100, 8B model")
+    ax.axhline(api, color="#B7780F", linestyle=":", linewidth=1.6,
+               label=f"Published API price for the same model (${api:.2f}/M)")
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log")
+    ax.set_xticks(x, [str(v) for v in x], fontsize=7.5)
+    ax.set_xlabel("Sequences decoded at the same time")
+    ax.set_ylabel("USD per million output tokens (log)")
+    ax.set_title("The same GPU and the same model, "
+                 f"{d['spread']['ratio']:.0f}x apart in cost", loc="left")
+    for r in (rows[0], rows[-1]):
+        ax.annotate(f"${r['usd_per_m_tokens']:.3f}\n{r['flop_utilization']*100:.1f}% of peak FLOPs",
+                    (r["batch"], r["usd_per_m_tokens"]), textcoords="offset points",
+                    xytext=(10, 6), fontsize=7.5)
+    ax.legend(frameon=False, fontsize=8, loc="upper right")
+    style(ax)
+    save(fig, "ch01-cost", d,
+         alt=("Modelled cost per million output tokens against how many sequences "
+              f"are decoded together, both axes logarithmic. Cost falls from "
+              f"${rows[0]['usd_per_m_tokens']:.2f} at one sequence to "
+              f"${rows[-1]['usd_per_m_tokens']:.3f} at {rows[-1]['batch']}, a factor of "
+              f"{d['spread']['ratio']:.0f}, on identical hardware. The published API "
+              f"price for the same model sits below even that, at ${api:.2f}."))
+
+
 def fig_memory(d: dict) -> None:
     rows = d["policies"]
     labels = {"max_model_len": "Reserve the full context\n(8,192 tokens)",
@@ -153,7 +193,7 @@ def save(fig, name: str, d: dict, alt: str) -> None:
     print(f"  {name}.svg / .png")
 
 
-CHAPTERS = {"ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+CHAPTERS = {"ch01": [fig_cost], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def main() -> None:

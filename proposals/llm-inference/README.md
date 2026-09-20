@@ -7,21 +7,27 @@ Working materials for the third *from the Ground Up* book.
 | [OUTLINE.md](OUTLINE.md) | The book: 8 parts, 46 chapters, per-chapter objectives and primary sources |
 | [STANDARDS.md](STANDARDS.md) | The bar every chapter is held to — evidence, sourcing, reproducibility, pedagogy, currency |
 | [FACTS.md](FACTS.md) | The facts register: every time-sensitive claim with its source and verification date |
+| [CHAPTER-01-DRAFT.md](CHAPTER-01-DRAFT.md) | **Generated.** Chapter 1, "The Cost of a Token" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 
-## The sample chapters
+## The drafted chapters
 
-Chapters 12 and 13 are written to demonstrate that the standards are
-achievable rather than aspirational. Every number in them was produced
-on this machine; none was typed into the manuscript by hand.
+Chapters 12 and 13 were written first, out of order, to retire the
+biggest risk: whether the engine spine teaches and whether the pipeline
+can hold the standards. Chapter 1 followed once there were real numbers
+to open with. Writing now proceeds front to back; see the writing order
+in OUTLINE.md.
+
+Every number in them was produced on this machine; none was typed into
+the manuscript by hand.
 
 ```
 cd code
-make ch12      # re-measure, then rebuild figures, tables and the chapter
-make ch13      # same, for the memory accounting
+make all       # every chapter: recompute, rebuild figures, tables, prose
+make ch01      # just one
 make check     # fail if anything has drifted
 ```
 
@@ -57,6 +63,12 @@ committed numbers.
 - Honesty survives contact with a noisy machine: the headline speedup
   moves ±17% across repeats on a shared vCPU, so the chapter reports it
   as "about 42x" and tells the reader which findings are stable.
+- Chapter 1 opens on an argument the arithmetic makes for it: the same
+  model on the same GPU spans 66x in cost per token, $343 against
+  $22,627 a day on the case study's traffic. The chapter is honest that
+  it is a model rather than a benchmark, and that its best figure is
+  still above the published API price — a gap it then turns into the
+  book's table of contents.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

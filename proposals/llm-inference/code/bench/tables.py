@@ -64,6 +64,22 @@ def memory(d: dict) -> str:
     ])
 
 
+def ch01_cost(d: dict) -> str:
+    out = ["| Sequences at once | Throughput | Cost per 1M output tokens | Arithmetic used | Limited by |",
+           "|---|---|---|---|---|"]
+    for r in d["batches"]:
+        out.append(f"| {r['batch']} | {r['tokens_per_s']:,.0f} tok/s | "
+                   f"**${r['usd_per_m_tokens']:.3f}** | "
+                   f"{r['flop_utilization'] * 100:.1f}% of peak | {r['bound_by']} |")
+    a, api = d["assumptions"], d["api_reference"]
+    out += ["", f"A model, not a benchmark: {a['gpu']}, "
+                f"${a['gpu_usd_per_hour']}/GPU-hour, {a['params'] / 1e9:.0f}B parameters "
+                f"in bf16, {a['seq_len']:,}-token sequences. For comparison, "
+                f"{api['model']} is published at ${api['output_usd_per_m']:.2f} per "
+                f"million output tokens."]
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -100,6 +116,7 @@ def ch13_traffic(d: dict) -> str:
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
+        "ch01": (("ch01-cost", ch01_cost),),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),
