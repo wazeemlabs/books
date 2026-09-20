@@ -144,7 +144,16 @@ class Trace:
 
     @property
     def mean_batch(self) -> float:
-        return self.batch_steps / max(self.iterations - self.prefill_iterations, 1)
+        """Sequences decoded per iteration that decoded anything.
+
+        The denominator is the number of recorded batch sizes, not
+        `iterations - prefill_iterations`. Chapter 17's schedulers give
+        prefill an iteration to itself, so the two agree there. Chapter
+        18's does not: a chunked iteration prefills *and* decodes, so
+        subtracting it removes an iteration whose batch was counted and
+        the mean comes out above the largest batch ever run.
+        """
+        return self.batch_steps / max(len(self.batch_sizes), 1)
 
     @property
     def slot_utilization(self) -> float:
@@ -883,3 +892,43 @@ def _spill(trace: Trace, pool: Pool, running: list[Request],
         queue.insert(0, victim)
         evicted += 1
     return evicted
+
+
+def test_the_mean_batch_is_inside_the_batches_it_averages() -> None:
+    """A mean has to lie between the smallest and largest thing averaged.
+
+    It did not, for the schedulers whose iterations prefill and decode
+    at the same time: `mean_batch` divided the sum of the batch sizes
+    by the iterations that were *not* prefill iterations, and in
+    Chapter 18 a prefill iteration is also a decode iteration. The
+    denominator lost every chunked iteration whose batch the numerator
+    had counted, and the average came out larger than any batch the
+    server ever ran. This is the check that would have caught it.
+    """
+    reqs = [Request(id=n, arrival_s=n * 0.02, prompt_tokens=1200,
+                    output_tokens=300) for n in range(120)]
+
+    def fresh() -> list[Request]:
+        return [Request(id=r.id, arrival_s=r.arrival_s,
+                        prompt_tokens=r.prompt_tokens,
+                        output_tokens=r.output_tokens) for r in reqs]
+
+    traces = {
+        "continuous": serve_continuous(fresh(), max_batch=64, blocks=20_000),
+        "static": serve_static(fresh(), max_batch=64, blocks=20_000),
+        "chunked": serve_chunked(fresh(), max_batch=64, blocks=20_000,
+                                 token_budget=512),
+        "colocated": serve_colocated(fresh(), workers=4, blocks=20_000,
+                                     token_budget=512, max_batch=64),
+        "disaggregated": serve_disaggregated(fresh(), prefill_workers=2,
+                                             decode_workers=2, blocks=20_000,
+                                             link_bytes_per_s=50e9,
+                                             max_batch=64),
+    }
+    for name, t in traces.items():
+        assert t.batch_sizes, f"{name} recorded no batches"
+        assert min(t.batch_sizes) <= t.mean_batch <= max(t.batch_sizes), (
+            f"{name}: mean batch {t.mean_batch:.1f} is outside "
+            f"[{min(t.batch_sizes)}, {max(t.batch_sizes)}]")
+        assert t.mean_batch <= 64, (
+            f"{name}: mean batch {t.mean_batch:.1f} exceeds the cap of 64")

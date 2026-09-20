@@ -29,7 +29,7 @@ Chapter 17 ended with one number going the wrong way.
 Deciding the batch at every iteration won on throughput, on the wait
 for a first token, on memory and on end-to-end time — and lost on the
 wait *between* tokens, whose 99th percentile rose to
-41.5 ms against a 8.6 ms floor, and to
+41.5 ms against a 7.1 ms floor, and to
 114 ms once the traffic reached 24 requests a
 second. At that rate it breaks the case study's promise of
 50 ms between words.
@@ -160,7 +160,7 @@ how much), and no extra bytes.
 > (`--max-num-batched-tokens`, `--chunked-prefill-size`) and not a
 > sequence count. A sequence count cannot tell a one-token decode from
 > a ten-thousand-token prompt, and the difference between those two is
-> the difference between a 8.6 ms iteration and a
+> the difference between a 7.1 ms iteration and a
 > 159 ms one.
 
 ## Choosing the budget
@@ -370,10 +370,10 @@ Now run it.
 <!-- include: tables/ch18-preemption.md -->
 | Way out of a full pool | Tokens/s | Sequences in flight | Preemptions | Prompt tokens read | Copied | Time copying | TTFT p99 |
 |---|---|---|---|---|---|---|---|
-| recompute | **2,738** | 36.6 | 1,163 | 3.04x over | 0 GB | 0.00 s | 11.7 s |
-| swap over PCIe 4.0 x16 | **2,139** | 14.3 | 357 | 1.00x over | 52 GB | 3.28 s | 26.0 s |
-| swap over PCIe 5.0 x16 | **2,182** | 14.3 | 357 | 1.00x over | 52 GB | 1.64 s | 24.4 s |
-| swap over NVLink (H100) | **2,223** | 14.3 | 357 | 1.00x over | 52 GB | 0.12 s | 22.9 s |
+| recompute | **2,738** | 18.3 | 1,163 | 3.04x over | 0 GB | 0.00 s | 11.7 s |
+| swap over PCIe 4.0 x16 | **2,139** | 12.6 | 357 | 1.00x over | 52 GB | 3.28 s | 26.0 s |
+| swap over PCIe 5.0 x16 | **2,182** | 12.6 | 357 | 1.00x over | 52 GB | 1.64 s | 24.4 s |
+| swap over NVLink (H100) | **2,223** | 12.6 | 357 | 1.00x over | 52 GB | 0.12 s | 22.9 s |
 
 A 1.9 GB pool (3% of the accelerator's free memory) at 12 requests a second, small enough that the server has to take sequences back out of the batch. Recomputing throws the evicted cache away; swapping copies it to host memory and back across the named link.
 
@@ -419,13 +419,13 @@ def _evict(trace: Trace, pool: Pool, decoding: list[Request],
 A **recomputed** sequence comes back empty. It re-enters through the
 chunked prefill path, taking its memory a few hundred tokens at a time,
 so the pool refills gradually and other sequences keep finishing in the
-meantime. The batch stays at 36.6 sequences.
+meantime. The batch stays at 18.3 sequences.
 
 A **swapped** sequence comes back *whole*. It needs its entire cache
 restored in one go before it can take a single step, and in a pool that
 is already full there is rarely room. So it waits, and while it waits
 it is holding a place in the queue: the batch falls to
-14.3 — 2.6x smaller — and a smaller batch is
+12.6 — 1.5x smaller — and a smaller batch is
 exactly what Chapter 16 said costs throughput.
 
 Throwing the work away turns out to be a form of backpressure. The
@@ -530,7 +530,7 @@ confirmation of it.
 | Quantity | Value |
 |---|---|
 | One 8,192-token prompt landing in your reply | 165 ms of silence, whole; 9.9 ms chunked (17x) |
-| Prefill of the case study's 1,200-token prompt | 19 ms, against a 8.6 ms decode step |
+| Prefill of the case study's 1,200-token prompt | 19 ms, against a 7.1 ms decode step |
 | Stall-free against prefill-alone, at 24 req/s | 5,374 → 5,586 tok/s, between-token p99 114 ms → 8.4 ms |
 | The budget that did it | 512 tokens an iteration |
 | Budget too small (128) | first token p99 16.5 s, throughput 3,721 |

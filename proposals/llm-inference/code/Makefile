@@ -124,7 +124,8 @@ from tinyserve.serving import test_the_two_steps_are_one_step as m; m(); \
 from tinyserve.scheduler import test_chunking_reads_every_prompt_token_exactly_once as n; n(); \
 from tinyserve.scheduler import test_a_smaller_budget_smooths_the_gap_between_tokens as o; o(); \
 from tinyserve.scheduler import test_swapping_keeps_the_tokens_that_recomputing_throws_away as q; q(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill')"
+from tinyserve.scheduler import test_the_mean_batch_is_inside_the_batches_it_averages as r; r(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets')"
 
 lock:
 	python3 -m pip freeze > environment.lock

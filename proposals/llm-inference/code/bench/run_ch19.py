@@ -43,7 +43,11 @@ MAX_OUTPUT = 1024
 
 RATE = REQUESTS_PER_S          # the case study's busy hour: 200 a second
 N_REQUESTS = 2000
-WARM_FRACTION = 0.1            # of the arrival window, discarded as warm-up
+# Half the arrival window is discarded as warm-up. A fleet starts empty
+# and takes about one reply's duration to reach the batch size it will
+# hold, so a measurement that starts at zero measures the ramp. Half is
+# comfortably past it: the measured rate is flat from 0.4 onward.
+WARM_FRACTION = 0.5
 FLEET = 12                     # accelerators, the same number for both designs
 MAX_BATCH = 256
 TOKEN_BUDGET = 512             # Chapter 18's choice, used by the colocated arm
@@ -114,8 +118,16 @@ def summarize(trace, rate: float, **extra) -> dict:
         "peak_blocks": trace.peak_blocks,
         "meets_ttft": pct(ttft, 99) <= TTFT_BUDGET_MS,
         "meets_itl": pct(gaps, 99) <= ITL_BUDGET_MS if gaps else False,
-        "keeping_up": (trace.makespan_s <= span * 1.10
-                       and pct(ttft, 99) <= TTFT_BUDGET_MS),
+        # A fleet's drain tail is long at this trace length, so "did it
+        # finish soon after the arrivals stopped" is the wrong test.
+        # Keeping up means producing what is asked for, inside the
+        # promise, while the traffic is arriving.
+        "keeping_up": (pct(ttft, 99) <= TTFT_BUDGET_MS
+                       and trace.steady_tokens_per_s(span * WARM_FRACTION, span)
+                       >= 0.95 * sum(r.output_tokens for r in trace.requests)
+                       / len(trace.requests) * rate),
+        "offered_sampled_tokens_per_s": (rate * sum(
+            r.output_tokens for r in trace.requests) / len(trace.requests)),
     }
     out.update(extra)
     return out

@@ -900,7 +900,8 @@ def _delta(splits: list[dict], best: dict, offset: int) -> str:
     if row is None:
         return "off the end of the fleet"
     change = row["tokens_per_s"] / best["tokens_per_s"] - 1
-    return f"{abs(change) * 100:.0f}% {'more' if change > 0 else 'less'}"
+    pct = abs(change) * 100
+    return f"{pct:.1f}% less" if pct < 1 else f"{pct:.0f}% less"
 
 
 def ch19(d: dict) -> dict[str, str]:
@@ -989,6 +990,11 @@ def ch19(d: dict) -> dict[str, str]:
         "co_batch": f"{co['mean_batch']:.1f}",
         "co_over_best": f"{co['tokens_per_s'] / best['tokens_per_s']:.2f}x",
         "co_gain_pct": f"{(co['tokens_per_s'] / best['tokens_per_s'] - 1) * 100:.0f}%",
+        "offered_sampled": tok(co["offered_sampled_tokens_per_s"]),
+        "co_keeps": "keeps up" if co["keeping_up"] else "does not keep up",
+        "best_keeps": "keeps up" if best["keeping_up"] else "does not keep up",
+        "co_of_offered": f"{co['tokens_per_s'] / co['offered_sampled_tokens_per_s'] * 100:.0f}%",
+        "best_of_offered": f"{best['tokens_per_s'] / best['offered_sampled_tokens_per_s'] * 100:.0f}%",
         # where the network bill lands
         "second_co50": f"{co['second_token_p50_ms']:.1f} ms",
         "second_co99": f"{co['second_token_p99_ms']:.1f} ms",
