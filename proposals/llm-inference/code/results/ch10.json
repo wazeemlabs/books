@@ -1,0 +1,136 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T12:42:15Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "caa3560"
+  },
+  "agreement": {
+    "cases": [
+      {
+        "case": "reference shape",
+        "config": {
+          "d_model": 128,
+          "n_layers": 4,
+          "n_heads": 4,
+          "n_kv_heads": 4,
+          "d_ff": 512
+        },
+        "max_absolute_difference": 2.384185791015625e-06,
+        "max_relative_difference": 0.00904429703950882,
+        "same_greedy_tokens": true
+      },
+      {
+        "case": "grouped-query attention",
+        "config": {
+          "d_model": 256,
+          "n_layers": 4,
+          "n_heads": 8,
+          "n_kv_heads": 2,
+          "d_ff": 512
+        },
+        "max_absolute_difference": 3.814697265625e-06,
+        "max_relative_difference": 0.0023269345983862877,
+        "same_greedy_tokens": true
+      },
+      {
+        "case": "deeper",
+        "config": {
+          "d_model": 192,
+          "n_layers": 8,
+          "n_heads": 6,
+          "n_kv_heads": 6,
+          "d_ff": 768
+        },
+        "max_absolute_difference": 2.5704503059387207e-06,
+        "max_relative_difference": 0.007191285490989685,
+        "same_greedy_tokens": true
+      },
+      {
+        "case": "single key-value head",
+        "config": {
+          "d_model": 128,
+          "n_layers": 4,
+          "n_heads": 4,
+          "n_kv_heads": 1,
+          "d_ff": 512
+        },
+        "max_absolute_difference": 2.5033950805664062e-06,
+        "max_relative_difference": 0.0026187216863036156,
+        "same_greedy_tokens": true
+      }
+    ],
+    "all_agree": true,
+    "worst_absolute_difference": 3.814697265625e-06,
+    "tokens_compared": 24,
+    "torch_version": "2.14.0+cpu"
+  },
+  "speed": [
+    {
+      "tokens": 64,
+      "tinyserve_s": 0.010191544999997859,
+      "torch_s": 0.00635603099999571,
+      "torch_over_tinyserve": 0.6236572570691731
+    },
+    {
+      "tokens": 256,
+      "tinyserve_s": 0.04695329300011508,
+      "torch_s": 0.009230644000126631,
+      "torch_over_tinyserve": 0.19659204733742544
+    },
+    {
+      "tokens": 512,
+      "tinyserve_s": 0.09051891200033424,
+      "torch_s": 0.017095039999730943,
+      "torch_over_tinyserve": 0.1888560039217862
+    }
+  ],
+  "baseline": {
+    "prompt": 128,
+    "generated": 128,
+    "params": 984192,
+    "weight_bytes": 3936768,
+    "no_cache": {
+      "total_s": {
+        "median": 4.181461513001977,
+        "spread_frac": 0.043928076086815114,
+        "noisy": false,
+        "n": 3,
+        "values": [
+          4.181461513001977,
+          3.8756239760004974,
+          4.242991094994977
+        ]
+      },
+      "tokens_per_s": 30.611306501803853
+    },
+    "with_cache": {
+      "total_s": {
+        "median": 0.09512289299982513,
+        "spread_frac": 0.01301757087576358,
+        "noisy": false,
+        "n": 3,
+        "values": [
+          0.09682830500332784,
+          0.09512289299982513,
+          0.09435176700026204
+        ]
+      },
+      "ttft_ms": 22.942494999824703,
+      "decode_p50_ms": 0.5673440000464325,
+      "decode_p99_ms": 0.8568406001359101,
+      "tokens_per_s": 1345.6277028941427,
+      "kv_bytes_per_token": 4096
+    }
+  },
+  "note": "the baseline is the 'before' figure every later chapter is measured against"
+}

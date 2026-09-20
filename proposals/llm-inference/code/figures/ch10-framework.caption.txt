@@ -1,0 +1,2 @@
+ALT: Time to process a prompt against its length, both axes logarithmic, for the book's NumPy engine and a PyTorch implementation of the same architecture running the same weights. PyTorch is up to 5 times faster while computing the same result, because its kernels use the machine better.
+PROVENANCE: tinyserve checked against PyTorch 2.14.0+cpu on the same weights - Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU, NumPy 2.4.6 - median of 5 runs - commit caa3560, 2026-09-20T12:42:15Z

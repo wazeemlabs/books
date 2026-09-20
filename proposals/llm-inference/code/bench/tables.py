@@ -289,6 +289,39 @@ def ch09_framings(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch10_agreement(d: dict) -> str:
+    out = ["| Architecture checked | Largest difference in any score | Same tokens chosen |",
+           "|---|---|---|"]
+    for c in d["agreement"]["cases"]:
+        cfg = c["config"]
+        shape = (f"{cfg['n_layers']}L, d={cfg['d_model']}, "
+                 f"{cfg['n_heads']}Q/{cfg['n_kv_heads']}KV heads")
+        out.append(f"| {c['case']} ({shape}) | {c['max_absolute_difference']:.1e} | "
+                   f"**{'yes' if c['same_greedy_tokens'] else 'NO'}** |")
+    a = d["agreement"]
+    out += ["", f"Same weights, {a['tokens_compared']} tokens, against PyTorch "
+                f"{a['torch_version']}. Differences of this size are float32 "
+                "rounding: the two implementations do the same arithmetic in a "
+                "different order."]
+    return "\n".join(out)
+
+
+def ch10_baseline(d: dict) -> str:
+    b = d["baseline"]
+    nc, wc = b["no_cache"], b["with_cache"]
+    return "\n".join([
+        "| The starting point | Value |", "|---|---|",
+        f"| Model | {b['params']:,} parameters, {b['weight_bytes'] / 1e6:.1f} MB |",
+        f"| Task | {b['prompt']}-token prompt, {b['generated']} tokens generated |",
+        f"| Without a cache | {nc['tokens_per_s']:,.0f} tokens/s |",
+        f"| With a cache | {wc['tokens_per_s']:,.0f} tokens/s |",
+        f"| Time to first token | {wc['ttft_ms']:.1f} ms |",
+        f"| Decode step, p50 | {wc['decode_p50_ms']:.2f} ms |",
+        f"| Decode step, p99 | {wc['decode_p99_ms']:.2f} ms |",
+        f"| KV cache per token | {wc['kv_bytes_per_token']:,} bytes |",
+    ])
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -334,6 +367,7 @@ def main() -> None:
         "ch07": (("ch07-sizes", ch07_sizes), ("ch07-scaling", ch07_scaling)),
         "ch08": (("ch08-points", ch08_points), ("ch08-ceiling", ch08_ceiling)),
         "ch09": (("ch09-framings", ch09_framings),),
+        "ch10": (("ch10-agreement", ch10_agreement), ("ch10-baseline", ch10_baseline)),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),

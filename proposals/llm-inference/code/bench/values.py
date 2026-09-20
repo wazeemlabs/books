@@ -387,6 +387,30 @@ def ch09(d: dict) -> dict[str, str]:
     }
 
 
+def ch10(d: dict) -> dict[str, str]:
+    a, b, sp = d["agreement"], d["baseline"], d["speed"]
+    wc, nc = b["with_cache"], b["no_cache"]
+    fastest = min(sp, key=lambda r: r["torch_over_tinyserve"])
+    return {
+        "cases": str(len(a["cases"])),
+        "worst_diff": f"{a['worst_absolute_difference']:.1e}",
+        "all_agree": "yes" if a["all_agree"] else "NO",
+        "torch": a["torch_version"],
+        "tokens_compared": str(a["tokens_compared"]),
+        "torch_gain": f"{1 / fastest['torch_over_tinyserve']:.0f}x",
+        "torch_at": f"{fastest['tokens']}",
+        "params": f"{b['params']:,}",
+        "weight_mb": f"{b['weight_bytes'] / 1e6:.1f} MB",
+        "prompt": str(b["prompt"]), "generated": str(b["generated"]),
+        "no_cache_tps": f"{nc['tokens_per_s']:,.0f}",
+        "cache_tps": f"{wc['tokens_per_s']:,.0f}",
+        "ttft_ms": f"{wc['ttft_ms']:.1f} ms",
+        "p50_ms": f"{wc['decode_p50_ms']:.2f} ms",
+        "p99_ms": f"{wc['decode_p99_ms']:.2f} ms",
+        "kv_bytes": f"{wc['kv_bytes_per_token']:,}",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -424,7 +448,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
-            "ch09": ch09, "ch12": ch12, "ch13": ch13}[chapter](d)
+            "ch09": ch09, "ch10": ch10, "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

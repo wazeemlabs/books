@@ -1,0 +1,230 @@
+# 10. Your Model on the Bench
+
+*Written to [STANDARDS.md](STANDARDS.md). Generated from
+`chapters/ch10.md` and `code/results/ch10.json`; run `make ch10` in
+`code/` to re-check and re-render.*
+
+**Depends on:** Chapter 9.
+**Tier 0** — a couple of minutes on a laptop CPU, free. Needs PyTorch,
+which is used here only as a second opinion.
+
+## Objectives
+
+By the end of this chapter you can:
+
+1. Check a hand-written model against a mature framework, and say what
+   size of disagreement is acceptable.
+2. Explain why a teaching implementation is slower than a production
+   one without being wrong.
+3. Record a baseline that later work can be measured against.
+4. Read the scoreboard the rest of this book fills in.
+
+## Why it matters
+
+Part III begins next, and it changes `tinyserve` a great deal. Before
+any of that, two things have to be true.
+
+**The engine has to be a real transformer.** It is 250 lines of
+hand-written NumPy. Chapter 2 asked you to believe it
+implements attention correctly, and gave you no reason to. If it does
+not, every measurement in this book is measuring a bug.
+
+**And there has to be a "before".** Chapter 9 showed
+how easily a number drifts. The defence is to fix the starting point
+now, in a file, so that "twice as fast" means twice as fast as
+something specific.
+
+## A second opinion
+
+`tinyserve/torch_reference.py` is the same architecture written on
+PyTorch: same normalization, same attention, same feed-forward, same
+tied output. It is deliberately plain — no cache, no cleverness. Its
+only job is to disagree if `tinyserve` is wrong.
+
+Load one set of weights into both, run the same tokens through, and
+compare every score they produce:
+
+<!-- include: tables/ch10-agreement.md -->
+| Architecture checked | Largest difference in any score | Same tokens chosen |
+|---|---|---|
+| reference shape (4L, d=128, 4Q/4KV heads) | 2.4e-06 | **yes** |
+| grouped-query attention (4L, d=256, 8Q/2KV heads) | 3.8e-06 | **yes** |
+| deeper (8L, d=192, 6Q/6KV heads) | 2.6e-06 | **yes** |
+| single key-value head (4L, d=128, 4Q/1KV heads) | 2.5e-06 | **yes** |
+
+Same weights, 24 tokens, against PyTorch 2.14.0+cpu. Differences of this size are float32 rounding: the two implementations do the same arithmetic in a different order.
+
+**4 architectures, largest disagreement 3.8e-06, and
+every one chooses the same tokens.**
+
+That number is float32 rounding. Both implementations do the same
+arithmetic; they do it in a different order, and floating-point
+addition is not associative, so results drift in the last couple of
+digits. A difference of 3.8e-06 against scores of order one is
+about six decimal digits of agreement, which is as close as two
+independent float32 programs get.
+
+The architectures were not chosen at random. Grouped-query attention,
+where several query heads share one key-value head, is where an
+indexing bug hides most comfortably — and it is the arrangement every
+production model uses, for the memory reason Chapter 12 will
+make exact. A single key-value head is the extreme of that. A deeper
+model catches anything that accumulates per layer.
+
+> **If you're new here: why not just trust the tests?**
+>
+> `tinyserve` has tests, and they pass. But a test written by the same
+> person who wrote the code shares its misunderstandings: if I believed
+> attention divides by the wrong constant, my test would assert the
+> wrong constant.
+>
+> An independent implementation does not share them. This is
+> **differential testing**, and it is the cheapest strong check
+> available for numerical code. Whenever you can get a second opinion
+> from something you did not write, take it.
+
+## Why the teaching engine is slower
+
+The same comparison gives an unflattering number, and it is worth
+sitting with rather than hiding:
+
+![Prefill time, tinyserve against PyTorch](code/figures/ch10-framework.svg)
+
+**Figure 10.1** — The same arithmetic, several times faster.
+*Provenance in `code/figures/ch10-framework.caption.txt`.*
+
+PyTorch is up to **5x faster** at processing the same
+prompt with the same weights, producing the same answer.
+
+Nothing is wrong with the arithmetic — the agreement table just proved
+that. What differs is everything around it: PyTorch fuses operations so
+intermediate results stay near the processor, dispatches to kernels
+tuned for these shapes, and does not build a new array for every step.
+`tinyserve` writes each intermediate out and reads it back, because
+that is what makes it readable.
+
+This is Chapter 8's finding restated. There,
+`tinyserve`'s prefill reached a few percent of its roofline bound while
+the large matrix multiplies reached all of theirs. Here is the same gap
+measured against a framework rather than against a bound.
+
+**So read the book's ratios, not its absolute times.** When
+Chapter 12 reports a 42x speedup, that ratio is real: both
+sides are the same implementation, measured the same way, and the
+overhead cancels. When it reports 0.53 ms per token, that number is
+specific to a NumPy engine on a shared virtual machine and means
+nothing about your production service. Part VII measures real engines
+on real hardware for exactly this reason.
+
+## The baseline
+
+Here is the starting point. Every technique in Parts III to VI will be
+measured against this:
+
+<!-- include: tables/ch10-baseline.md -->
+| The starting point | Value |
+|---|---|
+| Model | 984,192 parameters, 3.9 MB |
+| Task | 128-token prompt, 128 tokens generated |
+| Without a cache | 31 tokens/s |
+| With a cache | 1,346 tokens/s |
+| Time to first token | 22.9 ms |
+| Decode step, p50 | 0.57 ms |
+| Decode step, p99 | 0.86 ms |
+| KV cache per token | 4,096 bytes |
+
+Three things to notice before Part III begins.
+
+**The cache is already worth a great deal** — 31 tokens per second becomes 1,346
+simply by not recomputing what has already been computed.
+Chapter 12 builds that and measures it properly; this row is
+here so you know where the book starts.
+
+**Time to first token is 22.9 ms and a decode step is
+0.57 ms.** Two numbers, two limits, exactly as
+Chapter 3 described — and reported separately, as
+Chapter 5 insisted.
+
+**The cache costs 4,096 bytes per token**, which sounds like
+nothing at this size and is the ceiling on everything by
+Chapter 13.
+
+## Where this is soft
+
+**Agreement is not correctness.** Two implementations agreeing means
+they do the same thing; if I misread the architecture, both are wrong
+together. The defence is that the PyTorch version was written from the
+published description rather than from the NumPy code — but they share
+an author, and that is a real limit on the strength of this check.
+
+**24 tokens, four shapes.** A bug that only appears at
+long context, or at a head count not tested here, would survive. The
+check is cheap enough to widen, and exercise 10.4 widens it.
+
+**The baseline is one machine on one day.** It carries its provenance,
+and `make ch10` re-establishes it on yours. Comparing a number from
+this file against a run on different hardware compares hardware.
+
+**Float32 throughout.** Production serving uses two-byte and one-byte
+numbers, where disagreement between implementations is far larger and
+far more interesting. That is Part V's subject.
+
+## In production
+
+- **Differential-test anything numerical you wrote yourself**, against
+  a framework, a reference implementation or a previous version.
+- **Fix the baseline in a file before optimizing**, with its
+  provenance, and re-run it rather than quoting it from memory.
+- **Distrust absolute numbers from a teaching implementation**, and
+  trust its ratios.
+- **Check the shape that hides bugs.** For attention that is
+  grouped-query heads and the boundaries of the cache — which is
+  precisely what Chapter 14 is about to complicate.
+
+## Numbers to remember
+
+| Quantity | Value |
+|---|---|
+| Agreement with PyTorch, worst case | 3.8e-06 — float32 rounding |
+| Same tokens chosen, every architecture | yes |
+| Framework advantage on the same arithmetic | up to 5x |
+| Baseline, no cache | 31 tokens/s |
+| Baseline, with cache | 1,346 tokens/s, 22.9 ms to first token |
+| What to trust from a teaching engine | its ratios, not its absolute times |
+
+## Sources
+
+- McKeeman, "Differential Testing for Software", Digital Technical
+  Journal 10(1), 1998 — the technique this chapter applies.
+- Goldberg, "What Every Computer Scientist Should Know About
+  Floating-Point Arithmetic", ACM Computing Surveys 23(1), 1991 — why
+  two correct programs give slightly different answers.
+- PyTorch documentation at the version recorded in
+  `environment.lock`.
+
+## Exercises
+
+**★ 10.1** The largest disagreement is 3.8e-06. Explain in two
+sentences why it is not zero, and why it would be alarming if it were
+much larger.
+
+**★ 10.2** `tinyserve` is slower than PyTorch while computing the same
+result. Name two reasons, and say which of the book's later chapters
+addresses each.
+
+**★★ 10.3** Introduce a realistic bug: change the attention scale from
+one over the square root of the head dimension to one over the head
+dimension. Does the agreement check catch it? Does the greedy-token
+check catch it? What does that tell you about which check to trust?
+
+**★★ 10.4** Widen the check. Add cases at a 512-token context and with
+an odd number of heads, and run it. Report anything that disagrees by
+more than float32 rounding, and explain it.
+
+**★★★ 10.5** Turn the check into a property test. Instead of fixed
+architectures, generate valid random configurations — layers, widths,
+head counts that divide correctly — and compare the two
+implementations on each. Run a few hundred, report the worst
+disagreement found and the configuration that produced it, and say
+whether the agreement degrades systematically with depth or width.
+Report with provenance.

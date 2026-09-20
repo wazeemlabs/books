@@ -102,6 +102,12 @@ def caption(d: dict) -> str:
                 f"NumPy {p['software']['numpy']} - every row is the same "
                 f"operation reported differently - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "agreement" in d and "baseline" in d:  # Chapter 10: validation and baseline
+        a = d["agreement"]
+        return (f"tinyserve checked against PyTorch {a['torch_version']} on the same "
+                f"weights - {p['hardware']['cpu']}, {p['hardware']['cores_available']} "
+                f"vCPU, NumPy {p['software']['numpy']} - median of 5 runs - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -980,6 +986,45 @@ def fig_framings(d: dict) -> None:
               "other bar is also true."))
 
 
+
+
+# --- Chapter 10: a teaching engine against a real framework -------------
+
+def fig_framework(d: dict) -> None:
+    rows = d["speed"]
+    x = [r["tokens"] for r in rows]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.6), dpi=200)
+    ax.plot(x, [r["tinyserve_s"] * 1e3 for r in rows], label="tinyserve (NumPy, for reading)",
+            color=T.AMBER, marker="o", markersize=4.5, linewidth=T.LINE_WIDTH)
+    ax.plot(x, [r["torch_s"] * 1e3 for r in rows], label="PyTorch (for running)",
+            color=T.BLUE, linestyle="--", marker="s", markersize=4.5,
+            linewidth=T.LINE_WIDTH)
+    ax.set_xscale("log", base=2); ax.set_yscale("log")
+    ax.set_xticks(x, [str(v) for v in x])
+
+    worst = min(rows, key=lambda r: r["torch_over_tinyserve"])
+    ax.annotate(f"{1 / worst['torch_over_tinyserve']:.0f}x faster",
+                xy=(worst["tokens"], worst["torch_s"] * 1e3),
+                textcoords="offset points", xytext=(6, -14), fontsize=7.6,
+                color=T.BLUE)
+
+    ax.set_xlabel("prompt processed (tokens)")
+    ax.set_ylabel("time (ms, log)")
+    ax.set_title("The same arithmetic, several times faster", loc="left",
+                 fontsize=11)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    T.style(ax)
+
+    save(fig, "ch10-framework", d,
+         alt=("Time to process a prompt against its length, both axes "
+              "logarithmic, for the book's NumPy engine and a PyTorch "
+              "implementation of the same architecture running the same "
+              f"weights. PyTorch is up to {1 / worst['torch_over_tinyserve']:.0f} times "
+              "faster while computing the same result, because its kernels use "
+              "the machine better."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -987,7 +1032,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch06": [fig_breakeven],
             "ch07": [fig_size, fig_core_scaling],
             "ch08": [fig_roofline, fig_batching_roof],
-            "ch09": [fig_framings], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch09": [fig_framings],
+            "ch10": [fig_framework], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def _check_no_shared_figure_functions() -> None:
