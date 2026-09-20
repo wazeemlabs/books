@@ -2,14 +2,14 @@
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make ddr1   - re-derive a Part's design decision record from its chapters
 #   make lock   - refresh environment.lock
-.PHONY: all venv ddr1 ch22 ch24 ch29 ch41 ch42 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch41 ch42 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all venv ddr1 ch22 ch24 ch29 ch31 ch41 ch42 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch31 ch41 ch42 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch41 ch42 ddr1
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch31 ch41 ch42 ddr1
 
 ch01:
 	python3 -m bench.run_ch01
@@ -111,6 +111,10 @@ ch42:
 	python3 -m bench.run_ch42
 	$(MAKE) figures tables manuscript
 
+ch31:
+	python3 -m bench.run_ch31
+	$(MAKE) figures tables manuscript
+
 ddr1:
 	python3 -m bench.run_ddr1
 	$(MAKE) figures tables manuscript
@@ -176,7 +180,11 @@ from tinyserve.speculative import test_a_useless_draft_still_gives_the_right_ans
 from tinyserve.speculative import test_a_perfect_draft_is_always_accepted as al; al(); \
 from tinyserve.speculative import test_the_expected_tokens_formula_matches_the_simulation as am; am(); \
 from tinyserve.speculative import test_more_guesses_stop_paying as an; an(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats, quantization, speculation')"
+from tinyserve.grammar import test_a_constrained_walk_is_always_valid_json as ao; ao(); \
+from tinyserve.grammar import test_without_the_mask_it_is_not_valid as ap; ap(); \
+from tinyserve.grammar import test_the_mask_never_allows_nothing as aq; aq(); \
+from tinyserve.grammar import test_the_states_are_few_enough_to_precompute as ar; ar(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats, quantization, speculation, grammars')"
 
 # One environment per machine the book measures on. The venv is never
 # committed; requirements.txt says what to install and the lock records

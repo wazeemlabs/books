@@ -1397,6 +1397,82 @@ def ch42_own_or_rent(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch31_validity(d: dict) -> str:
+    """What comes out, with the mask and without."""
+    v = d["validity"]
+    out = ["| The model's own grasp of JSON | With the mask: valid | "
+           "finished | Without it: valid | finished |",
+           "|---|---|---|---|---|"]
+    names = {0.0: "none at all", 1.0: "slight", 2.0: "some",
+             4.0: "good", 8.0: "strong"}
+    for r in v["rows"]:
+        u = r["unconstrained_valid_if_finished"]
+        out.append(f"| {names.get(r['skill'], r['skill'])} "
+                   f"| **{r['constrained_valid_if_finished'] * 100:.1f}%** "
+                   f"| {r['constrained_finished'] * 100:.1f}% "
+                   f"| {(u * 100 if u is not None else 0):.1f}% "
+                   f"| {r['unconstrained_finished'] * 100:.1f}% |")
+    out += ["", f"{v['trials']} documents at each level, cut off at "
+                f"{v['max_tokens']} tokens. \"Valid\" is the share of the "
+                "documents that *finished* which parse; a walk cut off at "
+                "the token limit is incomplete, which is a different failure "
+                "and is counted in the column beside it. The model here is a "
+                "stand-in whose preference for legal tokens can be turned "
+                "up, which is the only property of a real model this "
+                "measurement depends on."]
+    return "\n".join(out)
+
+
+def ch31_states(d: dict) -> str:
+    """What a grammar compiler turns the grammar into."""
+    t = d["table"]
+    out = ["| Nesting allowed | States | Distinct masks | States per mask |",
+           "|---|---|---|---|"]
+    for r in t["rows"]:
+        out.append(f"| {r['depth']} | {r['states']:,} | **{r['masks']}** "
+                   f"| {r['states_per_mask']:.0f} |")
+    out += ["", f"Enumerated exhaustively. The states double with every "
+                f"level of nesting, because the stack is a sequence of "
+                f"objects and arrays. The masks do not, because what may "
+                f"come next depends on the innermost open container and "
+                f"never on the ones beneath it -- so all {t['masks']} of "
+                f"them fit in {t['bytes_if_packed']:.0f} bytes over this "
+                f"{t['vocab']}-token vocabulary, and the work per token at "
+                f"serving time is a lookup. Each mask leaves "
+                f"{t['allowed_min']} to {t['allowed_max']} tokens open, "
+                f"{t['allowed_mean_share'] * 100:.0f}% of the vocabulary on "
+                "average: most of what the model could say, at any moment, "
+                "it may not."]
+    return "\n".join(out)
+
+
+def ch31_cost(d: dict) -> str:
+    """What the mask costs against what a token costs."""
+    c = d["cost"]
+    out = ["| Per token | Amount | As a share of a decode step |",
+           "|---|---|---|"]
+    out.append(f"| Additions to the logits | {c['adds_per_token']:,} "
+               f"| {c['mask_share_of_decode_flops'] * 100:.6f}% of its "
+               f"arithmetic |")
+    out.append(f"| Mask read from the table | "
+               f"{c['mask_bytes_per_token']:,.0f} bytes "
+               f"| {c['mask_share_of_decode_bytes'] * 100:.5f}% of its bytes |")
+    out.append(f"| A decode step, for comparison | "
+               f"{c['decode_bytes_per_token'] / 1e9:.1f} GB read, "
+               f"{c['decode_flops_per_token'] / 1e9:.1f} GFLOP | 100% |")
+    out += ["", f"At the reference model's {c['vocab_reference']:,}-token "
+                "vocabulary, one bit of mask per token packed. Counted, not "
+                "timed: the mask is one lookup and one addition per "
+                "vocabulary entry, and a decode step reads every weight in "
+                "the model, so both sides are exact. A real implementation "
+                "can be slower than this arithmetic -- the lookup has to "
+                "find the right row, and with a real tokenizer whose pieces "
+                "cut across the grammar, building the table is the hard "
+                "part -- but the floor is five orders of magnitude below the "
+                "step it rides on."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -1441,6 +1517,8 @@ def main() -> None:
                  ("ch41-sizing", ch41_sizing)),
         "ch42": (("ch42-prices", ch42_prices), ("ch42-duty", ch42_duty),
                  ("ch42-own-or-rent", ch42_own_or_rent)),
+        "ch31": (("ch31-validity", ch31_validity),
+                 ("ch31-states", ch31_states), ("ch31-cost", ch31_cost)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),

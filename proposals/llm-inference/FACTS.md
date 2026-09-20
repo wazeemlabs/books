@@ -248,3 +248,11 @@ Note: the aggregator-sourced API figures recorded earlier in this file
 ($0.02 input / $0.05 output for a hosted 8B) are well below what a
 named provider's own page charges today. Chapter 42 uses the primary
 figures above and sweeps the price, rather than relying on either.
+
+## Constrained decoding
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| Guided generation, original | Brandon T. Willard, Rémi Louf, "Efficient Guided Generation for Large Language Models", arXiv:2307.09702 | arXiv abstract | 2026-09-21 |
+| Its framing | "neural text generation can be constructively reformulated in terms of transitions between the states of a finite-state machine", "allowing the construction of an index over a language model's vocabulary" | arXiv:2307.09702, abstract | 2026-09-21 |
+| Its overhead claim | "It adds little overhead to the token sequence generation process and significantly outperforms existing solutions" -- the abstract does not claim O(1) | arXiv:2307.09702, abstract | 2026-09-21 |

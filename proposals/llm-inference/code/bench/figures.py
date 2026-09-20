@@ -114,6 +114,18 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "validity" in d and "distortion" in d:  # Chapter 31: constrained
+        a = d["assumptions"]
+        return (f"EXACT ARITHMETIC over a grammar, not a timing run: "
+                f"{a['trials']} documents sampled at each of "
+                f"{len(a['skills'])} levels of model skill, seed "
+                f"{a['seed']}, over a {a['vocab']}-token JSON vocabulary in "
+                f"tinyserve/grammar.py - state and mask counts are "
+                f"enumerated exhaustively to depth {max(a['depths'])} - the "
+                f"per-token cost is counted against a decode step of the "
+                f"reference model at its {a['reference_vocab']:,}-token "
+                f"vocabulary, priced by Chapter 16's cost model - commit "
+                f"{p['commit']}, {p['measured_utc']}")
     if "api" in d and "duty_cycle" in d:  # Chapter 42: what it costs
         a = d["assumptions"]
         return (f"ARITHMETIC over published prices, not a measurement: the "
@@ -3221,6 +3233,124 @@ def fig_own_or_rent(d: dict) -> None:
               "as it takes out and a provider charges for both."))
 
 
+# --- Chapter 31: deciding what the model may say ----------------------
+
+def fig_states(d: dict) -> None:
+    """States explode with nesting; the masks do not."""
+    rows = d["table"]["rows"]
+    depths = [r["depth"] for r in rows]
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.1), dpi=200)
+    ax.plot(depths, [r["states"] for r in rows], marker="o",
+            markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.AMBER,
+            label="states the machine can be in")
+    ax.plot(depths, [r["masks"] for r in rows], marker="s",
+            markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE,
+            linestyle="--", label="distinct masks those states need")
+    ax.set_yscale("log")
+    ax.set_xticks(depths, [str(x) for x in depths])
+    ax.set_xlabel("how deeply the document may nest")
+    ax.set_ylabel("count (log scale)")
+    ax.set_title("What a grammar compiler is for", loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=7.8, loc="center left")
+    T.style(ax)
+
+    t = d["table"]
+    last = rows[-1]
+    save(fig, "ch31-states", d,
+         alt=("Two counts against how deeply a JSON document may nest, on a "
+              "log y axis. The number of states the machine can be in "
+              f"doubles with every level, from {rows[0]['states']} to "
+              f"{last['states']:,}, because the stack is a sequence of "
+              "objects and arrays. The number of distinct masks those "
+              f"states need is {t['masks']} and stays {t['masks']} at every "
+              "depth, because what may come next depends only on the "
+              "innermost open container and never on the ones beneath it. "
+              f"That is why the whole table packs into "
+              f"{t['bytes_if_packed']:.0f} bytes and why the work per token "
+              "at serving time is a lookup rather than a walk over the "
+              "grammar."))
+
+
+def fig_validity(d: dict) -> None:
+    """What comes out, with the mask and without."""
+    rows = d["validity"]["rows"]
+    skills = [r["skill"] for r in rows]
+    pos = list(range(len(rows)))
+    width = 0.38
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.1), dpi=200)
+    con = [r["constrained_valid_if_finished"] * 100 for r in rows]
+    unc = [(r["unconstrained_valid_if_finished"] or 0) * 100 for r in rows]
+    ax.bar([p - width / 2 for p in pos], con, width=width, color=T.BLUE,
+           label="with the mask")
+    ax.bar([p + width / 2 for p in pos], unc, width=width, color=T.AMBER,
+           label="without it")
+    ax.set_xticks(pos, [f"{s:g}" for s in skills])
+    ax.set_ylim(0, 112)
+    ax.set_xlabel("how much the model already prefers legal tokens")
+    ax.set_ylabel("% of finished documents that parse")
+    ax.set_title("A mask is a contract; a well-trained model is a habit",
+                 loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=7.8, loc="upper center")
+    T.style(ax)
+    for p, v in zip(pos, unc):
+        ax.text(p + width / 2, v + 2.5, f"{v:.1f}", ha="center", va="bottom",
+                fontsize=6.8, color=T.MUTED)
+
+    worst = min(rows, key=lambda r: r["unconstrained_finished"])
+    save(fig, "ch31-validity", d,
+         alt=("The share of finished documents that parse as JSON, with the "
+              "mask and without, across five levels of how much the model "
+              "already prefers legal tokens. With the mask it is 100% "
+              "everywhere -- that is what the mask is for. Without it, it "
+              "never rises above a couple of per cent at any skill level "
+              "tested. Worse, the unconstrained model's documents stop "
+              f"finishing as it gets better: at the highest skill only "
+              f"{worst['unconstrained_finished'] * 100:.0f}% of them ended "
+              "at all, because a model that has learned to open brackets "
+              "without learning to close them runs until the token limit."))
+
+
+def fig_distortion(d: dict) -> None:
+    """What the mask costs the model's own preferences."""
+    rows = d["distortion"]["rows"]
+    skills = [r["skill"] for r in rows]
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.0), dpi=200)
+    ax.plot(skills, [r["probability_removed"] * 100 for r in rows],
+            marker="o", markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+            color=T.BLUE)
+    ax.set_ylim(0, 105)
+    ax.set_xlabel("how much the model already prefers legal tokens")
+    ax.set_ylabel("% of the model's probability the mask deletes")
+    ax.set_title("Constraining is not free the way verification was",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+
+    first, last = rows[0], rows[-1]
+    # One label only. The curve falls across most of the panel, so a
+    # second one at its right-hand end has nowhere to sit that is not
+    # on the line; the axis and the caption carry that end instead.
+    L.label_points(ax, [
+        (first["skill"], first["probability_removed"] * 100,
+         "a model that does not know the format:\nthe mask deletes almost all of it"),
+    ], fontsize=7.4, color=T.INK)
+
+    save(fig, "ch31-distortion", d,
+         alt=("How much of the model's own probability mass the mask throws "
+              "away, against how much the model already prefers legal "
+              f"tokens. For a model that does not know the format it is "
+              f"{first['probability_removed'] * 100:.0f}%: the mask is "
+              "doing all the work and the output owes little to what the "
+              f"model wanted. For one that does, it is "
+              f"{last['probability_removed'] * 100:.0f}% -- the mask agrees "
+              "with the model and changes almost nothing. Unlike the "
+              "verification of Chapter 29, this is not exact at any point "
+              "on the curve; it is a deletion followed by a renormalisation, "
+              "and the left-hand end is where that matters."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -3241,7 +3371,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch24": [fig_grid, fig_outlier, fig_margin],
             "ch29": [fig_rule, fig_exactness, fig_speculative_speedup],
             "ch41": [fig_little, fig_utilization, fig_sizing],
-            "ch42": [fig_price_spread, fig_duty, fig_own_or_rent]}
+            "ch42": [fig_price_spread, fig_duty, fig_own_or_rent],
+            "ch31": [fig_states, fig_validity, fig_distortion]}
 
 
 def _check_no_shared_figure_functions() -> None:

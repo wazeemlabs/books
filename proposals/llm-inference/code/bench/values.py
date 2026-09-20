@@ -1502,6 +1502,51 @@ def ch42(d: dict) -> dict[str, str]:
     }
 
 
+def ch31(d: dict) -> dict[str, str]:
+    a, v, t = d["assumptions"], d["validity"], d["table"]
+    c, dist = d["cost"], d["distortion"]
+    rows = {r["skill"]: r for r in v["rows"]}
+    drows = {r["skill"]: r for r in dist["rows"]}
+    naive, skilled = rows[min(rows)], rows[max(rows)]
+    depths = {r["depth"]: r for r in t["rows"]}
+    pct = lambda x: f"{x * 100:.0f}%"
+    return {
+        "trials": f"{v['trials']:,}",
+        "max_tokens": str(v["max_tokens"]),
+        "vocab": str(t["vocab"]),
+        "reference_vocab": f"{c['vocab_reference']:,}",
+        # validity
+        "constrained_valid": f"{naive['constrained_valid_if_finished'] * 100:.0f}%",
+        "unconstrained_valid": f"{naive['unconstrained_valid_if_finished'] * 100:.1f}%",
+        "best_unconstrained": f"{max(r['unconstrained_valid_if_finished'] or 0 for r in v['rows']) * 100:.1f}%",
+        "skilled_finished": pct(skilled["unconstrained_finished"]),
+        "skilled_skill": f"{max(rows):g}",
+        # the compiled table
+        "masks": str(t["masks"]),
+        "states_shallow": f"{depths[min(depths)]['states']:,}",
+        "states_deep": f"{depths[max(depths)]['states']:,}",
+        "depth_shallow": str(min(depths)),
+        "depth_deep": str(max(depths)),
+        "states_per_mask_deep": f"{depths[max(depths)]['states_per_mask']:.0f}",
+        "table_bytes": f"{t['bytes_if_packed']:.0f}",
+        "allowed_min": str(t["allowed_min"]),
+        "allowed_max": str(t["allowed_max"]),
+        "allowed_share": pct(t["allowed_mean_share"]),
+        # cost
+        "adds": f"{c['adds_per_token']:,}",
+        "mask_bytes": f"{c['mask_bytes_per_token']:,.0f}",
+        "decode_gb": f"{c['decode_bytes_per_token'] / 1e9:.1f} GB",
+        "mask_share_bytes": f"{c['mask_share_of_decode_bytes'] * 100:.5f}%",
+        "mask_share_flops": f"{c['mask_share_of_decode_flops'] * 100:.6f}%",
+        "decode_ms": f"{c['decode_ms']:.2f} ms",
+        # distortion
+        "removed_naive": pct(drows[min(drows)]["probability_removed"]),
+        "removed_skilled": pct(drows[max(drows)]["probability_removed"]),
+        "tv_naive": f"{drows[min(drows)]['total_variation']:.2f}",
+        "tv_skilled": f"{drows[max(drows)]['total_variation']:.2f}",
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -1621,8 +1666,8 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
             "ch20": ch20, "ch22": ch22,
-            "ch24": ch24, "ch29": ch29, "ch41": ch41, "ch42": ch42,
-            "ddr1": ddr1}[chapter](d)
+            "ch24": ch24, "ch29": ch29, "ch31": ch31,
+            "ch41": ch41, "ch42": ch42, "ddr1": ddr1}[chapter](d)
 
 
 if __name__ == "__main__":

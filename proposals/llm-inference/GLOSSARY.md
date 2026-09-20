@@ -127,3 +127,5 @@ explanation.
 | target model | 29 | The expensive model whose answers you actually want. Speculative decoding produces exactly its distribution, whatever the draft does. |
 | acceptance rate | 29 | How often a draft's guess survives verification. The one input that decides whether speculation pays, and the only one that has to be measured rather than derived. |
 | Little's law | 41 | In any system in a steady state, the number of things inside it equals the rate they arrive times the time each spends inside. It asks nothing about arrivals or service, only that the system is stationary, which is why its failure means the steady state has gone. |
+| constrained decoding | 31 | Forbidding the tokens that would break a required format, between the logits and the sampler, so the model cannot produce an invalid answer. |
+| token mask | 31 | One bit per vocabulary entry saying whether that token is legal right now. Added to the logits before the softmax, so a forbidden token gets probability zero exactly. |

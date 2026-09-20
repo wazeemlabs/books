@@ -1,0 +1,196 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T20:12:01Z",
+    "hardware": {
+      "cpu": "Apple M4 Max",
+      "cores_available": 16,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.14.7",
+      "numpy": "2.5.3",
+      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "blas": "accelerate"
+    },
+    "commit": "16c508e"
+  },
+  "validity": {
+    "rows": [
+      {
+        "skill": 0.0,
+        "trials": 600,
+        "constrained_finished": 0.9966666666666667,
+        "constrained_parses": 0.9966666666666667,
+        "constrained_valid_if_finished": 1.0,
+        "constrained_median_tokens": 10.0,
+        "unconstrained_finished": 1.0,
+        "unconstrained_parses": 0.013333333333333334,
+        "unconstrained_valid_if_finished": 0.013333333333333334,
+        "unconstrained_median_tokens": 28.0
+      },
+      {
+        "skill": 1.0,
+        "trials": 600,
+        "constrained_finished": 1.0,
+        "constrained_parses": 1.0,
+        "constrained_valid_if_finished": 1.0,
+        "constrained_median_tokens": 10.0,
+        "unconstrained_finished": 1.0,
+        "unconstrained_parses": 0.013333333333333334,
+        "unconstrained_valid_if_finished": 0.013333333333333334,
+        "unconstrained_median_tokens": 31.0
+      },
+      {
+        "skill": 2.0,
+        "trials": 600,
+        "constrained_finished": 1.0,
+        "constrained_parses": 1.0,
+        "constrained_valid_if_finished": 1.0,
+        "constrained_median_tokens": 10.0,
+        "unconstrained_finished": 1.0,
+        "unconstrained_parses": 0.016666666666666666,
+        "unconstrained_valid_if_finished": 0.016666666666666666,
+        "unconstrained_median_tokens": 36.0
+      },
+      {
+        "skill": 4.0,
+        "trials": 600,
+        "constrained_finished": 1.0,
+        "constrained_parses": 1.0,
+        "constrained_valid_if_finished": 1.0,
+        "constrained_median_tokens": 11.0,
+        "unconstrained_finished": 0.9733333333333334,
+        "unconstrained_parses": 0.0016666666666666668,
+        "unconstrained_valid_if_finished": 0.0017123287671232876,
+        "unconstrained_median_tokens": 89.0
+      },
+      {
+        "skill": 8.0,
+        "trials": 600,
+        "constrained_finished": 0.9983333333333333,
+        "constrained_parses": 0.9983333333333333,
+        "constrained_valid_if_finished": 1.0,
+        "constrained_median_tokens": 10.0,
+        "unconstrained_finished": 0.11,
+        "unconstrained_parses": 0.0,
+        "unconstrained_valid_if_finished": 0.0,
+        "unconstrained_median_tokens": 400.0
+      }
+    ],
+    "trials": 600,
+    "max_tokens": 400
+  },
+  "table": {
+    "rows": [
+      {
+        "depth": 1,
+        "states": 27,
+        "masks": 27,
+        "states_per_mask": 1.0
+      },
+      {
+        "depth": 2,
+        "states": 77,
+        "masks": 27,
+        "states_per_mask": 2.8518518518518516
+      },
+      {
+        "depth": 3,
+        "states": 177,
+        "masks": 27,
+        "states_per_mask": 6.555555555555555
+      },
+      {
+        "depth": 4,
+        "states": 377,
+        "masks": 27,
+        "states_per_mask": 13.962962962962964
+      },
+      {
+        "depth": 5,
+        "states": 777,
+        "masks": 27,
+        "states_per_mask": 28.77777777777778
+      },
+      {
+        "depth": 6,
+        "states": 1577,
+        "masks": 27,
+        "states_per_mask": 58.407407407407405
+      }
+    ],
+    "vocab": 38,
+    "masks": 27,
+    "bytes_if_packed": 128.25,
+    "allowed_min": 1,
+    "allowed_max": 26,
+    "allowed_mean": 10.407407407407407,
+    "allowed_mean_share": 0.2738791423001949
+  },
+  "cost": {
+    "vocab_toy": 38,
+    "vocab_reference": 128256,
+    "adds_per_token": 128256,
+    "mask_bytes_per_token": 16032.0,
+    "decode_bytes_per_token": 16201023488,
+    "mask_share_of_decode_bytes": 9.895671104899517e-07,
+    "decode_flops_per_token": 16004415488,
+    "mask_share_of_decode_flops": 8.013788450828802e-06,
+    "params": 8002207744,
+    "decode_ms": 4.836126414328358
+  },
+  "distortion": {
+    "rows": [
+      {
+        "skill": 0.0,
+        "total_variation": 0.9465731530384509,
+        "probability_removed": 0.9465731530384509
+      },
+      {
+        "skill": 1.0,
+        "total_variation": 0.8745405725759412,
+        "probability_removed": 0.874540572575941
+      },
+      {
+        "skill": 2.0,
+        "total_variation": 0.7384619603315261,
+        "probability_removed": 0.7384619603315261
+      },
+      {
+        "skill": 4.0,
+        "total_variation": 0.3233126431191449,
+        "probability_removed": 0.3233126431191449
+      },
+      {
+        "skill": 8.0,
+        "total_variation": 0.010169693111154995,
+        "probability_removed": 0.010169693111154995
+      }
+    ],
+    "state": "just inside an object"
+  },
+  "assumptions": {
+    "seed": 0,
+    "trials": 600,
+    "max_tokens": 400,
+    "depths": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "skills": [
+      0.0,
+      1.0,
+      2.0,
+      4.0,
+      8.0
+    ],
+    "vocab": 38,
+    "reference_vocab": 128256,
+    "model_not_measurement": true
+  },
+  "model_not_measurement": true
+}
