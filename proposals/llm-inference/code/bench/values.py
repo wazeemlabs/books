@@ -411,6 +411,27 @@ def ch10(d: dict) -> dict[str, str]:
     }
 
 
+def ch11(d: dict) -> dict[str, str]:
+    e, su, w, sw = d["experiment"], d["summary"], d["waste"], d["sweep"]
+    return {
+        "prompt": str(e["prompt"]),
+        "longest": str(e["longest"]),
+        "first_waste": f"{w[0]['wasted_fraction'] * 100:.2f}%",
+        "last_waste": f"{w[-1]['wasted_fraction'] * 100:.2f}%",
+        "useful_share": f"{su['useful_share'] * 100:.2f}%",
+        "first_step_ms": f"{su['first_step_ms']:.1f} ms",
+        "last_step_ms": f"{su['last_step_ms']:.1f} ms",
+        "step_growth": f"{su['step_growth']:.2f}",
+        "seq_growth": f"{su['sequence_growth']:.2f}",
+        "short_per_token": f"{sw[0]['seconds_per_token'] * 1e3:.1f} ms",
+        "long_per_token": f"{sw[-1]['seconds_per_token'] * 1e3:.1f} ms",
+        "short_n": str(sw[0]["generated"]),
+        "long_n": str(sw[-1]["generated"]),
+        "long_total": f"{sw[-1]['total_s']:.1f} seconds",
+        "params": f"{d['model']['params']:,}",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -448,7 +469,8 @@ def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
-            "ch09": ch09, "ch10": ch10, "ch12": ch12, "ch13": ch13}[chapter](d)
+            "ch09": ch09, "ch10": ch10, "ch11": ch11,
+            "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

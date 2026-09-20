@@ -322,6 +322,29 @@ def ch10_baseline(d: dict) -> str:
     ])
 
 
+def ch11_waste(d: dict) -> str:
+    out = ["| Tokens written | Sequence length | Arithmetic performed | Arithmetic that earned the token | Discarded |",
+           "|---|---|---|---|---|"]
+    for w in d["waste"]:
+        out.append(f"| {w['step']} | {w['sequence']} | "
+                   f"{w['flops_total'] / 1e6:,.0f} MFLOP | "
+                   f"{w['flops_useful'] / 1e6:,.1f} MFLOP | "
+                   f"**{w['wasted_fraction'] * 100:.2f}%** |")
+    return "\n".join(out)
+
+
+def ch11_growth(d: dict) -> str:
+    out = ["| Tokens written | Total time | Time per token | Arithmetic discarded |",
+           "|---|---|---|---|"]
+    for s_ in d["sweep"]:
+        flag = " \\*" if s_["noisy"] else ""
+        out.append(f"| {s_['generated']} | {s_['total_s']:.2f} s{flag} | "
+                   f"**{s_['seconds_per_token'] * 1e3:.1f} ms** | "
+                   f"{s_['wasted_fraction'] * 100:.1f}% |")
+    out += ["", "\\* run-to-run spread exceeded 5%."]
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -368,6 +391,7 @@ def main() -> None:
         "ch08": (("ch08-points", ch08_points), ("ch08-ceiling", ch08_ceiling)),
         "ch09": (("ch09-framings", ch09_framings),),
         "ch10": (("ch10-agreement", ch10_agreement), ("ch10-baseline", ch10_baseline)),
+        "ch11": (("ch11-waste", ch11_waste), ("ch11-growth", ch11_growth)),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),

@@ -79,6 +79,8 @@ def cross_chapter_consistency() -> list[str]:
              r["ch02"]["cost"]["reference_8b"]["weight_bytes_read_per_token"])
     if "ch10" in r:
         note("tinyserve parameters", "ch10", r["ch10"]["baseline"]["params"])
+    if "ch11" in r:
+        note("tinyserve parameters", "ch11", r["ch11"]["model"]["params"])
     if "ch12" in r:
         note("tinyserve parameters", "ch12", r["ch12"]["model"]["params"])
     if "ch05" in r:

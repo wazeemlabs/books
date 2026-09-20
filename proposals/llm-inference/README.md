@@ -17,6 +17,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-08-DRAFT.md](CHAPTER-08-DRAFT.md) | **Generated.** Chapter 8, "Arithmetic Intensity and the Roofline" |
 | [CHAPTER-09-DRAFT.md](CHAPTER-09-DRAFT.md) | **Generated.** Chapter 9, "Measuring Honestly" |
 | [CHAPTER-10-DRAFT.md](CHAPTER-10-DRAFT.md) | **Generated.** Chapter 10, "Your Model on the Bench" |
+| [CHAPTER-11-DRAFT.md](CHAPTER-11-DRAFT.md) | **Generated.** Chapter 11, "The Naive Generate Loop" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -136,6 +137,12 @@ committed numbers.
   measures the honest cost of readability — PyTorch is up to 7x faster
   on the same arithmetic — and concludes that a teaching engine's
   ratios can be trusted and its absolute times cannot.
+- Chapter 11 measures the waste rather than asserting it: the obvious
+  generate loop discards 99.22% of its arithmetic on the first step and
+  99.74% by the 256th, performing 953 MFLOP to earn 2.5. It then argues
+  the same pattern runs through production systems one layer up —
+  re-sending a conversation, reprocessing an unchanged system prompt —
+  where it arrives with an invoice.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

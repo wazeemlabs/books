@@ -108,6 +108,14 @@ def caption(d: dict) -> str:
                 f"weights - {p['hardware']['cpu']}, {p['hardware']['cores_available']} "
                 f"vCPU, NumPy {p['software']['numpy']} - median of 5 runs - "
                 f"commit {p['commit']}, {p['measured_utc']}")
+    if "waste" in d and "per_step_s" in d:  # Chapter 11: the naive loop
+        m, e = d["model"], d["experiment"]
+        return (f"tinyserve {m['params']:,} params "
+                f"({m['config']['n_layers']}L/{m['config']['n_heads']}H/"
+                f"d={m['config']['d_model']}, fp32), {e['prompt']}-token prompt - "
+                f"{p['hardware']['cpu']}, {p['hardware']['cores_available']} vCPU - "
+                f"arithmetic counted from the shapes, time measured as the median "
+                f"of {e['runs']} runs - commit {p['commit']}, {p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -1025,6 +1033,59 @@ def fig_framework(d: dict) -> None:
               "the machine better."))
 
 
+
+
+# --- Chapter 11: work done against work needed --------------------------
+
+def fig_waste(d: dict) -> None:
+    """Almost everything the loop computes is thrown away."""
+    prompt = d["experiment"]["prompt"]
+    steps = range(len(d["per_step_s"]))
+    cfg = d["model"]["config"]
+    hd = d["model"]["head_dim"]
+
+    def flops(t_new: int, t_total: int) -> int:
+        dm = cfg["d_model"]
+        per_layer = (2 * t_new * dm * (cfg["n_heads"] * hd)
+                     + 2 * 2 * t_new * dm * (cfg["n_kv_heads"] * hd)
+                     + 2 * t_new * (cfg["n_heads"] * hd) * dm
+                     + 2 * 2 * t_new * dm * cfg["d_ff"]
+                     + 2 * 2 * cfg["n_heads"] * t_new * t_total * hd)
+        return cfg["n_layers"] * per_layer + 2 * t_new * dm * cfg["vocab_size"]
+
+    total = [flops(prompt + i, prompt + i) / 1e6 for i in steps]
+    useful = [flops(1, prompt + i) / 1e6 for i in steps]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.8), dpi=200)
+    ax.fill_between(list(steps), useful, total, color="#E7ECF5",
+                    label="computed, then thrown away")
+    ax.plot(list(steps), total, color=T.AMBER, linewidth=T.LINE_WIDTH,
+            label="arithmetic performed")
+    ax.plot(list(steps), useful, color=T.BLUE, linewidth=T.LINE_WIDTH,
+            linestyle="--", label="arithmetic that earned the token")
+
+    last = d["waste"][-1]
+    ax.annotate(f"{last['wasted_fraction'] * 100:.1f}% discarded",
+                xy=(len(total) - 1, total[-1]), xytext=(len(total) * 0.52, total[-1] * 0.78),
+                fontsize=8.5, color=T.INK,
+                arrowprops=dict(arrowstyle="->", lw=0.9, color=T.INK))
+
+    ax.set_xlabel("tokens written so far")
+    ax.set_ylabel("arithmetic for one token (MFLOP)")
+    ax.set_title("Almost all of it is thrown away", loc="left", fontsize=11)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    ax.set_ylim(0, max(total) * 1.1)
+    T.style(ax)
+
+    save(fig, "ch11-waste", d,
+         alt=("Arithmetic performed for each token written, against the "
+              "arithmetic that actually earned it. The work needed stays "
+              "almost flat while the work performed rises with every token, "
+              f"and the gap between them is discarded. By the last token, "
+              f"{last['wasted_fraction'] * 100:.1f}% of the arithmetic is computed and "
+              "then dropped."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -1033,7 +1094,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch07": [fig_size, fig_core_scaling],
             "ch08": [fig_roofline, fig_batching_roof],
             "ch09": [fig_framings],
-            "ch10": [fig_framework], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch10": [fig_framework],
+            "ch11": [fig_waste], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def _check_no_shared_figure_functions() -> None:

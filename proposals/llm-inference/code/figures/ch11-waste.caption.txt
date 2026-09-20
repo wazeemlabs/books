@@ -1,0 +1,2 @@
+ALT: Arithmetic performed for each token written, against the arithmetic that actually earned it. The work needed stays almost flat while the work performed rises with every token, and the gap between them is discarded. By the last token, 99.7% of the arithmetic is computed and then dropped.
+PROVENANCE: tinyserve 984,192 params (4L/4H/d=128, fp32), 128-token prompt - Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU - arithmetic counted from the shapes, time measured as the median of 3 runs - commit dece856, 2026-09-20T12:47:50Z
