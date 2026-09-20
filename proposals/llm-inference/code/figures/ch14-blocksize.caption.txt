@@ -1,0 +1,2 @@
+ALT: Share of held memory actually in use against block size, x axis logarithmic. Utilization falls from 100% with one-token blocks to 96% with 128-token blocks, and the number of sequences admitted falls from 328 to 314. The dotted line marks 16 tokens, the size production engines use.
+PROVENANCE: step cost measured on tinyserve, Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU; capacity computed for the reference model over 4,000 sampled requests (seed 0) in a 64 GB pool - commit c3675a2, 2026-09-20T12:50:13Z

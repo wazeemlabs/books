@@ -20,6 +20,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-11-DRAFT.md](CHAPTER-11-DRAFT.md) | **Generated.** Chapter 11, "The Naive Generate Loop" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
+| [CHAPTER-14-DRAFT.md](CHAPTER-14-DRAFT.md) | **Generated.** Chapter 14, "Paged Attention" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 
@@ -148,6 +149,13 @@ committed numbers.
   idle, and 16-token pages reach 90% — within one sequence of an
   allocator with perfect foresight, and 5.5x the concurrency. Chapter 14
   now has a number to hit before a line of it is written.
+
+- Chapter 14 builds paged attention and validates Chapter 13's
+  prediction with it. The arithmetic said 59 sequences contiguous and
+  about 325 paged; the built allocator gives 59 and 327, with 99.5% of
+  held memory in use and at most one block wasted per sequence. Output
+  is bit-identical, and the cost is 1.14x per decode step from an
+  implementation deliberately written the slow, readable way.
 
 ## Open decisions
 

@@ -1,0 +1,145 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T12:50:13Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "c3675a2"
+  },
+  "equivalence": {
+    "same_tokens": true,
+    "tokens_compared": 24
+  },
+  "step_cost": {
+    "contiguous": {
+      "median": 0.0005434764998426544,
+      "spread_frac": 0.08863814739408435,
+      "noisy": true,
+      "n": 5,
+      "values": [
+        0.0006192610001107823,
+        0.0005229154999142338,
+        0.0005545744998016744,
+        0.0005291904997193342,
+        0.0005434764998426544
+      ]
+    },
+    "paged": {
+      "median": 0.0006205849999787461,
+      "spread_frac": 0.049639856197087814,
+      "noisy": false,
+      "n": 5,
+      "values": [
+        0.0006205849999787461,
+        0.000604328999770587,
+        0.0006528899998556881,
+        0.0006659405000846164,
+        0.0006188089998886426
+      ]
+    },
+    "paged_over_contiguous": 1.141880099983009
+  },
+  "block_sizes": [
+    {
+      "block_size": 1,
+      "blocks": 488247,
+      "admitted_paged": 328,
+      "admitted_contiguous": 59,
+      "gain": 5.559322033898305,
+      "utilization": 1.0,
+      "wasted_tokens_per_sequence": 0.0,
+      "worst_case_waste_per_sequence": 0
+    },
+    {
+      "block_size": 4,
+      "blocks": 122061,
+      "admitted_paged": 328,
+      "admitted_contiguous": 59,
+      "gain": 5.559322033898305,
+      "utilization": 0.9989718943411094,
+      "wasted_tokens_per_sequence": 1.5274390243902438,
+      "worst_case_waste_per_sequence": 3
+    },
+    {
+      "block_size": 8,
+      "blocks": 61030,
+      "admitted_paged": 328,
+      "admitted_contiguous": 59,
+      "gain": 5.559322033898305,
+      "utilization": 0.9976452601895268,
+      "wasted_tokens_per_sequence": 3.5030487804878048,
+      "worst_case_waste_per_sequence": 7
+    },
+    {
+      "block_size": 16,
+      "blocks": 30515,
+      "admitted_paged": 327,
+      "admitted_contiguous": 59,
+      "gain": 5.5423728813559325,
+      "utilization": 0.9948604601619088,
+      "wasted_tokens_per_sequence": 7.672782874617737,
+      "worst_case_waste_per_sequence": 15
+    },
+    {
+      "block_size": 32,
+      "blocks": 15257,
+      "admitted_paged": 325,
+      "admitted_contiguous": 59,
+      "gain": 5.508474576271187,
+      "utilization": 0.9900945640049865,
+      "wasted_tokens_per_sequence": 14.864615384615385,
+      "worst_case_waste_per_sequence": 31
+    },
+    {
+      "block_size": 64,
+      "blocks": 7628,
+      "admitted_paged": 321,
+      "admitted_contiguous": 59,
+      "gain": 5.440677966101695,
+      "utilization": 0.9798260013131976,
+      "wasted_tokens_per_sequence": 30.629283489096572,
+      "worst_case_waste_per_sequence": 63
+    },
+    {
+      "block_size": 128,
+      "blocks": 3814,
+      "admitted_paged": 314,
+      "admitted_contiguous": 59,
+      "gain": 5.322033898305085,
+      "utilization": 0.9597791798107256,
+      "wasted_tokens_per_sequence": 62.36942675159236,
+      "worst_case_waste_per_sequence": 127
+    }
+  ],
+  "default_block_size": 16,
+  "at_default": {
+    "block_size": 16,
+    "blocks": 30515,
+    "admitted_paged": 327,
+    "admitted_contiguous": 59,
+    "gain": 5.5423728813559325,
+    "utilization": 0.9948604601619088,
+    "wasted_tokens_per_sequence": 7.672782874617737,
+    "worst_case_waste_per_sequence": 15
+  },
+  "reuse": {
+    "blocks_in_use_before": 9,
+    "blocks_in_use_after": 6,
+    "returned": 3
+  },
+  "assumptions": {
+    "pool_gb": 63.995584512,
+    "kv_bytes_per_token": 131072,
+    "max_model_len": 8192,
+    "requests_sampled": 4000,
+    "seed": 0
+  }
+}

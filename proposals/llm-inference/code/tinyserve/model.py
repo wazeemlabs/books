@@ -135,6 +135,20 @@ class KVCache:
     def nbytes(self) -> int:
         return sum(a.nbytes for a in self.k) + sum(a.nbytes for a in self.v)
 
+    def append(self, layer: int, k: np.ndarray, v: np.ndarray,
+               start: int) -> tuple[np.ndarray, np.ndarray]:
+        """Store this layer's new keys and values, and return everything
+        attention should read.
+
+        `forward` calls this rather than touching the arrays, so a
+        different storage scheme can be substituted without changing the
+        model. Chapter 14 substitutes one.
+        """
+        total = start + k.shape[1]
+        self.k[layer][:, start:total] = k
+        self.v[layer][:, start:total] = v
+        return self.k[layer][:, :total], self.v[layer][:, :total]
+
     def bytes_per_token(self) -> int:
         c = self.cfg
         return 2 * c.n_layers * c.n_kv_heads * c.head_dim * np.dtype(DType).itemsize
@@ -182,9 +196,7 @@ def forward(model: Model, tokens: np.ndarray, cache: KVCache | None = None,
         v = (h @ layer.wv).reshape(t, cfg.n_kv_heads, cfg.head_dim).transpose(1, 0, 2)
 
         if cache is not None:
-            cache.k[i][:, start:total] = k
-            cache.v[i][:, start:total] = v
-            k, v = cache.k[i][:, :total], cache.v[i][:, :total]
+            k, v = cache.append(i, k, v, start)
 
         if n_rep > 1:  # grouped-query attention: share each KV head
             k = np.repeat(k, n_rep, axis=0)

@@ -85,10 +85,20 @@ def cross_chapter_consistency() -> list[str]:
         note("tinyserve parameters", "ch12", r["ch12"]["model"]["params"])
     if "ch05" in r:
         note("concurrent sequences", "ch05", r["ch05"]["case_study"]["max_concurrent"])
+    if "ch14" in r:
+        note("KV bytes per token", "ch14",
+             r["ch14"]["assumptions"]["kv_bytes_per_token"])
+        # Chapter 13 predicts this from arithmetic; Chapter 14's built
+        # allocator must reproduce it exactly. Their *paged* figures differ
+        # legitimately (time-averaged holding against admit-until-full), so
+        # only the contiguous one is required to match.
+        note("full-context capacity", "ch14", r["ch14"]["at_default"]["admitted_contiguous"])
     if "ch13" in r:
         note("KV bytes per token", "ch13", r["ch13"]["hardware"]["kv_bytes_per_token"])
         paged = next((x for x in r["ch13"]["policies"] if x["policy"] == "paged_16"), None)
         note("concurrent sequences", "ch13", paged and paged["concurrent_seqs"])
+        full = next((x for x in r["ch13"]["policies"] if x["policy"] == "max_model_len"), None)
+        note("full-context capacity", "ch13", full and full["concurrent_seqs"])
 
     problems = []
     for quantity, by_chapter in sorted(found.items()):

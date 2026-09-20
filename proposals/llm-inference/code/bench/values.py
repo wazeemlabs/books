@@ -432,6 +432,31 @@ def ch11(d: dict) -> dict[str, str]:
     }
 
 
+def ch14(d: dict) -> dict[str, str]:
+    dflt, sc, a = d["at_default"], d["step_cost"], d["assumptions"]
+    sizes = d["block_sizes"]
+    return {
+        "block": str(d["default_block_size"]),
+        "same_tokens": "yes" if d["equivalence"]["same_tokens"] else "NO",
+        "compared": str(d["equivalence"]["tokens_compared"]),
+        "contiguous_fit": str(dflt["admitted_contiguous"]),
+        "paged_fit": str(dflt["admitted_paged"]),
+        "gain": f"{dflt['gain']:.1f}x",
+        "utilization": f"{dflt['utilization'] * 100:.1f}%",
+        "waste_per_seq": f"{dflt['wasted_tokens_per_sequence']:.1f}",
+        "worst_waste": str(dflt["worst_case_waste_per_sequence"]),
+        "overhead": f"{sc['paged_over_contiguous']:.2f}x",
+        "contiguous_ms": f"{sc['contiguous']['median'] * 1e3:.2f} ms",
+        "paged_ms": f"{sc['paged']['median'] * 1e3:.2f} ms",
+        "pool_gb": f"{a['pool_gb']:.0f} GB",
+        "returned": str(d["reuse"]["returned"]),
+        "big_block": str(sizes[-1]["block_size"]),
+        "big_waste": f"{sizes[-1]['wasted_tokens_per_sequence']:.0f}",
+        "big_util": f"{sizes[-1]['utilization'] * 100:.0f}%",
+        "requests": f"{a['requests_sampled']:,}",
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -470,7 +495,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
     return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch05": ch05, "ch06": ch06, "ch07": ch07, "ch08": ch08,
             "ch09": ch09, "ch10": ch10, "ch11": ch11,
-            "ch12": ch12, "ch13": ch13}[chapter](d)
+            "ch12": ch12, "ch13": ch13, "ch14": ch14}[chapter](d)
 
 
 if __name__ == "__main__":

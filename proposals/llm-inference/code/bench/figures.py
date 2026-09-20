@@ -116,6 +116,13 @@ def caption(d: dict) -> str:
                 f"{p['hardware']['cpu']}, {p['hardware']['cores_available']} vCPU - "
                 f"arithmetic counted from the shapes, time measured as the median "
                 f"of {e['runs']} runs - commit {p['commit']}, {p['measured_utc']}")
+    if "block_sizes" in d and "step_cost" in d:  # Chapter 14: paging
+        a = d["assumptions"]
+        return (f"step cost measured on tinyserve, {p['hardware']['cpu']}, "
+                f"{p['hardware']['cores_available']} vCPU; capacity computed for "
+                f"the reference model over {a['requests_sampled']:,} sampled requests "
+                f"(seed {a['seed']}) in a {a['pool_gb']:.0f} GB pool - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -1086,6 +1093,118 @@ def fig_waste(d: dict) -> None:
               "then dropped."))
 
 
+
+
+# --- Chapter 14: a block table, and what block size costs ---------------
+
+def fig_blocktable(d: dict) -> None:
+    """A diagram: contiguous to the sequence, scattered in the pool."""
+    from matplotlib.patches import FancyArrowPatch, Rectangle
+
+    bs = d["default_block_size"]
+    owned = [5, 1, 6]                  # this sequence's blocks, out of order
+    pool_blocks = 8
+    length = 40                        # tokens it holds
+
+    fig, ax = plt.subplots(figsize=(7.6, 4.2), dpi=200)
+    ax.set_xlim(0, 100); ax.set_ylim(0, 68); ax.axis("off")
+
+    # What the sequence sees: one unbroken run of tokens.
+    ax.text(0, 55, "What the sequence sees", fontsize=8.6, color=T.INK,
+            fontweight="bold", va="top")
+    w = 96 / len(owned) / bs
+    for i in range(length):
+        ax.add_patch(Rectangle((i * w, 44), w * 0.92, 5.5, facecolor="#DCE7FC",
+                               edgecolor=T.BLUE, linewidth=0.4))
+    ax.text(0, 42, f"tokens 0 to {length - 1}, contiguous", fontsize=7.2,
+            color=T.MUTED, va="top")
+
+    # Its block table.
+    ax.text(0, 36, "Its block table", fontsize=8.6, color=T.INK,
+            fontweight="bold", va="top")
+    for j, b in enumerate(owned):
+        x = j * 15
+        ax.add_patch(Rectangle((x, 26), 13, 6, facecolor="#FDF6EA",
+                               edgecolor=T.AMBER, linewidth=1.1))
+        ax.text(x + 6.5, 30.2, f"block {b}", ha="center", va="center",
+                fontsize=7.6, color=T.INK)
+        ax.text(x + 6.5, 27.4, f"tokens {j * bs}-{min((j + 1) * bs, length) - 1}",
+                ha="center", va="center", fontsize=6.4, color=T.MUTED)
+
+    # The pool: physical blocks, this sequence's scattered among others.
+    ax.text(0, 18, "The pool, shared by everyone", fontsize=8.6, color=T.INK,
+            fontweight="bold", va="top")
+    bw = 96 / pool_blocks
+    for b in range(pool_blocks):
+        mine = b in owned
+        ax.add_patch(Rectangle((b * bw, 4), bw * 0.9, 8,
+                               facecolor="#FDF6EA" if mine else "#F2F4F8",
+                               edgecolor=T.AMBER if mine else T.RULE,
+                               linewidth=1.2 if mine else 0.8))
+        ax.text(b * bw + bw * 0.45, 8, str(b), ha="center", va="center",
+                fontsize=7.4, color=T.INK if mine else T.MUTED)
+    ax.text(0, 2, "amber blocks belong to this sequence; "
+                  "the rest are other sequences' or free",
+            fontsize=7.0, color=T.MUTED, va="top")
+
+    for j, b in enumerate(owned):
+        ax.add_patch(FancyArrowPatch((j * 15 + 6.5, 25.4),
+                                     (b * bw + bw * 0.45, 12.4),
+                                     arrowstyle="-|>", mutation_scale=8,
+                                     linewidth=1.0, color=T.AMBER,
+                                     connectionstyle="arc3,rad=-0.12"))
+
+    ax.text(0, 67, "Contiguous to the sequence, scattered in memory",
+            fontsize=11, color=T.INK, fontweight="bold", va="top")
+
+    save(fig, "ch14-blocktable", d,
+         alt=("A diagram in three rows. The top row shows a sequence's 40 "
+              "tokens as one unbroken run, which is what the sequence sees. "
+              "The middle row is its block table, three entries naming "
+              f"physical blocks {owned}. The bottom row is the shared pool of "
+              f"{pool_blocks} blocks, with this sequence's three highlighted and "
+              "scattered among blocks belonging to others. Arrows link each "
+              "table entry to the block it names."))
+
+
+def fig_blocksize(d: dict) -> None:
+    rows = d["block_sizes"]
+    x = [r["block_size"] for r in rows]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.8), dpi=200)
+    ax.plot(x, [r["utilization"] * 100 for r in rows], color=T.BLUE,
+            marker="o", markersize=4.5, linewidth=T.LINE_WIDTH)
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(x, [str(v) for v in x])
+
+    for r in rows:
+        if r["block_size"] in (1, d["default_block_size"], x[-1]):
+            ax.annotate(f"{r['admitted_paged']} sequences",
+                        (r["block_size"], r["utilization"] * 100),
+                        textcoords="offset points", xytext=(0, -16),
+                        ha="center", fontsize=7.2, color=T.MUTED)
+
+    default = d["at_default"]
+    ax.axvline(default["block_size"], color=T.AMBER, linestyle=":", linewidth=1.2)
+    ax.text(default["block_size"] * 1.15, min(r["utilization"] * 100 for r in rows) + 0.4,
+            f"{default['block_size']} tokens:\nwhat engines use", fontsize=7.2,
+            color=T.AMBER)
+
+    ax.set_xlabel("block size (tokens)")
+    ax.set_ylabel("share of held memory in use (%)")
+    ax.set_title("Bigger blocks waste more, and there is a lot of room",
+                 loc="left", fontsize=11)
+    T.style(ax)
+
+    save(fig, "ch14-blocksize", d,
+         alt=("Share of held memory actually in use against block size, x axis "
+              f"logarithmic. Utilization falls from 100% with one-token blocks to "
+              f"{rows[-1]['utilization'] * 100:.0f}% with {rows[-1]['block_size']}-token blocks, and "
+              f"the number of sequences admitted falls from {rows[0]['admitted_paged']} to "
+              f"{rows[-1]['admitted_paged']}. The dotted line marks {d['default_block_size']} tokens, "
+              "the size production engines use."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -1095,7 +1214,7 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch08": [fig_roofline, fig_batching_roof],
             "ch09": [fig_framings],
             "ch10": [fig_framework],
-            "ch11": [fig_waste], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch11": [fig_waste], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory], "ch14": [fig_blocktable, fig_blocksize]}
 
 
 def _check_no_shared_figure_functions() -> None:

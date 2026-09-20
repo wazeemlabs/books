@@ -1,0 +1,323 @@
+# 14. Paged Attention
+
+*Written to [STANDARDS.md](STANDARDS.md). Generated from
+`chapters/ch14.md` and `code/results/ch14.json`; run `make ch14` in
+`code/` to re-measure and re-render.*
+
+**Depends on:** Chapter 13.
+**Tier 0** — a couple of minutes on a laptop CPU, free.
+
+## Objectives
+
+By the end of this chapter you can:
+
+1. Explain what a block table is and why it removes the waste
+   Chapter 13 measured.
+2. Build a paged cache, and show it changes nothing about the answer.
+3. Measure the capacity it recovers and the overhead it costs.
+4. Choose a block size, and say what you are trading.
+
+## Why it matters
+
+Chapter 13 ended with a prediction. Under the case
+study's traffic, an allocator that reserved each sequence's whole
+possible context would fit **59** sequences in
+64 GB of memory and leave most of it idle; an allocator handing
+out 16-token blocks as sequences grew would fit several hundred
+and waste almost nothing.
+
+That was arithmetic over a policy that did not exist. This chapter
+builds it and checks.
+
+## The idea, borrowed
+
+The problem in Chapter 13 was that a sequence's cache
+had to be one unbroken run of memory, committed before anyone knew how
+long the answer would be. Operating systems solved the same problem
+half a century ago, and the solution is the one used here.
+
+Cut the memory into fixed-size **blocks**. Give each sequence a
+**block table** — a list of the blocks it owns, in order. The sequence
+sees one unbroken run of tokens; the blocks themselves can be anywhere,
+belonging to anyone, in any order.
+
+![A sequence's block table](code/figures/ch14-blocktable.svg)
+
+**Figure 14.1** — Contiguous to the sequence, scattered in memory.
+*Provenance in `code/figures/ch14-blocktable.caption.txt`.*
+
+Two consequences follow immediately, and they are the whole chapter.
+
+**Nothing is reserved before it is needed.** A sequence takes its
+second block when it writes its seventeenth token, not when it arrives.
+Over-reservation, the larger of the two wastes, disappears entirely.
+
+**What is held is at most one block too much.** A sequence using 40
+tokens with 16-token blocks holds 48. The waste is whatever is
+left in the last block, and it can never exceed one block less one
+token — a bound that does not depend on the context length, the
+traffic, or anything a user does.
+
+> **Where the analogy stops.** Operating-system paging exists largely
+> to give each process the illusion of a private address space and to
+> let memory be swapped to disk. Neither applies here. This borrows one
+> idea only: **indirection through a table removes the need for
+> physical contiguity**. Paging's other machinery — protection bits,
+> page faults, a hardware walker — has no counterpart.
+>
+> This is Kwon and colleagues' PagedAttention, published at SOSP 2023
+> and the reason vLLM exists.
+
+## Build
+
+Two objects. A pool owning all the storage:
+
+```python
+class BlockPool:
+    """All the KV storage there is, cut into equal blocks."""
+
+    def __init__(self, cfg: Config, n_blocks: int, block_size: int = 16) -> None:
+        shape = (n_blocks, cfg.n_kv_heads, block_size, cfg.head_dim)
+        self.k = [np.zeros(shape, dtype=DType) for _ in range(cfg.n_layers)]
+        self.v = [np.zeros(shape, dtype=DType) for _ in range(cfg.n_layers)]
+        self._free = list(reversed(range(n_blocks)))
+
+    def take(self) -> int:
+        if not self._free:
+            raise OutOfBlocks(f"all {self.n_blocks} blocks are in use")
+        return self._free.pop()
+
+    def give_back(self, blocks: list[int]) -> None:
+        self._free.extend(blocks)
+```
+
+And a sequence's view of it — a block table and a length:
+
+```python
+class PagedKVCache:
+    def __init__(self, pool: BlockPool) -> None:
+        self.pool, self.blocks, self.length = pool, [], 0
+
+    def _grow_to(self, tokens: int) -> None:
+        while self.reserved_tokens < tokens:
+            self.blocks.append(self.pool.take())
+```
+
+Writing a token now means finding which block holds that position and
+where in it:
+
+```python
+            block, offset = self.blocks[pos // bs], pos % bs
+            self.pool.k[layer][block, :, offset] = k[:, i]
+```
+
+That division and remainder are the whole trick. Everything else is
+bookkeeping.
+
+**And `forward` did not change.** Chapter 12's cache and this
+one both answer the same question — *store these, and give me
+everything attention should read* — so the model cannot tell which it
+has:
+
+```python
+        if cache is not None:
+            k, v = cache.append(i, k, v, start)
+```
+
+That is the sign of a good seam. A storage strategy that required
+changing the model would be a much harder thing to adopt, and in
+production engines this is precisely the seam that lets one server
+support several cache designs.
+
+## It must not change the answer
+
+Same prompt, same weights, 24 tokens generated, one with each
+cache:
+
+**Identical: yes.** Not close — the largest difference
+between the two runs' scores is exactly zero, because the same numbers
+are being multiplied in the same order and only their addresses
+changed.
+
+Keep that check. Paging is the first change in this book that alters
+*where* data lives rather than *what* is computed, and the failure mode
+is subtle: a block-table bug produces plausible text from the wrong
+context, which no crash will tell you about. Exercise 14.3 introduces
+one.
+
+## What it recovers, and what it costs
+
+<!-- include: tables/ch14-capacity.md -->
+| | Reserving the full context | Paged, 16-token blocks |
+|---|---|---|
+| Sequences that fit in 64 GB | 59 | **327** |
+| Memory held that is in use | 16% (Chapter 13) | **99.5%** |
+| Wasted per sequence | up to the whole context | **7.7 tokens** |
+| Cost per decode step | 1.00x | **1.14x** |
+
+Capacity computed for the reference model over 4,000 sampled requests; the step cost is measured on tinyserve. Chapter 13 predicted these capacities from arithmetic before this allocator existed.
+
+**59 sequences become 327** — a factor of
+5.5x — and the memory held is 99.5% in use instead of
+16%. The waste per sequence is 7.7 tokens, against a
+bound of 15.
+
+And Chapter 13 predicted 59 and about
+325 from arithmetic alone, before any of this existed. The built
+allocator gives 59 and 327. That agreement is
+worth as much as the speedup: the model in that chapter can be trusted
+to size a fleet.
+
+The cost is **1.14x per decode step** — 0.54 ms
+becomes 0.62 ms. That is the price of indirection: the blocks must
+be gathered back into logical order before attention can read them.
+
+Be careful how much you read into that number. Our implementation
+*materializes* the gathered keys and values, copying them into a fresh
+array every step, because that keeps the code readable. Production
+engines do not: the block table is passed into the attention kernel,
+which reads the blocks where they lie. Chapter 20 is
+where that happens, and it removes most of this overhead.
+
+So 1.14x is an upper bound on the cost of paging, measured by
+the least efficient possible implementation of it. Against
+5.5x the capacity, it is not a close decision.
+
+## Choosing a block size
+
+The one parameter. Smaller blocks waste less and cost more indirection:
+
+<!-- include: tables/ch14-blocksize.md -->
+| Block size | Sequences admitted | Memory in use | Wasted per sequence | Worst case |
+|---|---|---|---|---|
+| 1 | 328 | 100.0% | 0.0 tokens | 0 tokens |
+| 4 | 328 | 99.9% | 1.5 tokens | 3 tokens |
+| 8 | 328 | 99.8% | 3.5 tokens | 7 tokens |
+| 16 ← | 327 | 99.5% | 7.7 tokens | 15 tokens |
+| 32 | 325 | 99.0% | 14.9 tokens | 31 tokens |
+| 64 | 321 | 98.0% | 30.6 tokens | 63 tokens |
+| 128 | 314 | 96.0% | 62.4 tokens | 127 tokens |
+
+← the size production engines default to. Waste per sequence averages about half a block and can never exceed one block less one token.
+
+![Utilization against block size](code/figures/ch14-blocksize.svg)
+
+**Figure 14.2** — Bigger blocks waste more, and there is a lot of room.
+*Provenance in `code/figures/ch14-blocksize.caption.txt`.*
+
+Waste per sequence averages about half a block, so it grows linearly
+with block size — 7.7 tokens at 16,
+62 at 128. Utilization falls from 100% to
+96% across that range.
+
+Why not a block size of one, then, and no waste at all? Because a block
+is also the unit of work for the kernel that reads it, and one-token
+blocks mean one table lookup per token and no contiguous run for the
+hardware to stride through. The waste is a memory cost you can compute;
+the indirection is a speed cost that shows up in the kernel. Sixteen is
+where production engines land, and the table shows why the choice is
+not delicate: everything from 8 to 32 is within half a percent on
+utilization.
+
+## Blocks come back
+
+One more thing a contiguous allocator cannot do. When a sequence
+finishes, its blocks return to the pool immediately and the next
+request can use them:
+
+```python
+    def release(self) -> None:
+        self.pool.give_back(self.blocks)
+        self.blocks, self.length = [], 0
+```
+
+In the measurement, releasing one sequence returned **3
+blocks** to a pool that other sequences were already drawing from.
+There is no compaction step and no fragmentation to clear up, because
+every block is the same size and therefore interchangeable. External
+fragmentation — the thing that makes general-purpose allocators
+complicated — simply does not exist here.
+
+## Where this is soft
+
+**Our gather is not how it is done.** Materializing the blocks each
+step is what makes the 1.14x figure conservative. Treat it as
+the worst case.
+
+**Capacity is computed, not served.** The sequences are sampled from
+the case study's length distribution and admitted until the pool is
+full. A real server also has sequences arriving and departing over
+time, which Chapter 18 handles.
+
+**Nothing here runs out.** The pool is sized to fit the traffic. A real
+server hits `OutOfBlocks`, and what it does then — evict whom, and
+recompute or swap — is a scheduling question and
+Chapter 18's subject.
+
+**And nothing is shared.** Two sequences with identical prompts hold
+two identical copies of the same blocks here. Since the blocks are
+already indirect, they could point at the same physical storage —
+which is exactly what Chapter 15 does next.
+
+## In production
+
+- **`--block-size`** in vLLM and SGLang, defaulting to 16. The table
+  above says you are unlikely to improve on that by much.
+- **`--gpu-memory-utilization`** decides how large the pool is, and is
+  the single most effective capacity lever.
+- **Watch the preemption counter.** When the pool fills, the engine
+  evicts sequences and recomputes them later. A steady rate of
+  preemptions means the pool is too small for the traffic, and
+  Chapter 13's arithmetic will tell you by how much.
+- **Do not confuse blocks with tokens** when reading logs. Engines
+  report free and used *blocks*; multiply by the block size before
+  comparing with a context length.
+
+## Numbers to remember
+
+| Quantity | Value |
+|---|---|
+| Waste per sequence under paging | at most one block less one token |
+| At 16-token blocks | 7.7 tokens on average |
+| Capacity, 64 GB, case-study traffic | 59 → 327 sequences (5.5x) |
+| Memory held that is in use | 16% → 99.5% |
+| Cost per decode step, worst case | 1.14x |
+| External fragmentation | none — every block is interchangeable |
+
+## Sources
+
+- Kwon, Li, Zhuang, Sheng, Zheng, Yu, Gonzalez, Zhang and Stoica,
+  "Efficient Memory Management for Large Language Model Serving with
+  PagedAttention", SOSP 2023, pp. 611–626, doi:10.1145/3600006.3613165
+  — the technique this chapter builds.
+- Denning, "Virtual Memory", ACM Computing Surveys 2(3), 1970 — the
+  original idea, and the source of the analogy's limits.
+- vLLM and SGLang documentation at the versions in
+  `environment.lock`, for the block-size defaults.
+
+## Exercises
+
+**★ 14.1** A sequence holds 100 tokens with 16-token blocks. How many
+blocks does it own, and how many token slots are wasted? What is the
+worst case for any sequence at that block size?
+
+**★ 14.2** Explain in two sentences why paging removes over-reservation
+entirely, while leaving a small amount of waste that cannot be removed.
+
+**★★ 14.3** Introduce a block-table bug: in `append`, use
+`pos // bs` for the offset and `pos % bs` for the block. Does anything
+crash? Does the equivalence check catch it? Generate some text and look
+at it. What does this tell you about testing storage changes?
+
+**★★ 14.4** The chapter says one-token blocks would waste nothing but
+cost more. Measure the cost: run `make ch14` with `BLOCK_SIZE` of 1, 16
+and 128 and report the decode step time for each. Where is the minimum,
+and does it agree with the production default?
+
+**★★★ 14.5** Two sequences with the same prompt hold identical blocks.
+Implement sharing: give each block a reference count, let a new
+sequence adopt an existing sequence's blocks for any identical prefix,
+and copy a block only when one of them writes to it. Measure the
+capacity gain on traffic where 80% of requests share a system prompt,
+and report what the reference counting costs. This is
+Chapter 15, built early.
