@@ -114,6 +114,19 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "exactness" in d and "speedups" in d:  # Chapter 29: speculation
+        a = d["assumptions"]
+        return (f"SAMPLING AND ARITHMETIC, not a timing run: the acceptance "
+                f"rule is sampled {a['draws']:,} times against a "
+                f"deliberately wrong draft (seed {a['seed']}); acceptance "
+                f"rates come from quantized copies of a "
+                f"{a['model']['layers']}-layer model over "
+                f"{a['prompt_tokens']} positions, and that model is "
+                f"untrained, so its output is flatter than a real one's and "
+                f"its sampled acceptance correspondingly higher - speedups "
+                f"are the closed form checked against simulation, over a "
+                f"decode step of the reference model priced by Chapter 16's "
+                f"cost model - commit {p['commit']}, {p['measured_utc']}")
     if "schemes" in d and "outliers" in d:  # Chapter 24: quantization
         a = d["assumptions"]
         return (f"EXACT ARITHMETIC, not a timing run: weights are quantized "
@@ -2789,6 +2802,144 @@ def _with_bits(rows: list) -> list:
     return [{**r, "bits": 8 if "int8" in r["scheme"] else 4} for r in rows]
 
 
+# --- Chapter 29: guess, then check -------------------------------------
+
+def fig_rule(d: dict) -> None:
+    """A diagram: which part of a guess is kept and which is corrected."""
+    e = d["exactness"]
+    target, draft = e["target"], e["draft"]
+    n = len(target)
+    x = list(range(n))
+    keep = [min(t, q) for t, q in zip(target, draft)]
+    short = [max(t - q, 0.0) for t, q in zip(target, draft)]
+    waste = [max(q - t, 0.0) for t, q in zip(target, draft)]
+
+    fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.6), dpi=200, sharey=True)
+    # No separate bar for the draft's own distribution: the two below
+    # stack to exactly it, so drawing it underneath would be invisible.
+    axes[0].bar(x, keep, width=0.66, color=T.BLUE, label="accepted")
+    axes[0].bar(x, waste, width=0.66, bottom=keep, color=T.AMBER,
+                hatch="///", edgecolor="#FFFFFF", label="rejected")
+    axes[0].set_title("What the draft proposes", loc="left", fontsize=9.8)
+    axes[0].legend(frameon=False, fontsize=7.0, loc="upper right")
+
+    axes[1].bar(x, keep, width=0.66, color=T.BLUE, label="kept from the draft")
+    axes[1].bar(x, short, width=0.66, bottom=keep, color=T.AMBER,
+                label="drawn from the shortfall")
+    axes[1].plot(x, target, linestyle="none", marker="_", markersize=13,
+                 markeredgewidth=1.6, color=T.INK)
+    axes[1].set_title("What comes out, against the target (dashes)",
+                      loc="left", fontsize=9.8)
+    axes[1].legend(frameon=False, fontsize=7.0, loc="upper right")
+
+    for ax in axes:
+        ax.set_xticks(x, [str(i) for i in x], fontsize=7)
+        ax.set_xlabel("token")
+        T.style(ax)
+    axes[0].set_ylabel("probability")
+
+    save(fig, "ch29-rule", d,
+         alt=("Two panels over eight tokens. On the left, the draft's own "
+              "distribution, drawn as two stacked parts: the part that "
+              "overlaps the target -- "
+              "which is accepted -- and the part where the draft asks for "
+              "more than the target wants, which is rejected. On the right, "
+              "what comes out: the accepted part, plus a draw from the "
+              "shortfall where the target wants more than the draft offered. "
+              "The two stack to exactly the target's distribution, marked by "
+              "dashes. Nothing is approximated; the correction puts back "
+              "precisely what the draft left out."))
+
+
+def fig_exactness(d: dict) -> None:
+    """The distribution that comes out, sampled."""
+    e = d["exactness"]
+    n = len(e["target"])
+    x = list(range(n))
+    width = 0.38
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.0), dpi=200)
+    ax.bar([i - width / 2 for i in x], e["target"], width=width,
+           color=T.INK, label="what the expensive model wanted")
+    ax.bar([i + width / 2 for i in x], e["kept"], width=width,
+           color=T.BLUE, label=f"what came out ({e['draws']:,} draws)")
+    ax.plot(x, e["draft"], linestyle="none", marker="_", markersize=13,
+            markeredgewidth=1.6, color=T.AMBER,
+            label="what the draft proposed from")
+    ax.set_xticks(x, [str(i) for i in x], fontsize=7.4)
+    ax.set_xlabel("token")
+    ax.set_ylabel("probability")
+    ax.set_title("A wrong draft, corrected exactly", loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=7.6, loc="upper right")
+    T.style(ax)
+
+    save(fig, "ch29-exactness", d,
+         alt=("Three series over eight tokens: what the expensive model "
+              "wanted, what speculative decoding actually produced over "
+              f"{e['draws']:,} draws, and the deliberately wrong "
+              "distribution the draft proposed from. The first two are "
+              f"indistinguishable -- the largest gap is "
+              f"{e['largest_deviation']:.5f}, which is "
+              f"{e['largest_in_standard_errors']:.2f} standard errors of the "
+              "sampling itself. The draft's own distribution is nothing like "
+              f"either: it differs from the target by "
+              f"{e['draft_total_variation']:.2f} in total variation, against "
+              f"{e['total_variation']:.5f} for the output. A bad draft costs "
+              "speed, never correctness."))
+
+
+def fig_speculative_speedup(d: dict) -> None:
+    """How many guesses are worth making."""
+    curves = [c for c in d["speedups"]["curves"] if c["alpha"] == 0.9]
+    grid = {(g["draft"], g["alpha"]): g for g in d["speedups"]["grid"]}
+
+    fig, ax = plt.subplots(figsize=(6.9, 4.3), dpi=200)
+    shades = [0.45, 0.62, 0.78, 0.95]
+    ends = []
+    missed = []
+    for c, shade in zip(curves, shades):
+        colour = T.SEQUENTIAL(shade)
+        ax.plot(c["ks"], c["speedups"], linewidth=T.LINE_WIDTH, color=colour)
+        g = grid[(c["draft"], 0.9)]
+        if g["best_k"] in c["ks"]:
+            ax.plot([g["best_k"]], [g["speedup"]], marker="o", markersize=7.5,
+                    markerfacecolor="#FFFFFF", markeredgecolor=colour,
+                    markeredgewidth=1.8, zorder=5)
+        else:
+            missed.append((c["draft"], g["best_k"]))
+        ends.append((c["ks"][-1], c["speedups"][-1], c["draft"], colour))
+    if missed:
+        raise RuntimeError(
+            "these curves' best k is off the chart, so the figure would "
+            f"show an optimum that is not there: {missed}. Widen KS.")
+    ax.axhline(1.0, color=T.MUTED, linewidth=0.9, linestyle=":")
+    ticks = [k for k in curves[0]["ks"] if k % 4 == 0 or k == 1]
+    ax.set_xticks(ticks, [str(k) for k in ticks])
+    ax.set_xlim(0, curves[0]["ks"][-1] * 1.42)
+    ax.set_xlabel("tokens guessed per round")
+    ax.set_ylabel("times faster")
+    ax.set_title("What a draft costs decides how much to guess\n"
+                 "(each guess accepted 90% of the time)",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+    for x, y, text, colour in ends:
+        ax.annotate(text, (x, y), textcoords="offset points", xytext=(9, 0),
+                    fontsize=7.0, color=colour, va="center", ha="left")
+
+    cheap = max(d["speedups"]["grid"],
+                key=lambda g: g["speedup"] if g["alpha"] == 0.9 else 0)
+    save(fig, "ch29-speedup", d,
+         alt=("Speedup against how many tokens are guessed per round, on a "
+              "for four drafts of different cost, all with 90% "
+              "of guesses accepted. Every curve rises, peaks and falls: each "
+              "extra guess is paid for whether or not it survives, while the "
+              "chance it survives falls geometrically. The circled point on "
+              "each is the best number of guesses, and it is larger the "
+              f"cheaper the draft -- {cheap['best_k']} guesses and "
+              f"{cheap['speedup']:.1f} times faster for the cheapest here. A "
+              "draft costing half a target step is barely worth running."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
             "ch03": [fig_timeline, fig_per_token, fig_intensity],
             "ch04": [fig_cliff, fig_wall],
@@ -2806,7 +2957,8 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch19": [fig_transfer, fig_split, fig_second_token],
             "ch20": [fig_score_matrix, fig_traffic, fig_tiles],
             "ch22": [fig_bits, fig_accumulation, fig_range],
-            "ch24": [fig_grid, fig_outlier, fig_margin]}
+            "ch24": [fig_grid, fig_outlier, fig_margin],
+            "ch29": [fig_rule, fig_exactness, fig_speculative_speedup]}
 
 
 def _check_no_shared_figure_functions() -> None:

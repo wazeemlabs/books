@@ -1146,6 +1146,91 @@ def ch24_memory(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch29_acceptance(d: dict) -> str:
+    """How often a draft's guess survives."""
+    a = d["acceptance"]
+    out = ["| Draft | Bytes a weight | Picks the same token | "
+           "Guess survives, sampled |", "|---|---|---|---|"]
+    for r in a["rows"]:
+        b = ("--" if r["bytes_per_weight"] is None
+             else f"{r['bytes_per_weight']:.3f}")
+        s_ = ("--" if r["sampled_acceptance"] is None
+              else f"{r['sampled_acceptance'] * 100:.1f}%")
+        out.append(f"| {r['draft']} | {b} | "
+                   f"{r['greedy_agreement'] * 100:.1f}% | {s_} |")
+    out += ["", f"Over {a['positions']} positions of one prompt. The drafts "
+                "are quantized copies of the target from Chapter 24: cheaper "
+                "to run, and related to what they are drafting for, which is "
+                "the property that matters. An unrelated model of the same "
+                f"architecture agrees at {a['chance'] * 100:.2f}%, which is "
+                "chance.\n\nThe two columns differ because the rule does "
+                "not require the draft to pick the same token -- it accepts "
+                "in proportion to how much the two distributions overlap. "
+                "Read the last column with care: this model is untrained, so "
+                f"its output is nearly flat ({a['target_entropy_nats']:.2f} "
+                f"nats against {a['uniform_entropy_nats']:.2f} for a uniform "
+                "distribution over the same vocabulary), and two flat "
+                "distributions overlap heavily whatever they are. A trained "
+                "model is far more confident and its acceptance rates are "
+                "correspondingly lower."]
+    return "\n".join(out)
+
+
+def ch29_speedup(d: dict) -> str:
+    """The best number of guesses, by draft cost and acceptance rate."""
+    grid = d["speedups"]["grid"]
+    drafts = []
+    for g in grid:
+        if g["draft"] not in drafts:
+            drafts.append(g["draft"])
+    alphas = sorted({g["alpha"] for g in grid})
+    out = ["| Draft (cost of one draft step) | "
+           + " | ".join(f"{a:.0%} accepted" for a in alphas) + " |",
+           "|---|" + "---|" * len(alphas)]
+    by = {(g["draft"], g["alpha"]): g for g in grid}
+    for name in drafts:
+        cells = []
+        for a in alphas:
+            g = by[(name, a)]
+            cell = f"**{g['speedup']:.2f}x** at k={g['best_k']}"
+            if not g["helps"]:
+                cell = f"{g['speedup']:.2f}x (worse than not bothering)"
+            cells.append(cell)
+        cost = by[(name, alphas[0])]["draft_cost"]
+        out.append(f"| {name} ({cost:.3g} of a target step) | "
+                   + " | ".join(cells) + " |")
+    out += ["", "Each cell is the best number of guesses per round and what "
+                "it is worth. A round costs k draft steps and one target "
+                "step and yields (1 - a^(k+1)) / (1 - a) tokens, so the best "
+                "k rises with the acceptance rate and with how cheap the "
+                "draft is. Nothing here is measured on hardware: the "
+                "acceptance rate is a parameter and the costs are ratios of "
+                "decode steps, priced by Chapter 16."]
+    return "\n".join(out)
+
+
+def ch29_reference(d: dict) -> str:
+    """What it would be worth on the model the case study serves."""
+    r = d["reference"]
+    out = ["| Draft | Guesses | Tokens a round | Times faster | "
+           "Between tokens |", "|---|---|---|---|---|"]
+    for row in r["rows"]:
+        if row["alpha"] != 0.8:
+            continue
+        out.append(f"| {row['draft']} | {row['best_k']} | "
+                   f"{row['tokens_per_round']:.2f} | "
+                   f"**{row['speedup']:.2f}x** | {row['itl_ms']:.2f} ms |")
+    out += ["", f"The book's 8B model, whose decode step is "
+                f"{r['baseline_itl_ms']:.2f} ms between tokens without any "
+                "of this (Chapter 16's cost model, one sequence, "
+                f"{r['context']:,} tokens of context). Every row assumes 80% "
+                "of guesses are accepted, which is a stated assumption and "
+                "not a measurement -- the acceptance rate depends on the "
+                "draft, the target and the traffic, and the only honest way "
+                "to get it is to measure the pair you actually have."]
+    return "\n".join(out)
+
+
 def main() -> None:
     TABLES.mkdir(exist_ok=True)
     specs = {
@@ -1183,6 +1268,9 @@ def main() -> None:
         "ch24": (("ch24-schemes", ch24_schemes),
                  ("ch24-groups", ch24_groups),
                  ("ch24-memory", ch24_memory)),
+        "ch29": (("ch29-acceptance", ch29_acceptance),
+                 ("ch29-speedup", ch29_speedup),
+                 ("ch29-reference", ch29_reference)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),

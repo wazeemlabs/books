@@ -31,6 +31,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-20-DRAFT.md](CHAPTER-20-DRAFT.md) | **Generated.** Chapter 20, "Attention Kernels" |
 | [CHAPTER-22-DRAFT.md](CHAPTER-22-DRAFT.md) | **Generated.** Chapter 22, "Precision and Tensor Cores" |
 | [CHAPTER-24-DRAFT.md](CHAPTER-24-DRAFT.md) | **Generated.** Chapter 24, "Quantization from the Ground Up" |
+| [CHAPTER-29-DRAFT.md](CHAPTER-29-DRAFT.md) | **Generated.** Chapter 29, "Speculative Decoding" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
 | `code/` | `tinyserve` (the engine), `bench` (the harness), figures, tables |
 

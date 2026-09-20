@@ -212,3 +212,14 @@ Format: claim · value · source · last verified.
 |---|---|---|---|
 | Integer-only quantization, original | Benoit Jacob, Skirmantas Kligys, Bo Chen, Menglong Zhu, Matthew Tang, Andrew Howard, Hartwig Adam, Dmitry Kalenichenko, "Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference", arXiv:1712.05877 | arXiv abstract page | 2026-09-21 |
 | What that paper proposes | "a quantization scheme that allows inference to be carried out using integer-only arithmetic", which "can be implemented more efficiently than floating point inference on commonly available integer-only hardware" | arXiv:1712.05877, abstract | 2026-09-21 |
+
+## Speculative decoding
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| Speculative decoding, original | Yaniv Leviathan, Matan Kalman, Yossi Matias, "Fast Inference from Transformers via Speculative Decoding", arXiv:2211.17192 (ICML 2023) | arXiv abstract | 2026-09-21 |
+| Its speedup | "a 2X-3X acceleration compared to the standard T5X implementation" on T5-XXL | arXiv:2211.17192, abstract | 2026-09-21 |
+| Its exactness | "exact decoding from the large models faster", "without changing the distribution", "with identical outputs" | arXiv:2211.17192, abstract | 2026-09-21 |
+| vLLM on when speculation applies | speculative decoding is for reducing "inter-token latency under medium-to-low QPS (queries per second), memory-bound workloads" | vLLM docs, Speculative Decoding | 2026-09-21 |
+| vLLM `num_speculative_tokens` | "Number of speculative tokens to propose per step", integer > 0, default `None`, "Required for methods that do not infer it from model metadata" | vLLM docs, Speculative Decoding | 2026-09-21 |
+| vLLM on lighter draft methods | simpler methods "provide modest speedups without increasing workload during peak traffic"; Dynamic Speculative Decoding is "Useful for RL or workload with fluctuating QPS" | vLLM docs, Speculative Decoding | 2026-09-21 |

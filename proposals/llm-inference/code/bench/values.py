@@ -1328,6 +1328,66 @@ def ch24(d: dict) -> dict[str, str]:
     }
 
 
+def ch29(d: dict) -> dict[str, str]:
+    a, e = d["assumptions"], d["exactness"]
+    acc, form, sp_, ref = (d["acceptance"], d["formula"], d["speedups"],
+                           d["reference"])
+    by_draft = {r["draft"]: r for r in acc["rows"]}
+    grid = {(g["draft"], g["alpha"]): g for g in sp_["grid"]}
+    refs = {(r["draft"], r["alpha"]): r for r in ref["rows"]}
+    cheap = "a model a fortieth the size"
+    tenth = "a model a tenth the size"
+    int8 = "int8 copy of the target"
+    pct = lambda x: f"{x * 100:.0f}%"
+    return {
+        # exactness
+        "draws": f"{e['draws']:,}",
+        "largest_deviation": f"{e['largest_deviation']:.5f}",
+        "in_standard_errors": f"{e['largest_in_standard_errors']:.2f}",
+        "total_variation": f"{e['total_variation']:.5f}",
+        "draft_total_variation": f"{e['draft_total_variation']:.2f}",
+        "rule_acceptance": pct(e["acceptance_rate"]),
+        # acceptance
+        "positions": str(acc["positions"]),
+        "chance": f"{acc['chance'] * 100:.2f}%",
+        "vocab": f"{acc['vocab']:,}",
+        "int8_agree": pct(by_draft["int8, per tensor"]["greedy_agreement"]),
+        "int8_accept": pct(by_draft["int8, per tensor"]["sampled_acceptance"]),
+        "int4_agree": pct(by_draft["int4, groups of 32"]["greedy_agreement"]),
+        "int4_accept": pct(by_draft["int4, groups of 32"]["sampled_acceptance"]),
+        "int2_agree": pct(by_draft["int2, per tensor"]["greedy_agreement"]),
+        "unrelated_agree":
+            pct(by_draft["an unrelated small model"]["greedy_agreement"]),
+        "entropy": f"{acc['target_entropy_nats']:.2f}",
+        "uniform_entropy": f"{acc['uniform_entropy_nats']:.2f}",
+        # the formula
+        "formula_gap": f"{form['largest_gap'] * 100:.1f}%",
+        "formula_points": str(len(form["rows"])),
+        "formula_trials": f"{form['rows'][0]['trials']:,}",
+        # speedups
+        "cheap_k": str(grid[(cheap, 0.9)]["best_k"]),
+        "cheap_gain": f"{grid[(cheap, 0.9)]['speedup']:.1f}x",
+        "cheap_cost": f"{grid[(cheap, 0.9)]['draft_cost']:.3g}",
+        "tenth_k": str(grid[(tenth, 0.9)]["best_k"]),
+        "tenth_gain": f"{grid[(tenth, 0.9)]['speedup']:.1f}x",
+        "int8_k": str(grid[(int8, 0.9)]["best_k"]),
+        "int8_gain": f"{grid[(int8, 0.9)]['speedup']:.2f}x",
+        "int8_gain_low": f"{grid[(int8, 0.3)]['speedup']:.2f}x",
+        "cheap_gain_low": f"{grid[(cheap, 0.3)]['speedup']:.2f}x",
+        "any_worse": ("yes" if any(not g["helps"] for g in sp_["grid"])
+                      else "no"),
+        # the reference model
+        "baseline_itl": f"{ref['baseline_itl_ms']:.2f} ms",
+        "ref_cheap_gain": f"{refs[(cheap, 0.8)]['speedup']:.2f}x",
+        "ref_cheap_itl": f"{refs[(cheap, 0.8)]['itl_ms']:.2f} ms",
+        "ref_cheap_k": str(refs[(cheap, 0.8)]["best_k"]),
+        "ref_int8_gain": f"{refs[(int8, 0.8)]['speedup']:.2f}x",
+        "ref_int8_itl": f"{refs[(int8, 0.8)]['itl_ms']:.2f} ms",
+        "params": f"{ref['params'] / 1e9:.0f}B",
+        "context": f"{ref['context']:,}",
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -1447,7 +1507,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
             "ch20": ch20, "ch22": ch22,
-            "ch24": ch24, "ddr1": ddr1}[chapter](d)
+            "ch24": ch24, "ch29": ch29, "ddr1": ddr1}[chapter](d)
 
 
 if __name__ == "__main__":

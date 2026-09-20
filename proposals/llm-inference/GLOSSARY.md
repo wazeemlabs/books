@@ -123,3 +123,6 @@ explanation.
 | asymmetric quantization | 24 | Integer codes spanning the actual range from smallest to largest, with a zero point recording which code means zero. What one-sided data uses. |
 | scale | 24 | The size of one step of an integer code: the largest magnitude in a group divided by the largest code. Shared by every value in the group. |
 | zero point | 24 | The code that stands for zero in an asymmetric scheme. Stored alongside the scale, one per group. |
+| draft model | 29 | The cheap model that guesses the next few tokens for a more expensive one to check. It must be cheap and it must agree; an unrelated model agrees at chance. |
+| target model | 29 | The expensive model whose answers you actually want. Speculative decoding produces exactly its distribution, whatever the draft does. |
+| acceptance rate | 29 | How often a draft's guess survives verification. The one input that decides whether speculation pays, and the only one that has to be measured rather than derived. |
