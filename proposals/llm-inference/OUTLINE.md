@@ -230,11 +230,20 @@ and the harness feature that prevents each.
 
 ## 10. Your Model on the Bench
 
-Load the 825K GPT and the 1B model through plain PyTorch and measure
-TTFT, ITL, and throughput at batch 1. These baselines are the "before"
-for every number that follows.
+Two jobs before Part III starts changing things. First, check that the
+hand-written engine is a real transformer: load one set of weights into
+`tinyserve` and into a PyTorch implementation of the same architecture,
+and compare every score. Second, record the baseline — TTFT,
+inter-token latency and throughput — so that every later technique is
+measured against a number rather than an impression.
 
-- Build: `tinyserve` v0 — a model, a tokenizer, a generate call.
+- Build: the PyTorch second opinion, and the baseline results file.
+- Objectives: differential-test numerical code; say why a teaching
+  implementation is slower without being wrong; trust a teaching
+  engine's ratios and distrust its absolute times.
+- Sources: McKeeman, "Differential Testing for Software" (1998);
+  Goldberg, "What Every Computer Scientist Should Know About
+  Floating-Point Arithmetic" (1991).
 
 # Part III — Build an Inference Engine from Scratch
 
