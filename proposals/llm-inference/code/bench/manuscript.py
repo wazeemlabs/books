@@ -1,0 +1,74 @@
+"""Render a chapter source into the manuscript, or check that it is current.
+
+A chapter source contains two kinds of hole:
+
+  {{name}}                             a number, resolved from bench.values
+  <!-- include: tables/x.md -->        a generated table, inserted below it
+
+    python3 -m bench.manuscript          render every chapter
+    python3 -m bench.manuscript --check  fail if any rendered file is stale
+
+The check is what CI runs: it makes a measurement and the sentence that
+quotes it impossible to separate.
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+from .values import load
+
+SRC = Path("../chapters")
+OUT = Path("..")
+INCLUDE = re.compile(r"^<!-- include: (\S+) -->$", re.M)
+PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
+
+
+def render(text: str, values: dict[str, str]) -> str:
+    missing: list[str] = []
+
+    def sub(m: re.Match) -> str:
+        name = m.group(1)
+        if name not in values:
+            missing.append(name)
+            return m.group(0)
+        return values[name]
+
+    text = PLACEHOLDER.sub(sub, text)
+    if missing:
+        raise KeyError(f"no value for: {', '.join(sorted(set(missing)))}")
+
+    def insert(m: re.Match) -> str:
+        path = Path(m.group(1))
+        if not path.exists():
+            raise FileNotFoundError(f"{path} - run `make tables` first")
+        return m.group(0) + "\n" + path.read_text().rstrip("\n")
+
+    return INCLUDE.sub(insert, text)
+
+
+def main(argv: list[str]) -> int:
+    check = "--check" in argv
+    stale: list[str] = []
+    for src in sorted(SRC.glob("ch*.md")):
+        values = load(src.stem)
+        out = OUT / f"CHAPTER-{src.stem.removeprefix('ch')}-DRAFT.md"
+        new = render(src.read_text(), values)
+        if check:
+            if not out.exists() or out.read_text() != new:
+                stale.append(str(out))
+            continue
+        out.write_text(new)
+        print(f"  {out.name}")
+    if check:
+        if stale:
+            print("STALE, rerun `make ch12`:\n  " + "\n  ".join(stale), file=sys.stderr)
+            return 1
+        print("manuscript is in sync with the measurements")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

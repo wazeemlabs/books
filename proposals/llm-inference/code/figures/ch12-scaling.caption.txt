@@ -1,0 +1,2 @@
+ALT: Total generation time against the number of tokens generated, both axes logarithmic. Without a cache the curve is steeper than linear; with a cache it is linear. The speedup grows from 12x at 16 tokens to 69x at 256.
+PROVENANCE: tinyserve 984,192 params (4L/4H/d=128, fp32) - Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU, NumPy 2.4.6 on scipy-openblas - median of 7 runs after 2 warmup - commit 95f1381, measured 2026-09-20T11:04:40Z

@@ -1,2 +1,6 @@
 .DS_Store
 __pycache__/
+
+# Python build artifacts in book working materials
+__pycache__/
+*.pyc

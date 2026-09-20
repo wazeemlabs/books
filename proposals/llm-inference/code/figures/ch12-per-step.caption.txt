@@ -1,0 +1,2 @@
+ALT: Time per generated token against position. Without a cache the cost climbs from 25 ms to 74 ms across 255 tokens; with a cache it stays flat near 0.54 ms. Both spend the same time on the first token, which is prefill.
+PROVENANCE: tinyserve 984,192 params (4L/4H/d=128, fp32) - Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU, NumPy 2.4.6 on scipy-openblas - median of 7 runs after 2 warmup - commit 95f1381, measured 2026-09-20T11:04:40Z
