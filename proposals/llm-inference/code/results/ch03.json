@@ -1,0 +1,146 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T11:54:51Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "40699cb"
+  },
+  "model": {
+    "params": 1115264,
+    "config": {
+      "vocab_size": 512,
+      "d_model": 128,
+      "n_layers": 4,
+      "n_heads": 4,
+      "n_kv_heads": 4,
+      "d_ff": 512
+    },
+    "head_dim": 32
+  },
+  "experiment": {
+    "prompts": [
+      64,
+      128,
+      256,
+      512,
+      1024
+    ],
+    "decode_steps": 24,
+    "runs": 5,
+    "warmup": 1
+  },
+  "measured": [
+    {
+      "prompt": 64,
+      "prefill_s": 0.010149043000012625,
+      "prefill_noisy": false,
+      "prefill_per_token_s": 0.00015857879687519727,
+      "prefill_tokens_per_s": 6306.013286170961,
+      "decode_step_p50_s": 0.0004886165000073106,
+      "decode_step_p99_s": 0.0007521546400101898,
+      "decode_tokens_per_s": 2046.5948243357277,
+      "decode_vs_prefill_per_token": 3.081222140888454,
+      "prefill_intensity": 26.32572018822449,
+      "decode_intensity": 0.3889430894308943
+    },
+    {
+      "prompt": 128,
+      "prefill_s": 0.022691597000005004,
+      "prefill_noisy": false,
+      "prefill_per_token_s": 0.0001772781015625391,
+      "prefill_tokens_per_s": 5640.854630018846,
+      "decode_step_p50_s": 0.0005143560000107072,
+      "decode_step_p99_s": 0.0007579210000034209,
+      "decode_tokens_per_s": 1944.1787399761706,
+      "decode_vs_prefill_per_token": 2.901407424138372,
+      "prefill_intensity": 56.41225754619534,
+      "decode_intensity": 0.3947827873061518
+    },
+    {
+      "prompt": 256,
+      "prefill_s": 0.044387501999977985,
+      "prefill_noisy": false,
+      "prefill_per_token_s": 0.000173388679687414,
+      "prefill_tokens_per_s": 5767.389207892956,
+      "decode_step_p50_s": 0.0005725099999978056,
+      "decode_step_p99_s": 0.001173181660010414,
+      "decode_tokens_per_s": 1746.6943808908716,
+      "decode_vs_prefill_per_token": 3.3018879953981397,
+      "prefill_intensity": 127.86778377137611,
+      "decode_intensity": 0.40479509339280734
+    },
+    {
+      "prompt": 512,
+      "prefill_s": 0.09398869099999274,
+      "prefill_noisy": true,
+      "prefill_per_token_s": 0.00018357166210936082,
+      "prefill_tokens_per_s": 5447.463886905708,
+      "decode_step_p50_s": 0.0006001325000113411,
+      "decode_step_p99_s": 0.0010785349499991526,
+      "decode_tokens_per_s": 1666.298692340612,
+      "decode_vs_prefill_per_token": 3.26920012117022,
+      "prefill_intensity": 315.90864225869393,
+      "decode_intensity": 0.42001717542353034
+    },
+    {
+      "prompt": 1024,
+      "prefill_s": 0.2563241299999959,
+      "prefill_noisy": true,
+      "prefill_per_token_s": 0.00025031653320312097,
+      "prefill_tokens_per_s": 3994.9418730106154,
+      "decode_step_p50_s": 0.0008234780000009323,
+      "decode_step_p99_s": 0.0014917530599805673,
+      "decode_tokens_per_s": 1214.3615251395518,
+      "decode_vs_prefill_per_token": 3.2897467437067602,
+      "prefill_intensity": 872.5095833811546,
+      "decode_intensity": 0.439396628216504
+    }
+  ],
+  "reference_8b": {
+    "config": {
+      "params": 8000000000.0,
+      "elem_bytes": 2,
+      "prompt": 1200,
+      "context": 1500
+    },
+    "hardware": {
+      "hbm_bytes_per_s": 3350000000000.0,
+      "peak_bf16_flops": 990000000000000.0,
+      "ridge_flop_per_byte": 295.5223880597015
+    },
+    "prefill": {
+      "flops": 14256439296000,
+      "bytes": 16000000000.0,
+      "intensity": 891.027456,
+      "seconds": 0.014400443733333334,
+      "bound_by": "compute",
+      "distance_from_ridge": 3.0150929066666667
+    },
+    "decode": {
+      "flops": 12037652480,
+      "bytes": 16196476928.0,
+      "intensity": 0.7432266000508824,
+      "seconds": 0.004834769232238806,
+      "bound_by": "memory",
+      "distance_from_ridge": 0.002514958697141875
+    },
+    "note": "arithmetic over published specs, not a measurement",
+    "intensity_ratio": 1198.8637865477353,
+    "one_request": {
+      "output_tokens": 300,
+      "prefill_s": 0.014400443733333334,
+      "decode_s": 1.4504307696716419,
+      "total_s": 1.4648312134049752,
+      "decode_share": 0.9901692129430668
+    }
+  }
+}

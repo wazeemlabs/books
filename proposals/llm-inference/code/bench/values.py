@@ -188,6 +188,37 @@ def ch02(d: dict) -> dict[str, str]:
     }
 
 
+def ch03(d: dict) -> dict[str, str]:
+    r, rows = d["reference_8b"], d["measured"]
+    o, pre, dec = r["one_request"], r["prefill"], r["decode"]
+    gaps = [x["decode_vs_prefill_per_token"] for x in rows]
+    m = d["model"]
+    return {
+        "params": f"{m['params']:,}",
+        "weight_mb": f"{m['params'] * 4 / 1e6:.1f} MB",
+        "prompts": ", ".join(f"{x['prompt']:,}" for x in rows),
+        "gap_lo": f"{min(gaps):.1f}x",
+        "gap_hi": f"{max(gaps):.1f}x",
+        "ref_params": f"{r['config']['params'] / 1e9:.0f}B",
+        "ref_prompt": f"{r['config']['prompt']:,}",
+        "ref_context": f"{r['config']['context']:,}",
+        "prefill_intensity": f"{pre['intensity']:,.0f}",
+        "decode_intensity": f"{dec['intensity']:.2f}",
+        "intensity_ratio": f"{r['intensity_ratio']:,.0f}x",
+        "ridge": f"{r['hardware']['ridge_flop_per_byte']:.0f}",
+        "prefill_bound": pre["bound_by"],
+        "decode_bound": dec["bound_by"],
+        "decode_below_ridge": f"{1 / dec['distance_from_ridge']:,.0f}x",
+        "prefill_above_ridge": f"{pre['distance_from_ridge']:.1f}x",
+        "prefill_ms": f"{o['prefill_s'] * 1e3:.0f} ms",
+        "decode_ms": f"{dec['seconds'] * 1e3:.2f} ms",
+        "decode_total_s": f"{o['decode_s']:.2f} seconds",
+        "total_s": f"{o['total_s']:.2f} seconds",
+        "decode_share": f"{o['decode_share'] * 100:.0f}%",
+        "out_tokens": str(o["output_tokens"]),
+    }
+
+
 def ch13(d: dict) -> dict[str, str]:
     e, t, h, m = d["experiment"], d["traffic"], d["hardware"], d["measured_tinyserve"]
     p = {r["policy"]: r for r in d["policies"]}
@@ -223,7 +254,8 @@ def ch13(d: dict) -> dict[str, str]:
 
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
-    return {"ch01": ch01, "ch02": ch02, "ch12": ch12, "ch13": ch13}[chapter](d)
+    return {"ch01": ch01, "ch02": ch02, "ch03": ch03,
+            "ch12": ch12, "ch13": ch13}[chapter](d)
 
 
 if __name__ == "__main__":

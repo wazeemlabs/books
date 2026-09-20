@@ -9,6 +9,7 @@ Working materials for the third *from the Ground Up* book.
 | [FACTS.md](FACTS.md) | The facts register: every time-sensitive claim with its source and verification date |
 | [CHAPTER-01-DRAFT.md](CHAPTER-01-DRAFT.md) | **Generated.** Chapter 1, "The Cost of a Token" |
 | [CHAPTER-02-DRAFT.md](CHAPTER-02-DRAFT.md) | **Generated.** Chapter 2, "What a Model Does When It Answers" |
+| [CHAPTER-03-DRAFT.md](CHAPTER-03-DRAFT.md) | **Generated.** Chapter 3, "Prefill and Decode" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -76,6 +77,14 @@ committed numbers.
   it is a model rather than a benchmark, and that its best figure is
   still above the published API price — a gap it then turns into the
   book's table of contents.
+- Chapter 3 gets the book's central number honestly: prefill and decode
+  are 1,199x apart in work done per byte fetched, landing on opposite
+  sides of the accelerator's break-even point, and decode is 99% of a
+  request's time. It then reports that `tinyserve` measures a gap of
+  only ~3x, and explains why that disagreement is the more useful
+  result: a 4.5 MB model fits in CPU cache, so it has no memory problem
+  to expose. The memory wall is a property of the model outgrowing fast
+  memory, not of the algorithm.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

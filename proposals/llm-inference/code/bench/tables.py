@@ -117,6 +117,37 @@ def ch02_cost(d: dict) -> str:
     ])
 
 
+def ch03_measured(d: dict) -> str:
+    out = ["| Prompt length | Reading the prompt | Writing tokens | A token costs this much more to write |",
+           "|---|---|---|---|"]
+    for r in d["measured"]:
+        flag = " \\*" if r["prefill_noisy"] else ""
+        out.append(f"| {r['prompt']:,} | {r['prefill_tokens_per_s']:,.0f} tok/s{flag} | "
+                   f"{r['decode_tokens_per_s']:,.0f} tok/s | "
+                   f"**{r['decode_vs_prefill_per_token']:.1f}x** |")
+    out += ["", "\\* run-to-run spread exceeded 5%."]
+    return "\n".join(out)
+
+
+def ch03_reference(d: dict) -> str:
+    r = d["reference_8b"]
+    ridge = r["hardware"]["ridge_flop_per_byte"]
+    rows = [("Reading the prompt (prefill)", r["prefill"]), ("Writing a token (decode)", r["decode"])]
+    out = ["| Phase | Arithmetic | Bytes fetched | Work per byte | Limited by |",
+           "|---|---|---|---|---|"]
+    for name, x in rows:
+        out.append(f"| {name} | {x['flops'] / 1e12:,.1f} TFLOP | "
+                   f"{x['bytes'] / 1e9:,.1f} GB | **{x['intensity']:,.2f}** | "
+                   f"{x['bound_by']} |")
+    out += ["", f"An {r['config']['params'] / 1e9:.0f}B model in bf16 on an accelerator that "
+                f"breaks even at **{ridge:.0f}** operations per byte: below that it waits for "
+                f"memory, above it it waits for arithmetic. Prefill of a "
+                f"{r['config']['prompt']:,}-token prompt; decode at a "
+                f"{r['config']['context']:,}-token context. Arithmetic over published "
+                "specs, not a measurement."]
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -155,6 +186,7 @@ def main() -> None:
     specs = {
         "ch01": (("ch01-cost", ch01_cost),),
         "ch02": (("ch02-shapes", ch02_shapes), ("ch02-cost", ch02_cost)),
+        "ch03": (("ch03-measured", ch03_measured), ("ch03-reference", ch03_reference)),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),

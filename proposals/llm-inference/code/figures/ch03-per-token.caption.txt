@@ -1,0 +1,2 @@
+ALT: Time to process one token in each phase against prompt length, both axes logarithmic. Writing a token costs about three times more than reading one across every prompt length measured. Both curves rise with prompt length, because attention has more earlier tokens to consider.
+PROVENANCE: measured on tinyserve 1,115,264 params (4L/4H/d=128, fp32) - Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU, NumPy 2.4.6 - median of 5 runs after 1 warmup - 8B figures are arithmetic over published specs, not measurements - commit 40699cb, 2026-09-20T11:54:51Z

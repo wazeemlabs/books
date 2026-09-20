@@ -1,0 +1,2 @@
+ALT: A logarithmic scale of arithmetic performed per byte fetched. The accelerator breaks even at 296. Decode sits far to the left at 0.74, deep in the region limited by memory; prefill sits to the right at 891, in the region limited by arithmetic. They are 1,199 times apart.
+PROVENANCE: measured on tinyserve 1,115,264 params (4L/4H/d=128, fp32) - Intel(R) Xeon(R) Processor @ 2.10GHz, 4 vCPU, NumPy 2.4.6 - median of 5 runs after 1 warmup - 8B figures are arithmetic over published specs, not measurements - commit 40699cb, 2026-09-20T11:54:51Z

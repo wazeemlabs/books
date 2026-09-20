@@ -49,6 +49,16 @@ def caption(d: dict) -> str:
                 f"d={m['config']['d_model']}), {v['size']}-word vocabulary, "
                 f"untrained (seed 0) - prompt {d['prompt']['words']} - "
                 f"commit {p['commit']}, traced {p['measured_utc']}")
+    if "measured" in d and "reference_8b" in d:  # Chapter 3: timings + arithmetic
+        m, e = d["model"], d["experiment"]
+        return (f"measured on tinyserve {m['params']:,} params "
+                f"({m['config']['n_layers']}L/{m['config']['n_heads']}H/"
+                f"d={m['config']['d_model']}, fp32) - {p['hardware']['cpu']}, "
+                f"{p['hardware']['cores_available']} vCPU, NumPy "
+                f"{p['software']['numpy']} - median of {e['runs']} runs after "
+                f"{e['warmup']} warmup - 8B figures are arithmetic over "
+                f"published specs, not measurements - commit {p['commit']}, "
+                f"{p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -369,7 +379,129 @@ def fig_scores(d: dict) -> None:
               "ranking carries no meaning; the shape of the output does."))
 
 
-CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+
+
+# --- Chapter 3: the two phases ------------------------------------------
+
+def fig_timeline(d: dict) -> None:
+    """Where a request's time actually goes. A diagram, drawn to scale."""
+    r = d["reference_8b"]
+    o, pre, dec = r["one_request"], r["prefill"], r["decode"]
+    total = o["total_s"]
+
+    fig, ax = plt.subplots(figsize=(7.4, 2.9), dpi=200)
+    ax.barh([0], [o["prefill_s"]], color=T.AMBER, height=0.44)
+    ax.barh([0], [o["decode_s"]], left=o["prefill_s"], color=T.BLUE, height=0.44)
+
+    # Suggest the one-token-at-a-time texture of decode.
+    for i in range(0, o["output_tokens"], 6):
+        x = o["prefill_s"] + i * dec["seconds"]
+        ax.plot([x, x], [-0.22, 0.22], color="#FFFFFF", linewidth=0.5, alpha=0.55)
+
+    ax.annotate(f"prefill\n{o['prefill_s'] * 1e3:.0f} ms",
+                xy=(o["prefill_s"] / 2, 0.30), xytext=(0.02 * total, 0.72),
+                fontsize=8, color=T.AMBER, ha="left",
+                arrowprops=dict(arrowstyle="-", lw=0.8, color=T.AMBER))
+    ax.text(o["prefill_s"] + o["decode_s"] / 2, 0,
+            f"decode - {o['output_tokens']} tokens, one at a time, "
+            f"{dec['seconds'] * 1e3:.2f} ms each",
+            ha="center", va="center", fontsize=8.4, color="#FFFFFF",
+            fontweight="bold")
+    ax.text(total * 0.5, -0.62,
+            f"{o['decode_share'] * 100:.0f}% of the time this request takes is "
+            "spent writing, one token at a time",
+            ha="center", fontsize=8, color=T.MUTED)
+
+    ax.set_xlim(0, total * 1.005); ax.set_ylim(-0.9, 1.0)
+    ax.set_yticks([])
+    ax.set_xlabel("seconds")
+    ax.set_title("Reading the question is the cheap part", loc="left", fontsize=11)
+    T.style(ax, hide_left=True)
+    ax.grid(False)
+
+    save(fig, "ch03-timeline", d,
+         alt=(f"A timeline of one request lasting {total:.2f} seconds. Reading the "
+              f"{r['config']['prompt']:,}-token prompt takes {o['prefill_s'] * 1e3:.0f} "
+              f"milliseconds, a sliver at the left. Writing {o['output_tokens']} tokens "
+              f"takes the remaining {o['decode_s']:.2f} seconds, "
+              f"{o['decode_share'] * 100:.0f}% of the total, one token at a time."))
+
+
+def fig_per_token(d: dict) -> None:
+    """Measured: what one token costs in each phase."""
+    rows = d["measured"]
+    x = [r["prompt"] for r in rows]
+    pre = [r["prefill_per_token_s"] * 1e3 for r in rows]
+    dec = [r["decode_step_p50_s"] * 1e3 for r in rows]
+
+    fig, ax = plt.subplots(figsize=(7.0, 3.5), dpi=200)
+    ax.plot(x, dec, label="writing a token (decode)", color=T.BLUE,
+            linestyle="--", marker="s", markersize=4, linewidth=T.LINE_WIDTH)
+    ax.plot(x, pre, label="reading a token of prompt (prefill)", color=T.AMBER,
+            linestyle="-", marker="o", markersize=4, linewidth=T.LINE_WIDTH)
+    ax.set_xscale("log", base=2); ax.set_yscale("log")
+    ax.set_xticks(x, [f"{v:,}" for v in x])
+    ax.set_xlabel("prompt length (tokens)")
+    ax.set_ylabel("time for one token (ms, log)")
+    ax.set_title("A token costs more to write than to read", loc="left", fontsize=11)
+    ax.legend(frameon=False, fontsize=8, loc="center right")
+    worst = max(rows, key=lambda r: r["decode_vs_prefill_per_token"])
+    ax.annotate(f"{worst['decode_vs_prefill_per_token']:.1f}x",
+                xy=(worst["prompt"], worst["decode_step_p50_s"] * 1e3),
+                textcoords="offset points", xytext=(6, 6), fontsize=8, color=T.MUTED)
+    T.style(ax)
+
+    save(fig, "ch03-per-token", d,
+         alt=("Time to process one token in each phase against prompt length, "
+              "both axes logarithmic. Writing a token costs about three times "
+              "more than reading one across every prompt length measured. Both "
+              "curves rise with prompt length, because attention has more "
+              "earlier tokens to consider."))
+
+
+def fig_intensity(d: dict) -> None:
+    """Why the two phases differ: work done per byte fetched."""
+    r = d["reference_8b"]
+    ridge = r["hardware"]["ridge_flop_per_byte"]
+    dec, pre = r["decode"]["intensity"], r["prefill"]["intensity"]
+
+    fig, ax = plt.subplots(figsize=(7.4, 2.6), dpi=200)
+    ax.set_xscale("log")
+    lo, hi = 0.2, 4000
+    ax.axvspan(lo, ridge, color="#EDF2FD", zorder=0)
+    ax.axvspan(ridge, hi, color="#FBF2E4", zorder=0)
+    ax.axvline(ridge, color=T.INK, linewidth=1.2, zorder=3)
+
+    ax.plot([dec], [0], marker="s", markersize=9, color=T.BLUE, zorder=4)
+    ax.plot([pre], [0], marker="o", markersize=9, color=T.AMBER, zorder=4)
+    ax.annotate(f"decode\n{dec:.2f} FLOP/byte", xy=(dec, 0), xytext=(dec, 0.42),
+                ha="center", fontsize=8, color=T.BLUE, fontweight="bold")
+    ax.annotate(f"prefill\n{pre:,.0f} FLOP/byte", xy=(pre, 0), xytext=(pre, 0.42),
+                ha="center", fontsize=8, color=T.AMBER, fontweight="bold")
+    ax.text(ridge, -0.55, f"this accelerator breaks even at {ridge:.0f}",
+            ha="center", fontsize=7.6, color=T.INK)
+    ax.text(lo * 1.4, -0.3, "limited by memory", fontsize=8, color=T.MUTED)
+    ax.text(hi * 0.72, -0.3, "limited by arithmetic", fontsize=8,
+            color=T.MUTED, ha="right")
+
+    ax.set_xlim(lo, hi); ax.set_ylim(-0.75, 0.85)
+    ax.set_yticks([])
+    ax.set_xlabel("arithmetic performed per byte fetched (log)")
+    ax.set_title("The two phases sit on opposite sides of the machine",
+                 loc="left", fontsize=11)
+    T.style(ax, hide_left=True)
+    ax.grid(False)
+
+    save(fig, "ch03-intensity", d,
+         alt=(f"A logarithmic scale of arithmetic performed per byte fetched. "
+              f"The accelerator breaks even at {ridge:.0f}. Decode sits far to the "
+              f"left at {dec:.2f}, deep in the region limited by memory; prefill sits "
+              f"to the right at {pre:,.0f}, in the region limited by arithmetic. They "
+              f"are {r['intensity_ratio']:,.0f} times apart."))
+
+
+CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
+            "ch03": [fig_timeline, fig_per_token, fig_intensity], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def main() -> None:
