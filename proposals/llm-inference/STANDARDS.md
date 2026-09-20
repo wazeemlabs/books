@@ -134,7 +134,7 @@ isolation:
 - **Objective:** minimum cost per million output tokens that meets the
   SLO.
 
-Chapter 4 states it, Chapter 40 sizes it, Chapter 41 prices it, and
+Chapter 5 states it, Chapter 41 sizes it, Chapter 42 prices it, and
 the capstone (Appendix H) asks the reader to beat the book's number.
 
 ## 8. Review and release
@@ -164,3 +164,93 @@ are marked.
 
 9.2 One message per figure. A figure that needs a paragraph to explain
 is two figures.
+
+## 10. Pedagogy: from the ground up
+
+The book assumes a reader who is new to the field and refuses to lose
+them. These rules govern how every concept is introduced.
+
+10.1 **Intuition first, then the mechanism, then the name.** Each
+concept opens with a concrete situation the reader can picture (one
+request, one GPU, one user waiting), then the mechanism is built in
+the reader's own code, and only then is the standard term introduced
+and the paper cited. The reader meets "KV cache" after they have
+already built one.
+
+10.2 **One new idea per section.** A section that introduces two
+concepts is two sections. Advanced material is reached by a sequence
+of small steps, never by a jump.
+
+10.3 **A prerequisite ladder, enforced.** Each chapter lists the
+chapters it depends on. No chapter uses a term, formula, or tool that
+an earlier chapter has not introduced. The manuscript tooling checks
+first uses of glossary terms against the ladder.
+
+10.4 **A figure per mechanism.** Every mechanism gets a diagram of
+what is happening in memory or on the GPU, before and after. Figures
+show the thing, not a chart about the thing; charts come in the
+*Measure* section.
+
+10.5 **Worked examples with real numbers.** Every formula is applied
+to the running model with actual values before it is stated in
+general form. "128 KiB per token" comes before
+"2 × L × H_kv × d × bytes".
+
+10.6 **Analogies with their limits stated.** Paged attention is
+introduced through OS paging; the text then says exactly where the
+analogy stops holding.
+
+10.7 **"If you're new here" boxes.** Where a chapter touches
+territory a newcomer may lack (what a tensor is, what a process is,
+what a percentile is), a short box explains it in place. Nobody is
+sent away to read something else first.
+
+10.8 **Book 1 is a deeper path, not a prerequisite.** Chapter 2 gives
+everything about the model that this book needs. Pointers to *Large
+Language Models from the Ground Up* are offered for depth and never
+required.
+
+10.9 **Plain words before symbols.** Every equation is preceded by a
+sentence saying what it means and followed by one saying what it
+implies. No equation stands alone.
+
+10.10 **Re-derive, don't refer back.** When a later chapter needs an
+earlier result, it restates it in one line rather than sending the
+reader back forty pages.
+
+## 11. Currency: the field moves faster than the manuscript
+
+The authors' knowledge of the field has a date; the field does not.
+Model names, sizes, prices, engine versions, hardware specifications,
+and benchmark results change monthly. These rules keep the book
+current and honest about when each fact was true.
+
+11.1 **The facts register.** Every time-sensitive claim in the book is
+an entry in `FACTS.md`: the claim, the value, the primary source, and
+the date it was last verified. A claim not in the register may not
+appear in the manuscript.
+
+11.2 **Verify at writing time, not from memory.** Before a chapter is
+drafted, every register entry it uses is re-checked against a current
+primary source (release notes, datasheets, price sheets, model cards)
+by web search. A value that cannot be verified is marked
+`UNVERIFIED` and does not ship.
+
+11.3 **Date every number in the text.** Prices, versions, and rankings
+appear with their verification month: "the H100 on-demand median was
+$3.25/hr (September 2026)". A number with no date is a defect.
+
+11.4 **Physics is stable; products are not.** Chapters are structured
+so that mechanisms (bandwidth-bound decode, paging, batching) live in
+the body and products (engine versions, flags, model names, prices)
+live in tables, appendices, and the companion page. The body should
+survive two years; the tables are re-verified at every revision.
+
+11.5 **Model choices are decisions with criteria, not names.** The
+running model is defined by requirements (dense, ~8B parameters,
+permissive license, current generation, a ~1B sibling for Tier 1) and
+the register records which model met them at each revision.
+
+11.6 **Revision cadence.** The register is fully re-verified at each
+numbered revision of the book, and the companion page publishes the
+diff.
