@@ -103,6 +103,11 @@ def main() -> None:
     }
     reference["intensity_ratio"] = (reference["prefill"]["intensity"]
                                     / reference["decode"]["intensity"])
+    # Work per byte and time per token are different ratios, and confusing
+    # them overstates the gap. Record both.
+    reference["prefill_per_token_s"] = reference["prefill"]["seconds"] / REF_PROMPT
+    reference["time_per_token_ratio"] = (reference["decode"]["seconds"]
+                                         / reference["prefill_per_token_s"])
     # One whole request, so the two phases can be compared on a clock.
     n_out = 300
     pre_s, dec_s = reference["prefill"]["seconds"], reference["decode"]["seconds"]

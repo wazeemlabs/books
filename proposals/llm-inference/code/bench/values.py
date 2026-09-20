@@ -205,6 +205,8 @@ def ch03(d: dict) -> dict[str, str]:
         "prefill_intensity": f"{pre['intensity']:,.0f}",
         "decode_intensity": f"{dec['intensity']:.2f}",
         "intensity_ratio": f"{r['intensity_ratio']:,.0f}x",
+        "time_ratio": f"{r['time_per_token_ratio']:,.0f}x",
+        "prefill_per_token_us": f"{r['prefill_per_token_s'] * 1e6:.0f}",
         "ridge": f"{r['hardware']['ridge_flop_per_byte']:.0f}",
         "prefill_bound": pre["bound_by"],
         "decode_bound": dec["bound_by"],
@@ -216,6 +218,36 @@ def ch03(d: dict) -> dict[str, str]:
         "total_s": f"{o['total_s']:.2f} seconds",
         "decode_share": f"{o['decode_share'] * 100:.0f}%",
         "out_tokens": str(o["output_tokens"]),
+    }
+
+
+def ch04(d: dict) -> dict[str, str]:
+    m, a, w = d["machine"], d["accelerator"], d["wall"]
+    levels = {c["level"]: c for c in d["cache_topology"]}
+    last = max(levels) if levels else 3
+    return {
+        "dram_gb_s": f"{m['dram_bytes_per_s'] / 1e9:.0f} GB/s",
+        "fastest_gb_s": f"{m['fastest_bytes_per_s'] / 1e9:.0f} GB/s",
+        "cache_advantage": f"{m['cache_advantage']:.1f}x",
+        "flops": f"{m['flops'] / 1e9:.0f} GFLOP/s",
+        "flops_spread": f"{m['flops_spread_frac'] * 100:.0f}%",
+        "ridge": f"{m['ridge_flop_per_byte']:.0f}",
+        "acc_ridge": f"{a['ridge_flop_per_byte']:.0f}",
+        "ridge_ratio": f"{a['ridge_ratio_vs_machine']:.0f}x",
+        "acc_bw": f"{a['hbm_bytes_per_s'] / 1e12:.2f} TB/s",
+        "acc_flops": f"{a['peak_bf16_flops'] / 1e12:.0f} TFLOP/s",
+        "weight_gb": f"{a['weight_bytes_8b'] / 1e9:.0f} GB",
+        "decode_floor": f"{a['decode_floor_ms']:.1f} ms",
+        "decode_floor_tps": f"{1000 / a['decode_floor_ms']:.0f}",
+        "l1_kib": f"{levels[1]['kib']:,} KiB" if 1 in levels else "UNVERIFIED",
+        "l2_kib": f"{levels[2]['kib'] // 1024:,} MiB" if 2 in levels else "UNVERIFIED",
+        "l3_mib": f"{levels[last]['kib'] // 1024:,} MiB" if last in levels else "UNVERIFIED",
+        "small_mib": f"{w[0]['weight_mib']:.1f} MiB",
+        "small_ratio": f"{w[0]['measured_over_predicted']:.1f}x",
+        "big_mib": f"{w[-1]['weight_mib']:,.0f} MiB",
+        "big_ratio": f"{w[-1]['measured_over_predicted']:.2f}x",
+        "big_ms": f"{w[-1]['decode_step_s'] * 1e3:.0f} ms",
+        "size_span": f"{w[-1]['weight_mib'] / w[0]['weight_mib']:.0f}x",
     }
 
 
@@ -254,7 +286,7 @@ def ch13(d: dict) -> dict[str, str]:
 
 def load(chapter: str = "ch12") -> dict[str, str]:
     d = json.loads((RESULTS / f"{chapter}.json").read_text())
-    return {"ch01": ch01, "ch02": ch02, "ch03": ch03,
+    return {"ch01": ch01, "ch02": ch02, "ch03": ch03, "ch04": ch04,
             "ch12": ch12, "ch13": ch13}[chapter](d)
 
 

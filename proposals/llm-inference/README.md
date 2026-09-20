@@ -10,6 +10,7 @@ Working materials for the third *from the Ground Up* book.
 | [CHAPTER-01-DRAFT.md](CHAPTER-01-DRAFT.md) | **Generated.** Chapter 1, "The Cost of a Token" |
 | [CHAPTER-02-DRAFT.md](CHAPTER-02-DRAFT.md) | **Generated.** Chapter 2, "What a Model Does When It Answers" |
 | [CHAPTER-03-DRAFT.md](CHAPTER-03-DRAFT.md) | **Generated.** Chapter 3, "Prefill and Decode" |
+| [CHAPTER-04-DRAFT.md](CHAPTER-04-DRAFT.md) | **Generated.** Chapter 4, "The Memory Wall" |
 | [CHAPTER-12-DRAFT.md](CHAPTER-12-DRAFT.md) | **Generated.** Chapter 12, "The KV Cache" |
 | [CHAPTER-13-DRAFT.md](CHAPTER-13-DRAFT.md) | **Generated.** Chapter 13, "Where the Memory Goes" |
 | `chapters/*.md` | Chapter sources, with `{{value}}` holes, table includes and `{{ch:slug}}` references |
@@ -92,6 +93,11 @@ committed numbers.
   result: a 4.5 MB model fits in CPU cache, so it has no memory problem
   to expose. The memory wall is a property of the model outgrowing fast
   memory, not of the algorithm.
+- Chapter 4 proves on a laptop what Chapter 3 could only assert. Grow
+  the model 229x and decode time converges onto weights divided by
+  bandwidth — 1.6x above the prediction at 3.3 MiB, 1.09x at 753 MiB.
+  The memory hierarchy is measured rather than described: 46 GB/s while
+  the working set fits in cache, 13 GB/s once it does not.
 - Chapter 13 turns the cache's cost into a capacity argument: under the
   case-study traffic a full-context reservation leaves 84% of KV memory
   idle, and 16-token pages reach 90% — within one sequence of an

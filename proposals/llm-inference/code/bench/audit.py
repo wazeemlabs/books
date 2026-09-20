@@ -66,6 +66,17 @@ def cross_chapter_consistency() -> list[str]:
         h = r["ch03"]["reference_8b"]
         note("8B parameters", "ch03", h["config"]["params"])
         note("HBM bytes/s", "ch03", h["hardware"]["hbm_bytes_per_s"])
+    if "ch04" in r:
+        a = r["ch04"]["accelerator"]
+        note("HBM bytes/s", "ch04", a["hbm_bytes_per_s"])
+        note("8B weight bytes", "ch04", a["weight_bytes_8b"])
+        note("accelerator break-even", "ch04", a["ridge_flop_per_byte"])
+    if "ch03" in r:
+        note("accelerator break-even", "ch03",
+             r["ch03"]["reference_8b"]["hardware"]["ridge_flop_per_byte"])
+    if "ch02" in r:
+        note("8B weight bytes", "ch02",
+             r["ch02"]["cost"]["reference_8b"]["weight_bytes_read_per_token"])
     if "ch13" in r:
         note("KV bytes per token", "ch13", r["ch13"]["hardware"]["kv_bytes_per_token"])
         paged = next((x for x in r["ch13"]["policies"] if x["policy"] == "paged_16"), None)

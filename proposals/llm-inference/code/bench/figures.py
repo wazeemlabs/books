@@ -59,6 +59,15 @@ def caption(d: dict) -> str:
                 f"{e['warmup']} warmup - 8B figures are arithmetic over "
                 f"published specs, not measurements - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "cliff" in d and "wall" in d:  # Chapter 4: this machine's own limits
+        mc = d["machine"]
+        return (f"measured single-threaded on {p['hardware']['cpu']} "
+                f"({p['hardware']['cores_available']} vCPU), NumPy "
+                f"{p['software']['numpy']} on {p['software']['blas']} - "
+                f"memory {mc['dram_bytes_per_s'] / 1e9:.1f} GB/s, arithmetic "
+                f"{mc['flops'] / 1e9:.0f} GFLOP/s, breaks even at "
+                f"{mc['ridge_flop_per_byte']:.0f} FLOP/byte - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     m = d.get("model")
     if m is None:  # an accounting chapter: no model was timed
         e = d["experiment"]
@@ -500,8 +509,107 @@ def fig_intensity(d: dict) -> None:
               f"are {r['intensity_ratio']:,.0f} times apart."))
 
 
+
+
+# --- Chapter 4: the memory wall, measured on the reader's own machine ---
+
+def fig_cliff(d: dict) -> None:
+    """The memory hierarchy, made visible by outgrowing it."""
+    x = [c["kib"] for c in d["cliff"]]
+    y = [c["bytes_per_s"] / 1e9 for c in d["cliff"]]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.6), dpi=200)
+    ax.plot(x, y, color=T.BLUE, marker="o", markersize=4.5,
+            linewidth=T.LINE_WIDTH)
+    ax.set_xscale("log", base=2)
+
+    def human(kib: int) -> str:
+        if kib >= 1024 * 1024:
+            return f"{kib // (1024 * 1024)} GiB"
+        return f"{kib // 1024} MiB" if kib >= 1024 else f"{kib} KiB"
+    ax.set_xticks(x, [human(v) for v in x], fontsize=7.5)
+
+    for lvl in d["cache_topology"]:
+        if lvl["kib"] < min(x) or lvl["kib"] > max(x):
+            continue
+        ax.axvline(lvl["kib"], color=T.MUTED, linestyle=":", linewidth=1.0)
+        ax.text(lvl["kib"], max(y) * 1.03,
+                f"L{lvl['level']} ends\n{lvl['kib']:,} KiB", fontsize=7,
+                color=T.MUTED, ha="center", va="bottom")
+
+    fastest, slowest = max(y), y[-1]
+    ax.annotate(f"{fastest:.0f} GB/s", xy=(x[y.index(fastest)], fastest),
+                textcoords="offset points", xytext=(-6, 8), fontsize=8,
+                color=T.INK, ha="right")
+    ax.annotate(f"{slowest:.0f} GB/s", xy=(x[-1], slowest),
+                textcoords="offset points", xytext=(-8, 10), fontsize=8,
+                color=T.INK, ha="right")
+
+    ax.set_ylim(0, max(y) * 1.28)
+    ax.set_xlabel("working set (KiB, log)")
+    ax.set_ylabel("read bandwidth (GB/s)")
+    ax.set_title("The further the data, the slower it arrives", loc="left",
+                 fontsize=11)
+    T.style(ax)
+
+    save(fig, "ch04-cliff", d,
+         alt=(f"Read bandwidth against working-set size, x axis logarithmic. "
+              f"Bandwidth peaks near {fastest:.0f} GB/s while the data fits in "
+              f"cache and falls to {slowest:.0f} GB/s once the working set is far "
+              f"larger, a factor of {fastest / slowest:.1f}. Dotted lines mark where "
+              "each cache level ends."))
+
+
+def fig_wall(d: dict) -> None:
+    """Decode time against model size, against what bandwidth alone predicts."""
+    w = d["wall"]
+    x = [r["weight_mib"] for r in w]
+    measured = [r["decode_step_s"] * 1e3 for r in w]
+    predicted = [r["predicted_from_bandwidth_s"] * 1e3 for r in w]
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.8), dpi=200)
+    ax.plot(x, measured, label="measured", color=T.BLUE, marker="s",
+            markersize=4.5, linewidth=T.LINE_WIDTH)
+    ax.plot(x, predicted, label="predicted by bandwidth alone", color=T.AMBER,
+            linestyle="--", marker="o", markersize=4.5, linewidth=T.LINE_WIDTH)
+    ax.set_xscale("log"); ax.set_yscale("log")
+
+    l3 = next((c for c in d["cache_topology"] if c["level"] == 3), None)
+    if l3 and min(x) < l3["kib"] / 1024 < max(x):
+        ax.axvline(l3["kib"] / 1024, color=T.MUTED, linestyle=":", linewidth=1.0)
+        ax.text(l3["kib"] / 1024, max(measured) * 1.1, " weights outgrow\n last-level cache",
+                fontsize=7, color=T.MUTED, va="top")
+
+    first, last = w[0], w[-1]
+    ax.annotate(f"{first['measured_over_predicted']:.1f}x above",
+                xy=(first["weight_mib"], first["decode_step_s"] * 1e3),
+                textcoords="offset points", xytext=(8, -3), fontsize=7.5, color=T.MUTED)
+    ax.annotate(f"{last['measured_over_predicted']:.2f}x",
+                xy=(last["weight_mib"], last["decode_step_s"] * 1e3),
+                textcoords="offset points", xytext=(-4, 10), fontsize=7.5,
+                color=T.MUTED, ha="right")
+
+    ax.set_xlabel("model weights (MiB, log)")
+    ax.set_ylabel("time to write one token (ms, log)")
+    ax.set_title("Grow the model and the time becomes the fetch", loc="left",
+                 fontsize=11)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    T.style(ax)
+
+    save(fig, "ch04-wall", d,
+         alt=("Time to write one token against model size, both axes "
+              "logarithmic, with the time that memory bandwidth alone would "
+              f"predict. For the smallest model the measurement sits "
+              f"{first['measured_over_predicted']:.1f} times above the prediction, "
+              "because overhead rather than fetching dominates. As the model "
+              f"grows the two converge, reaching {last['measured_over_predicted']:.2f} "
+              "times at the largest size: the time to write a token has become "
+              "the time to fetch the weights."))
+
+
 CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores],
-            "ch03": [fig_timeline, fig_per_token, fig_intensity], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
+            "ch03": [fig_timeline, fig_per_token, fig_intensity],
+            "ch04": [fig_cliff, fig_wall], "ch12": [fig_per_step, fig_scaling], "ch13": [fig_memory]}
 
 
 def main() -> None:

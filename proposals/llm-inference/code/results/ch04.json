@@ -1,0 +1,175 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-20T12:16:50Z",
+    "hardware": {
+      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cores_available": 4,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+      "blas": "scipy-openblas"
+    },
+    "commit": "7b83cb7"
+  },
+  "cache_topology": [
+    {
+      "level": 1,
+      "type": "Data",
+      "kib": 48,
+      "shared_with": "0"
+    },
+    {
+      "level": 2,
+      "type": "Unified",
+      "kib": 2048,
+      "shared_with": "0"
+    },
+    {
+      "level": 3,
+      "type": "Unified",
+      "kib": 266240,
+      "shared_with": "0-3"
+    }
+  ],
+  "experiment": {
+    "working_sets_kib": [
+      64,
+      256,
+      1024,
+      4096,
+      16384,
+      65536,
+      262144,
+      1048576
+    ],
+    "matmul_n": 1024,
+    "decode_steps": 8,
+    "threads": 1
+  },
+  "cliff": [
+    {
+      "kib": 64,
+      "bytes_per_s": 31601036649.13862
+    },
+    {
+      "kib": 256,
+      "bytes_per_s": 42965533119.66825
+    },
+    {
+      "kib": 1024,
+      "bytes_per_s": 46123220572.40636
+    },
+    {
+      "kib": 4096,
+      "bytes_per_s": 20907836691.10997
+    },
+    {
+      "kib": 16384,
+      "bytes_per_s": 20875716602.68681
+    },
+    {
+      "kib": 65536,
+      "bytes_per_s": 20195147770.26613
+    },
+    {
+      "kib": 262144,
+      "bytes_per_s": 12518122014.565836
+    },
+    {
+      "kib": 1048576,
+      "bytes_per_s": 13487628082.963442
+    }
+  ],
+  "machine": {
+    "dram_bytes_per_s": 13487628082.963442,
+    "fastest_bytes_per_s": 46123220572.40636,
+    "cache_advantage": 3.41966877264845,
+    "flops": 155851990936.92184,
+    "flops_spread_frac": 0.060014778652551094,
+    "flops_noisy": true,
+    "ridge_flop_per_byte": 11.55518153216149
+  },
+  "accelerator": {
+    "hbm_bytes_per_s": 3350000000000.0,
+    "peak_bf16_flops": 990000000000000.0,
+    "ridge_flop_per_byte": 295.5223880597015,
+    "weight_bytes_8b": 16004415488,
+    "decode_floor_ms": 4.777437459104477,
+    "ridge_ratio_vs_machine": 25.574880605482072
+  },
+  "wall": [
+    {
+      "d_model": 128,
+      "n_layers": 4,
+      "weight_bytes": 3445248,
+      "weight_mib": 3.28564453125,
+      "decode_step_s": 0.0004667534999498457,
+      "predicted_from_bandwidth_s": 0.0002554376483995565,
+      "measured_over_predicted": 1.8272697970494474,
+      "effective_bytes_per_s": 7381300837.316065
+    },
+    {
+      "d_model": 256,
+      "n_layers": 4,
+      "weight_bytes": 13181952,
+      "weight_mib": 12.5712890625,
+      "decode_step_s": 0.0011171040000590438,
+      "predicted_from_bandwidth_s": 0.0009773365575412368,
+      "measured_over_predicted": 1.1430085076009344,
+      "effective_bytes_per_s": 11800111716.817125
+    },
+    {
+      "d_model": 384,
+      "n_layers": 6,
+      "weight_bytes": 43372032,
+      "weight_mib": 41.36279296875,
+      "decode_step_s": 0.0030818194999255866,
+      "predicted_from_bandwidth_s": 0.0032156900926697623,
+      "measured_over_predicted": 0.9583695602230649,
+      "effective_bytes_per_s": 14073514688.659494
+    },
+    {
+      "d_model": 512,
+      "n_layers": 6,
+      "weight_bytes": 76703744,
+      "weight_mib": 73.150390625,
+      "decode_step_s": 0.0053540625001460285,
+      "predicted_from_bandwidth_s": 0.005686970572452721,
+      "measured_over_predicted": 0.9414612634151344,
+      "effective_bytes_per_s": 14326269818.088219
+    },
+    {
+      "d_model": 768,
+      "n_layers": 8,
+      "weight_bytes": 228314112,
+      "weight_mib": 217.7373046875,
+      "decode_step_s": 0.021871403499972075,
+      "predicted_from_bandwidth_s": 0.016927669609187197,
+      "measured_over_predicted": 1.2920504715015086,
+      "effective_bytes_per_s": 10438932828.44384
+    },
+    {
+      "d_model": 1024,
+      "n_layers": 8,
+      "weight_bytes": 405082112,
+      "weight_mib": 386.31640625,
+      "decode_step_s": 0.03321969250009715,
+      "predicted_from_bandwidth_s": 0.030033606317456905,
+      "measured_over_predicted": 1.1060840362946474,
+      "effective_bytes_per_s": 12194035570.883604
+    },
+    {
+      "d_model": 1280,
+      "n_layers": 10,
+      "weight_bytes": 789488640,
+      "weight_mib": 752.9150390625,
+      "decode_step_s": 0.06639823050011273,
+      "predicted_from_bandwidth_s": 0.058534283058799846,
+      "measured_over_predicted": 1.1343477194965088,
+      "effective_bytes_per_s": 11890206019.852587
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+ALT: Read bandwidth against working-set size, x axis logarithmic. Bandwidth peaks near 46 GB/s while the data fits in cache and falls to 13 GB/s once the working set is far larger, a factor of 3.4. Dotted lines mark where each cache level ends.
+PROVENANCE: measured single-threaded on Intel(R) Xeon(R) Processor @ 2.10GHz (4 vCPU), NumPy 2.4.6 on scipy-openblas - memory 13.5 GB/s, arithmetic 156 GFLOP/s, breaks even at 12 FLOP/byte - commit 7b83cb7, 2026-09-20T12:16:50Z

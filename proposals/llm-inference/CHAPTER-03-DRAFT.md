@@ -131,11 +131,11 @@ then writing tokens at each of those lengths.
 <!-- include: tables/ch03-measured.md -->
 | Prompt length | Reading the prompt | Writing tokens | A token costs this much more to write |
 |---|---|---|---|
-| 64 | 6,671 tok/s | 2,037 tok/s | **3.3x** |
-| 128 | 5,611 tok/s | 1,913 tok/s | **2.9x** |
-| 256 | 5,233 tok/s \* | 1,745 tok/s | **3.0x** |
-| 512 | 5,443 tok/s \* | 1,791 tok/s | **3.0x** |
-| 1,024 | 4,536 tok/s \* | 1,254 tok/s | **3.6x** |
+| 64 | 6,287 tok/s | 1,886 tok/s | **3.3x** |
+| 128 | 5,538 tok/s | 1,753 tok/s | **3.2x** |
+| 256 | 5,456 tok/s | 1,705 tok/s | **3.2x** |
+| 512 | 4,367 tok/s | 1,466 tok/s | **3.0x** |
+| 1,024 | 3,890 tok/s | 1,323 tok/s | **2.9x** |
 
 \* run-to-run spread exceeded 5%.
 
@@ -145,24 +145,37 @@ then writing tokens at each of those lengths.
 prompt length measured. *Provenance in
 `code/figures/ch03-per-token.caption.txt`.*
 
-The direction is right: writing a token costs 2.9x to 3.6x
-more than reading one. But the size is wrong — the arithmetic predicted
-a difference of 1,203x, and we measured about three.
+The direction is right: writing a token costs 2.9x to 3.3x
+more than reading one. The size looks badly wrong. Before blaming the
+measurement, be careful which two numbers are being compared.
 
-**That discrepancy is not an error, and it is worth more to you than a
-confirming result would have been.**
+**1,203x is a ratio of work per byte. It is not a ratio of
+time.** A phase that does less work per byte is not slower by that
+factor; it is slower by however much the hardware punishes being
+memory-bound. For the accelerator above, the honest time comparison is
+this: prefill costs **16 microseconds** per token
+of prompt, decode costs **4.84 ms** per token of output. That is
+**307x** — not 1,203x. Keep the two apart.
+Confusing them overstates the gap fourfold, and it is an easy mistake
+to make.
 
-Our model's weights are 4.5 MB. A laptop CPU has several
-megabytes of fast cache, so after the first pass the entire model is
-sitting in cache and barely needs fetching from main memory at all. We
-built a model too small to have a memory problem, so it does not have
-one, and the gap collapses to the difference in raw arithmetic.
+So the real question is why this machine showed about three rather than
+307x. There are two reasons, and Chapter 4
+measures both on your own machine.
 
-A production model cannot do that. Sixteen gigabytes will not sit in a
-cache of tens of megabytes; every token really does fetch every weight
-from the accelerator's main memory. **The memory wall is not a property
-of the algorithm. It is a property of the model being much bigger than
-the fast memory near the processor** — which every useful model is.
+**A CPU is far more balanced than an accelerator.** How much a machine
+punishes memory-bound work depends on where it breaks even, and a
+general-purpose processor breaks even at a tiny fraction of an
+accelerator's 296 operations per byte — it has proportionally far
+less arithmetic bolted onto its memory system. The same two phases
+therefore land much closer together here than they would on the
+hardware you will actually deploy on.
+
+**And `tinyserve` is too small to reach either limit.** Its matrices
+are small enough that prefill never approaches the machine's peak
+arithmetic, and its weights are small enough that per-call overhead,
+not memory bandwidth, sets the floor under decode. Neither phase is
+running against the wall that the arithmetic describes.
 
 Keep this in mind for the rest of Part III: `tinyserve` faithfully
 reproduces every *structure* in this book, and systematically
@@ -279,9 +292,12 @@ to 200 and the largest prompt raised to 2,048. Predict first whether
 the measured gap will widen or narrow, and why. Then explain your
 result in terms of the cache argument above.
 
-**★★★ 3.5** The chapter claims `tinyserve` understates the memory
-effect because its weights fit in cache. Test the claim rather than
-accepting it: scale `d_model` up until the model's weights clearly
-exceed your machine's last-level cache, measuring the prefill-to-decode
-gap at each size. Report the gap against model size, with percentiles
-and provenance, and say at what size the memory wall becomes visible.
+**★★★ 3.5** This chapter separates two ratios: work per byte
+(1,203x) and time per token (307x). Derive the
+second from the first. That is, given a phase's work per byte, a
+machine's peak arithmetic rate and its memory bandwidth, write the
+expression for how long one token takes, and show where the factor of
+four between the two ratios comes from. Then use your expression to
+predict the time ratio on a machine that breaks even at 8 operations
+per byte instead of 296, and check your prediction against
+Chapter 4's measurements.

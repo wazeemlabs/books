@@ -148,6 +148,34 @@ def ch03_reference(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch04_machine(d: dict) -> str:
+    m, a = d["machine"], d["accelerator"]
+    return "\n".join([
+        "| | This machine (measured) | An H100 (published) |", "|---|---|---|",
+        f"| Memory bandwidth | {m['dram_bytes_per_s'] / 1e9:.0f} GB/s | "
+        f"{a['hbm_bytes_per_s'] / 1e12:.2f} TB/s |",
+        f"| Arithmetic | {m['flops'] / 1e9:.0f} GFLOP/s | "
+        f"{a['peak_bf16_flops'] / 1e12:.0f} TFLOP/s |",
+        f"| **Breaks even at** | **{m['ridge_flop_per_byte']:.0f}** FLOP/byte | "
+        f"**{a['ridge_flop_per_byte']:.0f}** FLOP/byte |",
+        "",
+        f"The accelerator is {a['ridge_ratio_vs_machine']:.0f}x more lopsided: it "
+        "carries far more arithmetic per unit of memory bandwidth, so work that "
+        "is short of arithmetic is punished far more severely on it. Measured "
+        "single-threaded; see the note on the measuring machine.",
+    ])
+
+
+def ch04_wall(d: dict) -> str:
+    out = ["| Model weights | Time to write one token | Predicted by bandwidth alone | Measured / predicted |",
+           "|---|---|---|---|"]
+    for r in d["wall"]:
+        out.append(f"| {r['weight_mib']:,.0f} MiB | {r['decode_step_s'] * 1e3:.2f} ms | "
+                   f"{r['predicted_from_bandwidth_s'] * 1e3:.2f} ms | "
+                   f"**{r['measured_over_predicted']:.2f}x** |")
+    return "\n".join(out)
+
+
 def ch13_policies(d: dict) -> str:
     names = {"max_model_len": "Reserve the full context (8,192)",
              "prompt_plus_cap": "Reserve prompt + cap (prompt + 1,024)",
@@ -187,6 +215,7 @@ def main() -> None:
         "ch01": (("ch01-cost", ch01_cost),),
         "ch02": (("ch02-shapes", ch02_shapes), ("ch02-cost", ch02_cost)),
         "ch03": (("ch03-measured", ch03_measured), ("ch03-reference", ch03_reference)),
+        "ch04": (("ch04-machine", ch04_machine), ("ch04-wall", ch04_wall)),
         "ch12": (("ch12-head-to-head", head_to_head), ("ch12-scaling", scaling),
                  ("ch12-memory", memory)),
         "ch13": (("ch13-policies", ch13_policies), ("ch13-traffic", ch13_traffic)),
