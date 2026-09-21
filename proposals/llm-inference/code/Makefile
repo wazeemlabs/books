@@ -2,14 +2,14 @@
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make ddr1   - re-derive a Part's design decision record from its chapters
 #   make lock   - refresh environment.lock
-.PHONY: all venv ddr1 ddr4 ch28 ch30 ch32 ch33 ch22 ch24 ch29 ch31 ch41 ch42 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch31 ch41 ch42 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all venv ddr1 ddr4 ch28 ch43 ch30 ch32 ch33 ch22 ch24 ch29 ch31 ch41 ch42 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch31 ch41 ch42 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch28 ch29 ch30 ch31 ch32 ch33 ch41 ch42 ddr1 ddr4
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch28 ch29 ch30 ch31 ch32 ch33 ch41 ch42 ch43 ddr1 ddr4
 
 ch01:
 	python3 -m bench.run_ch01
@@ -109,6 +109,10 @@ ch41:
 
 ch42:
 	python3 -m bench.run_ch42
+	$(MAKE) figures tables manuscript
+
+ch43:
+	python3 -m bench.run_ch43
 	$(MAKE) figures tables manuscript
 
 ch28:
@@ -240,7 +244,12 @@ from tinyserve.moe import test_a_batch_touches_more_experts_than_a_token as bw; 
 from tinyserve.moe import test_the_step_grows_and_the_token_gets_cheaper as bx; bx(); \
 from tinyserve.moe import test_spreading_the_experts_divides_only_the_experts as by; by(); \
 from tinyserve.moe import test_expert_parallel_traffic_scales_with_the_batch as bz; bz(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats, quantization, speculation, grammars, steady state, caching above the model, drafting, evaluation, mixtures of experts')"
+from tinyserve.observe import test_a_histogram_percentile_lands_inside_its_bucket as ca; ca(); \
+from tinyserve.observe import test_the_error_is_the_width_of_the_bucket as cb; cb(); \
+from tinyserve.observe import test_past_the_top_of_the_scale_reads_as_the_top as cc; cc(); \
+from tinyserve.observe import test_a_scrape_can_miss_an_event_shorter_than_itself as cd; cd(); \
+from tinyserve.observe import test_a_histogram_is_not_one_series as ce; ce(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats, quantization, speculation, grammars, steady state, caching above the model, drafting, evaluation, mixtures of experts, metrics')"
 
 # One environment per machine the book measures on. The venv is never
 # committed; requirements.txt says what to install and the lock records

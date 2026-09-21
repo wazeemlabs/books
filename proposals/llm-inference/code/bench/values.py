@@ -1592,6 +1592,70 @@ def ch31(d: dict) -> dict[str, str]:
     }
 
 
+def ch43(d: dict) -> dict[str, str]:
+    a, dash, det = d["assumptions"], d["dashboards"], d["detection"]
+    scr, card = d["scrapes"], d["cardinality"]
+    p99 = [r for r in dash["rows"] if r["quantile"] == 0.99]
+    worst = max(p99, key=lambda r: abs(r["error"]))
+    at_rate = {(r["rate"], r["metric"]): r for r in p99}
+    here_ttft = at_rate[(a["operating_rate"], "time to first token")]
+    here_itl = at_rate[(a["operating_rate"], "between tokens")]
+    by_metric = {r["metric"]: r for r in det["rows"]}
+    waiting = by_metric["num_requests_waiting"]
+    running = by_metric["num_requests_running"]
+    caught = {(r["incident_s"], r["interval_s"]): r for r in scr["rows"]}
+    last = card["rows"][-1]
+    ilo, ihi = dash["budget_bucket_itl"]
+    tlo, thi = dash["budget_bucket_ttft"]
+    return {
+        "rates": str(len(a["rates"])),
+        "requests": f"{a['n_requests']:,}",
+        "rate": str(a["operating_rate"]),
+        # the dashboard
+        "worst_metric": worst["metric"],
+        "worst_rate": str(worst["rate"]),
+        "worst_true": f"{worst['true_s'] * 1e3:,.1f} ms",
+        "worst_shown": f"{worst['shown_s'] * 1e3:,.1f} ms",
+        "worst_error": f"{worst['error'] * 100:+.0f}%",
+        "here_ttft_true": f"{here_ttft['true_s'] * 1e3:,.0f} ms",
+        "here_ttft_shown": f"{here_ttft['shown_s'] * 1e3:,.0f} ms",
+        "here_itl_true": f"{here_itl['true_s'] * 1e3:.1f} ms",
+        "here_itl_shown": f"{here_itl['shown_s'] * 1e3:.1f} ms",
+        "itl_budget": f"{a['itl_budget_ms']} ms",
+        "ttft_budget": f"{a['ttft_budget_ms'] / 1e3:,.0f} s",
+        "itl_budget_bucket": f"{ilo * 1e3:,.0f}-{ihi * 1e3:,.0f} ms",
+        "ttft_budget_bucket": f"{tlo:,.2f}-{thi:,.2f} s",
+        "buckets_itl": str(len(dash["itl_buckets"])),
+        # the fault
+        "fault_share": f"{det['pool_share']:.0%}",
+        "fault_gb": f"{det['pool_gb_faulty']:.1f} GB",
+        "waiting_healthy": f"{waiting['healthy_median']:,.0f}",
+        "waiting_faulty": f"{waiting['faulty_median']:,.0f}",
+        "waiting_moved": f"{waiting['moved_by']:,.0f}x",
+        "running_healthy": f"{running['healthy_median']:,.0f}",
+        "running_faulty": f"{running['faulty_median']:,.0f}",
+        "preempt_healthy": f"{det['preemptions_healthy']:,}",
+        "preempt_faulty": f"{det['preemptions_faulty']:,}",
+        "ttft_healthy": f"{det['ttft_p99_healthy']:,.0f} ms",
+        "ttft_faulty": f"{det['ttft_p99_faulty'] / 1e3:,.0f} s",
+        "ttft_moved": f"{det['ttft_p99_faulty'] / det['ttft_p99_healthy']:,.0f}x",
+        "itl_healthy": f"{det['itl_p99_healthy']:.1f} ms",
+        "itl_faulty": f"{det['itl_p99_faulty']:.1f} ms",
+        "itl_moved": f"{det['itl_p99_faulty'] / det['itl_p99_healthy']:.1f}x",
+        # scrapes
+        "short_incident": "15",
+        "short_caught_60": f"{caught[(15, 60)]['caught'] * 100:.0f}%",
+        "short_caught_15": f"{caught[(15, 15)]['caught'] * 100:.0f}%",
+        "tiny_caught_15": f"{caught[(2, 15)]['caught'] * 100:.0f}%",
+        "half_caught_60": f"{caught[(30, 60)]['caught'] * 100:.0f}%",
+        # cardinality
+        "labels": str(len(card["label_values"])),
+        "gauge_series": f"{last['gauge_series']:,}",
+        "histogram_series": f"{last['histogram_series']:,}",
+        "one_histogram": str(card["one_histogram_alone"]),
+    }
+
+
 def ch33(d: dict) -> dict[str, str]:
     a, lc, th, mo = (d["assumptions"], d["long_context"], d["thinking"],
                      d["mixture"])
@@ -2178,7 +2242,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch33": ch33,
             "ch31": ch31,
             "ch32": ch32,
-            "ch41": ch41, "ch42": ch42, "ddr1": ddr1,
+            "ch41": ch41, "ch42": ch42, "ch43": ch43, "ddr1": ddr1,
             "ddr4": ddr4}[chapter](d)
 
 

@@ -677,8 +677,20 @@ decision drafted from received wisdom: speculation is not a low-batch
 technique, wide trees are, and sizing the tree to the batch keeps most
 of the benefit at a batch of 60.
 
+Part VIII has begun with **43, Observability**, which is Tier 0 for
+the same reason 28 is: what it measures is the instrument, not the
+model. Exporting Chapter 18's scheduler the way a production engine
+exports itself and reading it back through vLLM's own histogram
+buckets, the 99th percentile on the dashboard is up to twice the 99th
+percentile in the trace; and in a memory incident the queue depth
+moves 918x while the number of requests *running* goes down and the
+between-tokens percentile does not move at all. The chapter's
+practical conclusion -- alert on the exact bucket count, never on the
+interpolated percentile -- is one the book could not have reached
+without the bucket boundaries in hand.
+
 Next: **21** and **23** when a GPU is free; meanwhile the remaining
-Tier 0 chapters of Parts VI and VIII.
+Tier 0 chapters of Part VIII.
 
 **From here, front to back.** The remaining risk is pedagogical rather
 than mechanical, and it lives in Part I and the early chapters of

@@ -1,0 +1,841 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-21T14:05:51Z",
+    "hardware": {
+      "cpu": "Apple M4 Max",
+      "cores_available": 16,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.14.7",
+      "numpy": "2.5.3",
+      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "blas": "accelerate"
+    },
+    "commit": "e82bdb9"
+  },
+  "dashboards": {
+    "rows": [
+      {
+        "rate": 12,
+        "metric": "time to first token",
+        "quantile": 0.5,
+        "true_s": 0.02569044305337087,
+        "shown_s": 0.02726007326007326,
+        "error": 0.061097825500383396,
+        "bucket_low": 0.02,
+        "bucket_high": 0.04,
+        "bucket_width_over_value": 0.7784996139790504,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 12,
+        "metric": "time to first token",
+        "quantile": 0.9,
+        "true_s": 0.05116529525919874,
+        "shown_s": 0.05455947136563877,
+        "error": 0.06633746740335301,
+        "bucket_low": 0.04,
+        "bucket_high": 0.06,
+        "bucket_width_over_value": 0.390889955753833,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 12,
+        "metric": "time to first token",
+        "quantile": 0.99,
+        "true_s": 0.09086032649862547,
+        "shown_s": 0.09379310344827586,
+        "error": 0.032277860565411515,
+        "bucket_low": 0.08,
+        "bucket_high": 0.1,
+        "bucket_width_over_value": 0.22011807320880103,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 12,
+        "metric": "between tokens",
+        "quantile": 0.5,
+        "true_s": 0.006139138598208955,
+        "shown_s": 0.0050000539045322355,
+        "error": -0.1855447104597115,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.6288930181373362,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 12,
+        "metric": "between tokens",
+        "quantile": 0.9,
+        "true_s": 0.007887426802036364,
+        "shown_s": 0.009000097028158027,
+        "error": 0.14106884970829717,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.267840608982668,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 12,
+        "metric": "between tokens",
+        "quantile": 0.99,
+        "true_s": 0.008269705836606061,
+        "shown_s": 0.009900106730973827,
+        "error": 0.1971534328525636,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.2092328551439822,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 20,
+        "metric": "time to first token",
+        "quantile": 0.5,
+        "true_s": 0.03408760978614467,
+        "shown_s": 0.03513910355486863,
+        "error": 0.030846802557313736,
+        "bucket_low": 0.02,
+        "bucket_high": 0.04,
+        "bucket_width_over_value": 0.5867234495311915,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 20,
+        "metric": "time to first token",
+        "quantile": 0.9,
+        "true_s": 0.07622709012013261,
+        "shown_s": 0.07803220035778176,
+        "error": 0.023680691927296788,
+        "bucket_low": 0.06,
+        "bucket_high": 0.08,
+        "bucket_width_over_value": 0.26237391416201694,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 20,
+        "metric": "time to first token",
+        "quantile": 0.99,
+        "true_s": 0.13724998058384444,
+        "shown_s": 0.21842105263157896,
+        "error": 0.591410444667772,
+        "bucket_low": 0.1,
+        "bucket_high": 0.25,
+        "bucket_width_over_value": 1.0928963294706386,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 20,
+        "metric": "between tokens",
+        "quantile": 0.5,
+        "true_s": 0.007530497222686567,
+        "shown_s": 0.005000093624404988,
+        "error": -0.336020786337776,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.3279335619265282,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 20,
+        "metric": "between tokens",
+        "quantile": 0.9,
+        "true_s": 0.008134127607725252,
+        "shown_s": 0.009000168523928981,
+        "error": 0.10647004300513081,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.2293881387479915,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 20,
+        "metric": "between tokens",
+        "quantile": 0.99,
+        "true_s": 0.008678140179104477,
+        "shown_s": 0.009900185376321877,
+        "error": 0.1408187897402121,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.1523206347920425,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 24,
+        "metric": "time to first token",
+        "quantile": 0.5,
+        "true_s": 0.0437017340354231,
+        "shown_s": 0.04427018633540373,
+        "error": 0.013007545639261363,
+        "bucket_low": 0.04,
+        "bucket_high": 0.06,
+        "bucket_width_over_value": 0.4576477442242611,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 24,
+        "metric": "time to first token",
+        "quantile": 0.9,
+        "true_s": 0.11693158438067713,
+        "shown_s": 0.14535340314136125,
+        "error": 0.24306365907226005,
+        "bucket_low": 0.1,
+        "bucket_high": 0.25,
+        "bucket_width_over_value": 1.2828013987364342,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 24,
+        "metric": "time to first token",
+        "quantile": 0.99,
+        "true_s": 0.2520303959762191,
+        "shown_s": 0.27611940298507465,
+        "error": 0.09557976892250923,
+        "bucket_low": 0.25,
+        "bucket_high": 0.5,
+        "bucket_width_over_value": 0.9919438448352448,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 24,
+        "metric": "between tokens",
+        "quantile": 0.5,
+        "true_s": 0.008087025022089552,
+        "shown_s": 0.004999999999999999,
+        "error": -0.3817256671838412,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.2365486656323177,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 24,
+        "metric": "between tokens",
+        "quantile": 0.9,
+        "true_s": 0.008797396136119403,
+        "shown_s": 0.009000000000000001,
+        "error": 0.02302998077451224,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.136699978638347,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 24,
+        "metric": "between tokens",
+        "quantile": 0.99,
+        "true_s": 0.009528269258507463,
+        "shown_s": 0.0099,
+        "error": 0.03901345894068145,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.0495085443845267,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 26,
+        "metric": "time to first token",
+        "quantile": 0.5,
+        "true_s": 0.053547784834684364,
+        "shown_s": 0.05499133448873483,
+        "error": 0.02695815818538664,
+        "bucket_low": 0.04,
+        "bucket_high": 0.06,
+        "bucket_width_over_value": 0.37349817666118373,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 26,
+        "metric": "time to first token",
+        "quantile": 0.9,
+        "true_s": 0.1795964280510732,
+        "shown_s": 0.21157130657557643,
+        "error": 0.17803738566231558,
+        "bucket_low": 0.1,
+        "bucket_high": 0.25,
+        "bucket_width_over_value": 0.8352059204503964,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 26,
+        "metric": "time to first token",
+        "quantile": 0.99,
+        "true_s": 0.43630523964967094,
+        "shown_s": 0.46818181818181814,
+        "error": 0.07306026981876802,
+        "bucket_low": 0.25,
+        "bucket_high": 0.5,
+        "bucket_width_over_value": 0.5729933479614782,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 26,
+        "metric": "between tokens",
+        "quantile": 0.5,
+        "true_s": 0.008444323381492537,
+        "shown_s": 0.005039904143121868,
+        "error": -0.4031606896808512,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.184227503877581,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 26,
+        "metric": "between tokens",
+        "quantile": 0.9,
+        "true_s": 0.009270663871044776,
+        "shown_s": 0.009071827457619365,
+        "error": -0.021447915294010418,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.0786714025123025,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 26,
+        "metric": "between tokens",
+        "quantile": 0.99,
+        "true_s": 0.009922580785671643,
+        "shown_s": 0.0099790102033813,
+        "error": 0.005686969844694229,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.0078023264310583,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 28,
+        "metric": "time to first token",
+        "quantile": 0.5,
+        "true_s": 0.08205618775490109,
+        "shown_s": 0.08295833333333334,
+        "error": 0.01099424191051783,
+        "bucket_low": 0.08,
+        "bucket_high": 0.1,
+        "bucket_width_over_value": 0.24373542748219418,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 28,
+        "metric": "time to first token",
+        "quantile": 0.9,
+        "true_s": 0.36960012043709306,
+        "shown_s": 0.4037769784172662,
+        "error": 0.09246982371043384,
+        "bucket_low": 0.25,
+        "bucket_high": 0.5,
+        "bucket_width_over_value": 0.6764067059944334,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 28,
+        "metric": "time to first token",
+        "quantile": 0.99,
+        "true_s": 0.7814504301566824,
+        "shown_s": 0.8275862068965517,
+        "error": 0.059038647826477025,
+        "bucket_low": 0.75,
+        "bucket_high": 1.0,
+        "bucket_width_over_value": 0.31991792486424825,
+        "budget_s": 1.0,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 28,
+        "metric": "between tokens",
+        "quantile": 0.5,
+        "true_s": 0.008949517908059701,
+        "shown_s": 0.005186855761125996,
+        "error": -0.4204318249975398,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.1173786233774965,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 28,
+        "metric": "between tokens",
+        "quantile": 0.9,
+        "true_s": 0.00975023088716418,
+        "shown_s": 0.009336340370026794,
+        "error": -0.04244930421927308,
+        "bucket_low": 0.0,
+        "bucket_high": 0.01,
+        "bucket_width_over_value": 1.0256167382830526,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      },
+      {
+        "rate": 28,
+        "metric": "between tokens",
+        "quantile": 0.99,
+        "true_s": 0.010188637382686567,
+        "shown_s": 0.020836208851787698,
+        "error": 1.0450437157764025,
+        "bucket_low": 0.01,
+        "bucket_high": 0.025,
+        "bucket_width_over_value": 1.4722282712199892,
+        "budget_s": 0.05,
+        "true_breaks": false,
+        "shown_breaks": false,
+        "disagree": false
+      }
+    ],
+    "quantiles": [
+      0.5,
+      0.9,
+      0.99
+    ],
+    "ttft_buckets": [
+      0.001,
+      0.005,
+      0.01,
+      0.02,
+      0.04,
+      0.06,
+      0.08,
+      0.1,
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      2.5,
+      5.0,
+      7.5,
+      10.0,
+      20.0,
+      40.0,
+      80.0,
+      160.0,
+      640.0,
+      2560.0
+    ],
+    "itl_buckets": [
+      0.01,
+      0.025,
+      0.05,
+      0.075,
+      0.1,
+      0.15,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.75,
+      1.0,
+      2.5,
+      5.0,
+      7.5,
+      10.0,
+      20.0,
+      40.0,
+      80.0
+    ],
+    "ttft_budget_s": 1.0,
+    "itl_budget_s": 0.05,
+    "budget_bucket_ttft": [
+      0.75,
+      1.0
+    ],
+    "budget_bucket_itl": [
+      0.025,
+      0.05
+    ]
+  },
+  "detection": {
+    "rows": [
+      {
+        "metric": "num_requests_waiting",
+        "healthy_median": 1.0,
+        "faulty_median": 918.0,
+        "healthy_p99": 12.0,
+        "faulty_p99": 1084.01,
+        "moved_by": 918.0
+      },
+      {
+        "metric": "num_requests_running",
+        "healthy_median": 64.0,
+        "faulty_median": 53.0,
+        "healthy_p99": 89.00999999999999,
+        "faulty_p99": 92.0,
+        "moved_by": 0.828125
+      },
+      {
+        "metric": "time_to_first_token_seconds",
+        "healthy_median": 0.20836479596936358,
+        "faulty_median": 36.23507856831207,
+        "healthy_p99": 0.5967215341910305,
+        "faulty_p99": 43.39516681178549,
+        "moved_by": 173.90211431704523
+      }
+    ],
+    "pool_share": 0.06,
+    "rate": 26,
+    "preemptions_healthy": 0,
+    "preemptions_faulty": 1653,
+    "ttft_p99_healthy": 436.30523964967097,
+    "ttft_p99_faulty": 43127.79635444654,
+    "itl_p99_healthy": 9.922580785671643,
+    "itl_p99_faulty": 10.189967665671642,
+    "tokens_healthy": 7461.288298005753,
+    "tokens_faulty": 6671.590561153296,
+    "pool_blocks_healthy": 30515,
+    "pool_blocks_faulty": 1830,
+    "pool_gb_faulty": 3.83778816
+  },
+  "scrapes": {
+    "rows": [
+      {
+        "incident_s": 2,
+        "interval_s": 1,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 2,
+        "interval_s": 5,
+        "caught": 0.40625
+      },
+      {
+        "incident_s": 2,
+        "interval_s": 15,
+        "caught": 0.140625
+      },
+      {
+        "incident_s": 2,
+        "interval_s": 30,
+        "caught": 0.078125
+      },
+      {
+        "incident_s": 2,
+        "interval_s": 60,
+        "caught": 0.046875
+      },
+      {
+        "incident_s": 5,
+        "interval_s": 1,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 5,
+        "interval_s": 5,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 5,
+        "interval_s": 15,
+        "caught": 0.34375
+      },
+      {
+        "incident_s": 5,
+        "interval_s": 30,
+        "caught": 0.171875
+      },
+      {
+        "incident_s": 5,
+        "interval_s": 60,
+        "caught": 0.09375
+      },
+      {
+        "incident_s": 15,
+        "interval_s": 1,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 15,
+        "interval_s": 5,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 15,
+        "interval_s": 15,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 15,
+        "interval_s": 30,
+        "caught": 0.5
+      },
+      {
+        "incident_s": 15,
+        "interval_s": 60,
+        "caught": 0.25
+      },
+      {
+        "incident_s": 30,
+        "interval_s": 1,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 30,
+        "interval_s": 5,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 30,
+        "interval_s": 15,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 30,
+        "interval_s": 30,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 30,
+        "interval_s": 60,
+        "caught": 0.5
+      },
+      {
+        "incident_s": 60,
+        "interval_s": 1,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 60,
+        "interval_s": 5,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 60,
+        "interval_s": 15,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 60,
+        "interval_s": 30,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 60,
+        "interval_s": 60,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 120,
+        "interval_s": 1,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 120,
+        "interval_s": 5,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 120,
+        "interval_s": 15,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 120,
+        "interval_s": 30,
+        "caught": 1.0
+      },
+      {
+        "incident_s": 120,
+        "interval_s": 60,
+        "caught": 1.0
+      }
+    ],
+    "intervals": [
+      1,
+      5,
+      15,
+      30,
+      60
+    ],
+    "incidents": [
+      2,
+      5,
+      15,
+      30,
+      60,
+      120
+    ]
+  },
+  "cardinality": {
+    "rows": [
+      {
+        "labels": [
+          "model"
+        ],
+        "added": "model",
+        "values": 3,
+        "gauge_series": 3,
+        "histogram_series": 66
+      },
+      {
+        "labels": [
+          "model",
+          "tenant"
+        ],
+        "added": "tenant",
+        "values": 40,
+        "gauge_series": 120,
+        "histogram_series": 2640
+      },
+      {
+        "labels": [
+          "model",
+          "tenant",
+          "endpoint"
+        ],
+        "added": "endpoint",
+        "values": 4,
+        "gauge_series": 480,
+        "histogram_series": 10560
+      },
+      {
+        "labels": [
+          "model",
+          "tenant",
+          "endpoint",
+          "instance"
+        ],
+        "added": "instance",
+        "values": 8,
+        "gauge_series": 3840,
+        "histogram_series": 84480
+      }
+    ],
+    "label_values": {
+      "model": 3,
+      "tenant": 40,
+      "endpoint": 4,
+      "instance": 8
+    },
+    "itl_buckets": 19,
+    "one_histogram_alone": 22
+  },
+  "assumptions": {
+    "seed": 0,
+    "n_requests": 6000,
+    "rates": [
+      12,
+      20,
+      24,
+      26,
+      28
+    ],
+    "operating_rate": 26,
+    "quantiles": [
+      0.5,
+      0.9,
+      0.99
+    ],
+    "scrape_intervals": [
+      1,
+      5,
+      15,
+      30,
+      60
+    ],
+    "incidents": [
+      2,
+      5,
+      15,
+      30,
+      60,
+      120
+    ],
+    "fault_pool_share": 0.06,
+    "labels": {
+      "model": 3,
+      "tenant": 40,
+      "endpoint": 4,
+      "instance": 8
+    },
+    "ttft_budget_ms": 1000,
+    "itl_budget_ms": 50,
+    "token_budget": 512,
+    "blocks": 30515,
+    "max_batch": 256,
+    "model_not_measurement": true
+  },
+  "model_not_measurement": true
+}

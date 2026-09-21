@@ -313,3 +313,12 @@ figures above and sweeps the price, rather than relying on either.
 | Long thinking is a different regime | "For thinking budgets above 32k, use batch processing to avoid networking issues. Pushing the model to think beyond 32k tokens produces long-running requests that can hit system timeouts and open-connection limits." | same | 2026-09-21 |
 | Rotary position embedding | Jianlin Su, Yu Lu, Shengfeng Pan, Ahmed Murtadha, Bo Wen, Yunfeng Liu, "RoFormer: Enhanced Transformer with Rotary Position Embedding", arXiv:2104.09864 (2021) | arXiv abstract | 2026-09-21 |
 | Ring attention | Hao Liu, Matei Zaharia, Pieter Abbeel, "Ring Attention with Blockwise Transformers for Near-Infinite Context", arXiv:2310.01889 (2023) | arXiv abstract | 2026-09-21 |
+
+## Observability (Chapter 43)
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| vLLM's exported metrics | gauges `vllm:num_requests_waiting`, `vllm:num_requests_running`, `vllm:kv_cache_usage_perc`; counters `vllm:num_preemptions`, `vllm:request_success`, `vllm:prefix_cache_hits`/`_queries`; histograms `vllm:time_to_first_token_seconds`, `vllm:inter_token_latency_seconds`, `vllm:e2e_request_latency_seconds`, `vllm:request_queue_time_seconds`. "Exposed via the `/metrics` endpoint on the vLLM OpenAI compatible API server." | docs.vllm.ai, usage/metrics | 2026-09-21 |
+| TTFT histogram buckets | 0.001, 0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0, 20.0, 40.0, 80.0, 160.0, 640.0, 2560.0 (seconds), `TIME_TO_FIRST_TOKEN_BUCKETS` | vllm/v1/metrics/buckets.py, main | 2026-09-21 |
+| ITL histogram buckets | 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0, 20.0, 40.0, 80.0 (seconds), `INTER_TOKEN_LATENCY_BUCKETS`. Both are static tuples; only the `request_tokens` family is built dynamically | same | 2026-09-21 |
+| SRE book chapters cited | Betsy Beyer, Chris Jones, Jennifer Petoff, Niall Richard Murphy (eds.), *Site Reliability Engineering*, O'Reilly 2016: chapter 6 "Monitoring Distributed Systems", chapter 10 "Practical Alerting" | sre.google/sre-book/table-of-contents | 2026-09-21 |

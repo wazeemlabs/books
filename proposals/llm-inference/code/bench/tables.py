@@ -1285,6 +1285,86 @@ def ch29_reference(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch43_dashboards(d: dict) -> str:
+    """The percentile in the trace against the one on the screen."""
+    dash = d["dashboards"]
+    a = d["assumptions"]
+    out = ["| Requests a second | Metric | p99 in the trace | p99 on the "
+           "dashboard | Off by | The bucket it landed in |",
+           "|---|---|---|---|---|---|"]
+    for r in dash["rows"]:
+        if r["quantile"] != 0.99:
+            continue
+        note = " **(they disagree about the promise)**" if r["disagree"] else ""
+        out.append(f"| {r['rate']} | {r['metric']} "
+                   f"| {r['true_s'] * 1e3:,.1f} ms "
+                   f"| {r['shown_s'] * 1e3:,.1f} ms "
+                   f"| {r['error'] * 100:+.1f}%{note} "
+                   f"| {r['bucket_low'] * 1e3:,.0f}-{r['bucket_high'] * 1e3:,.0f} ms |")
+    lo, hi = dash["budget_bucket_itl"]
+    tlo, thi = dash["budget_bucket_ttft"]
+    out += ["", f"The scheduler of Chapter 18 at five offered loads, "
+                f"{a['n_requests']:,} requests each, seed {a['seed']}. The "
+                f"\"trace\" column is the percentile of the samples "
+                f"themselves; the \"dashboard\" column is what Prometheus' "
+                f"`histogram_quantile` returns from the counts, using vLLM's "
+                f"own default bucket boundaries (FACTS.md). The error is the "
+                f"width of whichever bucket the percentile landed in: the "
+                f"between-tokens promise of {a['itl_budget_ms']} ms sits in "
+                f"a bucket running {lo * 1e3:,.0f} to {hi * 1e3:,.0f} ms, "
+                f"and the first-token promise of "
+                f"{a['ttft_budget_ms'] / 1e3:,.0f} s in one running "
+                f"{tlo:,.2f} to {thi:,.2f} s."]
+    return "\n".join(out)
+
+
+def ch43_detection(d: dict) -> str:
+    """Which signal moves when the memory does."""
+    det = d["detection"]
+    out = ["| Signal | Healthy | With the fault | Moved by |",
+           "|---|---|---|---|"]
+    for r in det["rows"]:
+        out.append(f"| `vllm:{r['metric']}` | {r['healthy_median']:,.2f} "
+                   f"| {r['faulty_median']:,.2f} | {r['moved_by']:,.1f}x |")
+    out.append(f"| `vllm:num_preemptions` | {det['preemptions_healthy']:,} "
+               f"| {det['preemptions_faulty']:,} | -- |")
+    out.append(f"| first-token p99 (ms) | {det['ttft_p99_healthy']:,.0f} "
+               f"| {det['ttft_p99_faulty']:,.0f} "
+               f"| {det['ttft_p99_faulty'] / det['ttft_p99_healthy']:,.1f}x |")
+    out.append(f"| between-tokens p99 (ms) | {det['itl_p99_healthy']:,.1f} "
+               f"| {det['itl_p99_faulty']:,.1f} "
+               f"| {det['itl_p99_faulty'] / det['itl_p99_healthy']:,.1f}x |")
+    out += ["", f"The same traffic at {det['rate']} requests a second, once "
+                f"with the block pool Chapter 41 sized "
+                f"({det['pool_blocks_healthy']:,} blocks) and once with it "
+                f"cut to {det['pool_share']:.0%} of that "
+                f"({det['pool_gb_faulty']:.1f} GB), which is what a leak, a "
+                f"noisy neighbour or a bad rollout looks like from inside "
+                f"the server. Read the second row twice: the number of "
+                f"requests *running* goes **down**. A dashboard showing it "
+                f"looks calmer during the incident than before it."]
+    return "\n".join(out)
+
+
+def ch43_cardinality(d: dict) -> str:
+    """What a label costs."""
+    c = d["cardinality"]
+    out = ["| Labels | Values on the last one | Gauge series | "
+           "Series for one histogram |", "|---|---|---|---|"]
+    for r in c["rows"]:
+        out.append(f"| {', '.join(f'`{x}`' for x in r['labels'])} "
+                   f"| {r['values']} | {r['gauge_series']:,} "
+                   f"| {r['histogram_series']:,} |")
+    out += ["", f"A histogram is not one time series. It is one per bucket "
+                f"plus a sum and a count, which for vLLM's between-tokens "
+                f"histogram is {c['itl_buckets']} + 3 = "
+                f"{c['one_histogram_alone']} before a single label is "
+                f"attached. Multiply by every combination of label values "
+                f"and a metrics bill stops being about volume and starts "
+                f"being about cardinality."]
+    return "\n".join(out)
+
+
 def ch33_context(d: dict) -> str:
     """What a long prompt does."""
     lc = d["long_context"]
@@ -1904,6 +1984,9 @@ def main() -> None:
                  ("ch42-own-or-rent", ch42_own_or_rent)),
         "ch31": (("ch31-validity", ch31_validity),
                  ("ch31-states", ch31_states), ("ch31-cost", ch31_cost)),
+        "ch43": (("ch43-dashboards", ch43_dashboards),
+                 ("ch43-detection", ch43_detection),
+                 ("ch43-cardinality", ch43_cardinality)),
         "ch33": (("ch33-context", ch33_context),
                  ("ch33-thinking", ch33_thinking),
                  ("ch33-mixture", ch33_mixture)),

@@ -114,6 +114,18 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "dashboards" in d and "scrapes" in d:  # Chapter 43: observability
+        a = d["assumptions"]
+        return (f"SIMULATION plus exact arithmetic, not a running service: "
+                f"{a['n_requests']:,} requests at each of "
+                f"{len(a['rates'])} offered loads through the scheduler of "
+                f"Chapter 18, seed {a['seed']} - the percentiles are "
+                f"computed from those samples both directly and the way a "
+                f"Prometheus query computes them, using vLLM's own default "
+                f"bucket boundaries (FACTS.md) - the fault is the block "
+                f"pool cut to {a['fault_pool_share']:.0%}, and the scrape "
+                f"and cardinality figures are arithmetic - commit "
+                f"{p['commit']}, {p['measured_utc']}")
     if "mixture" in d and "long_context" in d:  # Chapter 33: the regimes
         a = d["assumptions"]
         mm = d["mixture"]["model"]
@@ -3321,6 +3333,140 @@ def fig_own_or_rent(d: dict) -> None:
 
 # --- Chapter 31: deciding what the model may say ----------------------
 
+# --- Chapter 43: what a dashboard can tell you ------------------------
+
+
+def fig_dashboard(d: dict) -> None:
+    """The percentile in the trace against the one on the screen."""
+    dash = d["dashboards"]
+    rows = [r for r in dash["rows"] if r["quantile"] == 0.99]
+    metrics = []
+    for r in rows:
+        if r["metric"] not in metrics:
+            metrics.append(r["metric"])
+
+    fig, ax = plt.subplots(figsize=(6.9, 4.4), dpi=200)
+    lo = min(min(r["true_s"], r["shown_s"]) for r in rows) * 0.6
+    hi = max(max(r["true_s"], r["shown_s"]) for r in rows) * 1.6
+    ax.plot([lo, hi], [lo, hi], color=T.MUTED, linewidth=0.9, linestyle=":")
+    for metric, shade, marker in zip(metrics, [0.45, 0.85], ["o", "s"]):
+        sub = [r for r in rows if r["metric"] == metric]
+        ax.plot([r["true_s"] * 1e3 for r in sub],
+                [r["shown_s"] * 1e3 for r in sub], marker, markersize=6,
+                linestyle="none", color=T.SEQUENTIAL(shade), label=metric)
+    for edge in dash["itl_buckets"] + dash["ttft_buckets"]:
+        if lo <= edge <= hi:
+            ax.axhline(edge * 1e3, color=T.RULE, linewidth=0.6, zorder=0)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(lo * 1e3, hi * 1e3)
+    ax.set_ylim(lo * 1e3, hi * 1e3)
+    ax.set_xlabel("p99 in the trace (ms, log scale)")
+    ax.set_ylabel("p99 on the dashboard (ms, log scale)")
+    ax.set_title("A percentile from buckets is a percentile about buckets",
+                 loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=8, loc="lower right")
+    T.style(ax)
+    worst = max(rows, key=lambda r: abs(r["error"]))
+    save(fig, "ch43-dashboard", d,
+         alt=("The 99th percentile as the trace has it against the 99th "
+              "percentile a Prometheus query returns from the same data, on "
+              "log axes, with the dotted line marking agreement and the "
+              "faint horizontal rules marking vLLM's bucket boundaries. "
+              "Every point sits above the line, because interpolating "
+              "inside a bucket assumes samples are spread evenly through it "
+              f"and they are not. The worst is {worst['metric']} at "
+              f"{worst['rate']} requests a second: "
+              f"{worst['true_s'] * 1e3:,.1f} ms in the trace and "
+              f"{worst['shown_s'] * 1e3:,.1f} ms on the screen, "
+              f"{worst['error'] * 100:+.0f}%."))
+
+
+def fig_detection(d: dict) -> None:
+    """Which signal moves when the memory does."""
+    det = d["detection"]
+    names, moved = [], []
+    for r in det["rows"]:
+        names.append(r["metric"].replace("_", " "))
+        moved.append(r["moved_by"])
+    names.append("first-token p99")
+    moved.append(det["ttft_p99_faulty"] / det["ttft_p99_healthy"])
+    names.append("between-tokens p99")
+    moved.append(det["itl_p99_faulty"] / det["itl_p99_healthy"])
+
+    fig, ax = plt.subplots(figsize=(6.9, 3.9), dpi=200)
+    y = range(len(names))
+    colours = [T.BLUE if v >= 1.0 else T.AMBER for v in moved]
+    ax.barh(list(y), moved, color=colours, height=0.6)
+    ax.axvline(1.0, color=T.INK, linewidth=0.9, alpha=0.6)
+    ax.set_xscale("log")
+    ax.set_yticks(list(y), names, fontsize=8)
+    ax.set_xlabel("times its healthy value (log scale)")
+    ax.set_title("Two of these scream, one is flat, one goes the wrong way",
+                 loc="left", fontsize=10.5)
+    for i, v in enumerate(moved):
+        # A bar that shrank ends just short of the line at one, so its
+        # label has to go the other way or it is written across it.
+        if v >= 1.0:
+            ax.text(v * 1.15, i, f"{v:,.1f}x", va="center", ha="left",
+                    fontsize=7.4, color=T.INK)
+        else:
+            ax.text(v * 0.87, i, f"{v:,.1f}x", va="center", ha="right",
+                    fontsize=7.4, color=T.INK)
+    ax.set_xlim(0.4, max(moved) * 4)
+    T.style(ax)
+    ax.grid(axis="y", visible=False)
+    save(fig, "ch43-detection", d,
+         alt=("How far each signal moves when the block pool is cut to "
+              f"{det['pool_share']:.0%} of what it should be, as a multiple "
+              "of its healthy value on a log axis, with a line at one. The "
+              "queue depth and the first-token latency move by orders of "
+              "magnitude. The between-tokens percentile does not move at "
+              "all, and the number of requests running goes *down*, because "
+              "the server is throwing sequences out. A dashboard built "
+              "around those two looks calmer during the incident than "
+              "before it."))
+
+
+def fig_scrapes(d: dict) -> None:
+    """What a scrape interval does to an incident shorter than itself."""
+    scr = d["scrapes"]
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    shades = [0.25, 0.4, 0.58, 0.76, 0.94]
+    for interval, shade in zip(scr["intervals"], shades):
+        sub = sorted((r for r in scr["rows"] if r["interval_s"] == interval),
+                     key=lambda r: r["incident_s"])
+        ax.plot([r["incident_s"] for r in sub],
+                [r["caught"] * 100 for r in sub], marker="o",
+                markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+                color=T.SEQUENTIAL(shade), label=f"every {interval} s")
+    ax.set_xscale("log")
+    ax.set_xticks(scr["incidents"], [f"{v}" for v in scr["incidents"]],
+                  fontsize=7.6)
+    from matplotlib.ticker import NullFormatter
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.set_xlabel("how long the incident lasts (seconds)")
+    ax.set_ylabel("chance the dashboard shows it (%)")
+    ax.set_ylim(0, 104)
+    ax.set_title("An incident shorter than your scrape is a rumour",
+                 loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=8, loc="lower right",
+              title="scraped", title_fontsize=8)
+    T.style(ax)
+    row = next(r for r in scr["rows"]
+               if r["incident_s"] == 15 and r["interval_s"] == 60)
+    save(fig, "ch43-scrapes", d,
+         alt=("The chance a gauge is caught above its threshold at least "
+              "once, against how long the trouble lasts, for five scrape "
+              "intervals, averaged over where the scrape happens to fall. A "
+              "signal is only certain to be seen once the incident outlasts "
+              f"the interval: a {row['incident_s']}-second incident scraped "
+              f"every {row['interval_s']} seconds shows up "
+              f"{row['caught'] * 100:.0f}% of the time, which is another way "
+              "of saying three out of four such incidents leave no trace on "
+              "the dashboard at all."))
+
+
 # --- Chapter 33: where the roofline moves -----------------------------
 
 
@@ -4074,6 +4220,7 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch31": [fig_states, fig_validity, fig_distortion],
             "ch28": [fig_pairing, fig_signoff, fig_power],
             "ch33": [fig_context, fig_thinking, fig_mixture],
+            "ch43": [fig_dashboard, fig_detection, fig_scrapes],
             "ch30": [fig_heads, fig_drafting, fig_trees, fig_batch],
             "ch32": [fig_concentration, fig_keys, fig_similarity,
                      fig_ttl]}
