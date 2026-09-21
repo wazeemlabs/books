@@ -1982,6 +1982,79 @@ def ch32(d: dict) -> dict[str, str]:
     }
 
 
+def ddr4(d: dict) -> dict[str, str]:
+    """Design decision record IV: the values its prose quotes.
+
+    As with the first record, almost everything here was measured in a
+    chapter of Part VI and is read back out of that chapter's file by
+    way of `ddr4.json`. The interaction table is the exception and is
+    marked as such wherever it appears.
+    """
+    a, i = d["assumptions"], d["interaction"]
+    by_chapter: dict[str, list[dict]] = {}
+    for dec in d["decisions"]:
+        by_chapter.setdefault(dec["chapter"], []).append(dec)
+    ev = lambda ch, n, k: by_chapter[ch][n]["evidence"][k]
+    base, best = i["rows"][0], max(i["rows"],
+                                   key=lambda r: r["speculation_if_kept"])
+    return {
+        "decisions": str(len(d["decisions"])),
+        "chapters": str(len({x["chapter"] for x in d["decisions"]})),
+        "first_chapter": "29", "last_chapter": "33",
+        "rate": str(a["requests_per_s"]),
+        "fleet": str(i["fleet"]),
+        "capacity": f"{i['capacity_per_machine']:.0f}",
+        # speculation
+        "batch_here": f"{i['batch_at_capacity']:.0f}",
+        "spec_here": f"{i['speculation_at_capacity']:.2f}x",
+        "spec_tree_here": f"{ev('ch30', 0, 'best tree there, tokens'):.0f}",
+        "spec_at_one": f"{ev('ch30', 0, 'best speedup at batch 1'):.2f}x",
+        "spec_wrong_tree": f"{ev('ch30', 0, 'batch-1 tree run at batch 128'):.2f}x",
+        "free_at_one": f"{ev('ch30', 0, 'tokens a verification pass carries free at batch 1'):,}",
+        "free_at_many": f"{ev('ch30', 0, 'and at batch 128'):,}",
+        "draft_grounded": f"{ev('ch30', 0, 'drafting rate measured, grounded replies') * 100:.0f}%",
+        "draft_prose": f"{ev('ch30', 0, 'drafting rate measured, ungrounded prose') * 100:.0f}%",
+        # heads
+        "head_gb": f"{ev('ch30', 1, 'Medusa, 3 heads, GB added'):.2f} GB",
+        "head_share": f"{ev('ch30', 1, 'share of the model') * 100:.1f}%",
+        "head_step": f"{ev('ch30', 1, 'what it costs every step'):.3f}x",
+        "lookup_grounded": f"{ev('ch30', 1, 'prompt lookup on a grounded reply'):.2f}x",
+        "lookup_prose": f"{ev('ch30', 1, 'prompt lookup on ungrounded prose'):.2f}x",
+        # constraining
+        "masks": str(ev("ch31", 0, "distinct masks, any nesting depth")),
+        "table_bytes": f"{ev('ch31', 0, 'the whole table, packed (bytes)'):.0f}",
+        "mask_share": f"{ev('ch31', 0, "mask's share of a decode step's bytes") * 100:.5f}%",
+        "valid_constrained": f"{ev('ch31', 0, 'valid documents, constrained') * 100:.0f}%",
+        "valid_unconstrained": f"{ev('ch31', 0, 'valid documents, unconstrained') * 100:.1f}%",
+        # caching
+        "cache_hit": f"{ev('ch32', 0, 'exact hit rate, single-turn') * 100:.0f}%",
+        "cache_wrong": f"{ev('ch32', 0, 'exact wrong answers') * 100:.0f}%",
+        "semantic_wrong": f"{ev('ch32', 0, 'semantic wrong answers there') * 100:.0f}%",
+        "semantic_cost": f"{ev('ch32', 0, 'wrong answers per extra hit it buys'):,.0f}",
+        "machines_saved": str(int(ev("ch32", 0,
+                                     "what a 30% hit rate is worth, machines"))),
+        # thinking
+        "answer_s": f"{ev('ch33', 0, 'seconds an answer, no thinking'):.1f} s",
+        "deep_s": f"{ev('ch33', 0, 'seconds an answer, 32k thinking'):,.0f} s",
+        "deep_cost": f"{ev('ch33', 0, 'cost multiple'):,.0f}x",
+        "deep_visible": f"{ev('ch33', 0, 'share of the reply anybody reads') * 100:.1f}%",
+        # shape
+        "moe_gb": f"{ev('ch33', 1, 'mixture weights, GB'):,.0f} GB",
+        "moe_machines": str(int(ev("ch33", 1, "accelerators to hold them"))),
+        "long_fits": str(int(ev("ch33", 1, "sequences that fit at 128K"))),
+        "long_prefill": f"{ev('ch33', 1, 'one prefill there, seconds'):.1f} s",
+        # the interaction
+        "spec_range": f"{i['speculation_range'] * 100:.0f}%",
+        "hits_measured": f"{i['response_hit_measured'] * 100:.0f}%",
+        "shrunk_fleet": str(next(r['fleet_if_shrunk'] for r in i['rows']
+                                 if abs(r['hit_rate'] - 0.3) < 1e-9)),
+        "kept_batch": f"{next(r['batch_if_kept'] for r in i['rows'] if abs(r['hit_rate'] - 0.3) < 1e-9):.0f}",
+        "best_spec": f"{best['speculation_if_kept']:.2f}x",
+        "best_hits": f"{best['hit_rate']:.0%}",
+        "gpu_hour": f"${a['gpu_usd_per_hour']:.2f}",
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -2105,7 +2178,8 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch33": ch33,
             "ch31": ch31,
             "ch32": ch32,
-            "ch41": ch41, "ch42": ch42, "ddr1": ddr1}[chapter](d)
+            "ch41": ch41, "ch42": ch42, "ddr1": ddr1,
+            "ddr4": ddr4}[chapter](d)
 
 
 if __name__ == "__main__":

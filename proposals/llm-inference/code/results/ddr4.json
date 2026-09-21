@@ -1,0 +1,217 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-21T13:57:51Z",
+    "hardware": {
+      "cpu": "Apple M4 Max",
+      "cores_available": 16,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.14.7",
+      "numpy": "2.5.3",
+      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "blas": "accelerate"
+    },
+    "commit": "84b1b43"
+  },
+  "decisions": [
+    {
+      "decision": "Speculative decoding behind a measurement, with the tree sized to the batch rather than to a paper",
+      "instead_of": "on by default at a published tree size, or off because the batch is large",
+      "chapter": "ch30",
+      "because": "at the fleet's batch of 60 a tree of 7 tokens is worth 3.13x -- speculation survives a large batch -- while the tree chosen at batch 1 is 0.23x, slower than not speculating at all; and whether it pays at all depends on an acceptance rate this traffic has never been measured for",
+      "evidence": {
+        "batch at the operating rate": 60.277019176168,
+        "best tree there, tokens": 7.014907675495269,
+        "best speedup there": 3.1340949097926702,
+        "best speedup at batch 1": 4.653717467769323,
+        "batch-1 tree run at batch 128": 0.225705699971552,
+        "tokens a verification pass carries free at batch 1": 302,
+        "and at batch 128": 7,
+        "drafting rate measured, grounded replies": 0.92152466367713,
+        "drafting rate measured, ungrounded prose": 0.07
+      },
+      "would_change": "the measurement that has not been made: the share of this service's replies that quote their prompt. Chapter 30 measured that number spanning 7% to 92% across four shapes of reply, which is the difference between worthwhile and pointless"
+    },
+    {
+      "decision": "If it is on, draft from the prompt",
+      "instead_of": "training and serving a draft head",
+      "chapter": "ch30",
+      "because": "three Medusa heads add 3.25 GB to a 16.0 GB model, 20.3% more weight read on every step, so the speedup starts 1.203x behind; drafting from the prompt adds nothing and returns 7.03x on input-grounded replies",
+      "evidence": {
+        "Medusa, 3 heads, GB added": 3.252707328,
+        "share of the model": 0.20323812078228395,
+        "what it costs every step": 1.203238120782284,
+        "prompt lookup on a grounded reply": 7.030852919499394,
+        "prompt lookup on ungrounded prose": 1.1091666666666666
+      },
+      "would_change": "traffic that is not grounded in its prompt: the same drafter returns 1.11x there, and a trained head is the only option left"
+    },
+    {
+      "decision": "Constrain the structured endpoint, compiling each schema once at startup",
+      "instead_of": "prompting for JSON and parsing defensively, or compiling per request",
+      "chapter": "ch31",
+      "because": "the mask costs 0.00010% of a decode step's traffic and the whole grammar compiles to 128 bytes, so the only real cost is the compile, which a fixed schema pays once",
+      "evidence": {
+        "distinct masks, any nesting depth": 27,
+        "the whole table, packed (bytes)": 128.25,
+        "mask's share of a decode step's bytes": 9.895671104899517e-07,
+        "valid documents, constrained": 1.0,
+        "valid documents, unconstrained": 0.013333333333333334
+      },
+      "would_change": "accepting arbitrary JSON Schema per request, which moves the compile onto the request path and into the first-token latency"
+    },
+    {
+      "decision": "An exact-match response cache, keyed on every field the answer depends on",
+      "instead_of": "no cache above the model, or a semantic one",
+      "chapter": "ch32",
+      "because": "an exact cache answers 77% of single-turn traffic with no wrong answers, while a similarity threshold set above the worst confusable pair still answers 40% of requests wrongly on traffic that carries account numbers",
+      "evidence": {
+        "exact hit rate, single-turn": 0.7741,
+        "exact wrong answers": 0.0,
+        "semantic hit rate at the safe threshold": 0.9778,
+        "semantic wrong answers there": 0.40345,
+        "wrong answers per extra hit it buys": 1.980608738340697,
+        "what a 30% hit rate is worth, machines": 2
+      },
+      "would_change": "traffic with no repeated questions, where the cache is dead weight -- and agent traffic, where it already is"
+    },
+    {
+      "decision": "No thinking budget on the default endpoint",
+      "instead_of": "thinking on by default, as several providers now ship it",
+      "chapter": "ch33",
+      "because": "the case study promises a first token inside 1,000 ms and a reply in seconds; a reply behind 32,768 thinking tokens takes 479 s and costs 888 times as much",
+      "evidence": {
+        "seconds an answer, no thinking": 2.466264733013333,
+        "seconds an answer, 32k thinking": 479.2230439610969,
+        "cost multiple": 888.2801128060754,
+        "share of the reply anybody reads": 0.009072214830047175
+      },
+      "would_change": "a second endpoint for work that is worth minutes and is asked for asynchronously, which is what the provider documentation recommends above a 32k budget"
+    },
+    {
+      "decision": "A dense model, and a context ceiling well short of 128K",
+      "instead_of": "a mixture of experts, or an unbounded context window",
+      "chapter": "ch33",
+      "because": "DeepSeek-V3's weights alone are 1,342 GB and need 17 accelerators before anything is served, against a fleet of 8; and a 128K context admits 3 sequences a machine",
+      "evidence": {
+        "mixture weights, GB": 1342.0,
+        "accelerators to hold them": 17,
+        "the case study's fleet": 8,
+        "sequences that fit at 128K": 3,
+        "one prefill there, seconds": 11.077996131520388
+      },
+      "would_change": "demand large enough to keep a mixture's fleet busy, where its cost per token is several times better -- this is a decision about scale, not about architecture"
+    }
+  ],
+  "interaction": {
+    "rows": [
+      {
+        "hit_rate": 0.0,
+        "fleet_if_shrunk": 8,
+        "usd_if_shrunk": 26.0,
+        "fleet_if_kept": 8,
+        "rate_per_machine_if_kept": 25.0,
+        "batch_if_kept": 60.277019176168,
+        "batch_if_shrunk": 60.277019176168,
+        "speculation_if_kept": 3.1340949097926702,
+        "speculation_if_shrunk": 3.1340949097926702,
+        "tree_if_kept": 7.014907675495269
+      },
+      {
+        "hit_rate": 0.1,
+        "fleet_if_shrunk": 7,
+        "usd_if_shrunk": 22.75,
+        "fleet_if_kept": 8,
+        "rate_per_machine_if_kept": 22.5,
+        "batch_if_kept": 51.745314968875945,
+        "batch_if_shrunk": 60.277019176168,
+        "speculation_if_kept": 3.149574414451948,
+        "speculation_if_shrunk": 3.1340949097926702,
+        "tree_if_kept": 7.240631649820541
+      },
+      {
+        "hit_rate": 0.2,
+        "fleet_if_shrunk": 7,
+        "usd_if_shrunk": 22.75,
+        "fleet_if_kept": 8,
+        "rate_per_machine_if_kept": 20.0,
+        "batch_if_kept": 43.89843331964509,
+        "batch_if_shrunk": 60.277019176168,
+        "speculation_if_kept": 3.1663402282284725,
+        "speculation_if_shrunk": 3.1340949097926702,
+        "tree_if_kept": 7.492001597549925
+      },
+      {
+        "hit_rate": 0.3,
+        "fleet_if_shrunk": 6,
+        "usd_if_shrunk": 19.5,
+        "fleet_if_kept": 8,
+        "rate_per_machine_if_kept": 17.5,
+        "batch_if_kept": 36.71534070754761,
+        "batch_if_shrunk": 60.277019176168,
+        "speculation_if_kept": 3.184657802975246,
+        "speculation_if_shrunk": 3.1340949097926702,
+        "tree_if_kept": 7.775021863197319
+      },
+      {
+        "hit_rate": 0.4,
+        "fleet_if_shrunk": 5,
+        "usd_if_shrunk": 16.25,
+        "fleet_if_kept": 8,
+        "rate_per_machine_if_kept": 15.0,
+        "batch_if_kept": 29.952590842664982,
+        "batch_if_shrunk": 60.277019176168,
+        "speculation_if_kept": 3.2333778253994545,
+        "speculation_if_shrunk": 3.1340949097926702,
+        "tree_if_kept": 8.520571513120094
+      },
+      {
+        "hit_rate": 0.5,
+        "fleet_if_shrunk": 4,
+        "usd_if_shrunk": 13.0,
+        "fleet_if_kept": 8,
+        "rate_per_machine_if_kept": 12.5,
+        "batch_if_kept": 23.647602762835255,
+        "batch_if_shrunk": 60.277019176168,
+        "speculation_if_kept": 3.3599849011655682,
+        "speculation_if_shrunk": 3.1340949097926702,
+        "tree_if_kept": 10.6742479129577
+      }
+    ],
+    "capacity_per_machine": 26,
+    "fleet": 8,
+    "batch_at_capacity": 60.277019176168,
+    "speculation_at_capacity": 3.1340949097926702,
+    "best_speculation": 3.3599849011655682,
+    "best_hit_rate": 0.5,
+    "speculation_range": 0.0720750321463115,
+    "independent": true,
+    "response_hit_measured": 0.3,
+    "note": "Chapter 30's speedups were measured at four batch sizes and interpolated between them, never past them"
+  },
+  "assumptions": {
+    "chapters": [
+      "ch29",
+      "ch30",
+      "ch31",
+      "ch32",
+      "ch33",
+      "ch41",
+      "ch42"
+    ],
+    "hit_rates": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "requests_per_s": 200,
+    "output_tokens": 300,
+    "gpu_usd_per_hour": 3.25,
+    "model_not_measurement": true
+  },
+  "model_not_measurement": true
+}

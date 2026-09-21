@@ -665,6 +665,18 @@ the same visible answer costs without, and a mixture of experts reads
 128. All three are the same question -- which term of the decode step
 is currently the largest -- asked in three costumes.
 
+*Design decision record IV* closes Part VI on the same pattern as the
+first: six decisions, each read back out of the chapter that measured
+it, plus one measurement of its own. The measurement was made to test
+a plausible interaction -- a response cache removes requests, a
+smaller batch is where speculation pays, so the two ought to be
+decided together -- and found it absent: across cache hit rates from
+0 to 50%, the best speculative speedup moves by 7%. The two decisions
+are independent and the record says so. Writing it also corrected a
+decision drafted from received wisdom: speculation is not a low-batch
+technique, wide trees are, and sizing the tree to the batch keeps most
+of the benefit at a batch of 60.
+
 Next: **21** and **23** when a GPU is free; meanwhile the remaining
 Tier 0 chapters of Parts VI and VIII.
 

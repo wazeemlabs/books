@@ -25,7 +25,7 @@ from pathlib import Path
 
 SRC, GLOSSARY = Path("../chapters"), Path("../GLOSSARY.md")
 # Which chapter each design decision record is read after.
-PART_ENDS = {"ddr1": 19}
+PART_ENDS = {"ddr1": 19, "ddr4": 33}
 ROW = re.compile(r"^\|\s*([^|]+?)\s*\|\s*(\d+)\s*\|", re.M)
 MARKER = re.compile(r"<!--\s*defines:\s*([^>]+?)\s*-->")
 

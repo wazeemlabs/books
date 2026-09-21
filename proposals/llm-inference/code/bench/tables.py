@@ -855,6 +855,60 @@ def ch19_regimes(d: dict) -> str:
     return "\n".join(out)
 
 
+def ddr4_decisions(d: dict) -> str:
+    """The record itself: what was decided, against what, on what evidence."""
+    out = ["| Decision | Instead of | Decided by | What decided it |",
+           "|---|---|---|---|"]
+    for dec in d["decisions"]:
+        n = dec["chapter"].removeprefix("ch").lstrip("0")
+        out.append(f"| **{dec['decision']}** | {dec['instead_of']} | "
+                   f"Chapter {n} | {dec['because']} |")
+    out += ["", "Every row is read out of the named chapter's results file "
+                "when this table is generated. Nothing here was measured for "
+                "this record except the table below it."]
+    return "\n".join(out)
+
+
+def ddr4_would_change(d: dict) -> str:
+    """The other half of a decision record: when to revisit it."""
+    out = ["| Decision | What would change it |", "|---|---|"]
+    for dec in d["decisions"]:
+        out.append(f"| {dec['decision']} | {dec['would_change']} |")
+    out += ["", "A decision without a condition attached to it is a habit. "
+                "Two of these conditions are measurements nobody has taken "
+                "yet, which is the honest state of a decision record written "
+                "while the service is still being built."]
+    return "\n".join(out)
+
+
+def ddr4_interaction(d: dict) -> str:
+    """The one thing measured for this record: whether the two accelerations
+    depend on each other."""
+    i = d["interaction"]
+    out = ["| Cache hit rate | Spend it on machines | Batch | Speculation "
+           "there | Or keep the fleet | Batch | Speculation there |",
+           "|---|---|---|---|---|---|---|"]
+    for r in i["rows"]:
+        out.append(f"| {r['hit_rate']:.0%} | {r['fleet_if_shrunk']} machines, "
+                   f"${r['usd_if_shrunk']:,.2f}/hr | "
+                   f"{r['batch_if_shrunk']:.0f} | "
+                   f"x{r['speculation_if_shrunk']:.2f} | "
+                   f"{r['fleet_if_kept']} machines, "
+                   f"${r['fleet_if_kept'] * d['assumptions']['gpu_usd_per_hour']:,.2f}/hr "
+                   f"| {r['batch_if_kept']:.0f} | "
+                   f"x{r['speculation_if_kept']:.2f} |")
+    out += ["", f"A cache hit can be spent two ways: shrink the fleet, or "
+                f"keep it and let each machine run cooler. Only the second "
+                f"lowers the batch, and a lower batch is where speculative "
+                f"decoding is supposed to come into its own. It does not: "
+                f"across the whole range the speedup moves by "
+                f"{i['speculation_range'] * 100:.0f}%. The batch sizes come "
+                f"from Chapter 41's own sweep and the speedups from Chapter "
+                f"30's, interpolated between the loads and batches each "
+                f"measured and never extrapolated past them."]
+    return "\n".join(out)
+
+
 def ddr1_decisions(d: dict) -> str:
     """The record itself: what was decided, against what, on what evidence."""
     out = ["| Decision | Instead of | Decided by | What decided it |",
@@ -1861,6 +1915,9 @@ def main() -> None:
                  ("ch30-batch", ch30_batch)),
         "ch32": (("ch32-shapes", ch32_shapes), ("ch32-keys", ch32_keys),
                  ("ch32-worth", ch32_worth)),
+        "ddr4": (("ddr4-decisions", ddr4_decisions),
+                 ("ddr4-would-change", ddr4_would_change),
+                 ("ddr4-interaction", ddr4_interaction)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),
