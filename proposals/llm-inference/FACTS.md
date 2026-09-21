@@ -256,3 +256,17 @@ figures above and sweeps the price, rather than relying on either.
 | Guided generation, original | Brandon T. Willard, Rémi Louf, "Efficient Guided Generation for Large Language Models", arXiv:2307.09702 | arXiv abstract | 2026-09-21 |
 | Its framing | "neural text generation can be constructively reformulated in terms of transitions between the states of a finite-state machine", "allowing the construction of an index over a language model's vocabulary" | arXiv:2307.09702, abstract | 2026-09-21 |
 | Its overhead claim | "It adds little overhead to the token sequence generation process and significantly outperforms existing solutions" -- the abstract does not claim O(1) | arXiv:2307.09702, abstract | 2026-09-21 |
+
+## Caching above the model (Chapter 32)
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| GPTCache, what it is | Zilliz's open-source semantic cache for LLM responses: an embedding generator, a vector store, a similarity evaluator and an eviction policy in front of the model | github.com/zilliztech/GPTCache | 2026-09-21 |
+| Its headline claim | "Slash Your LLM API Costs by 10x, Boost Speed by 100x" | GPTCache README | 2026-09-21 |
+| Its own warning | "In a semantic cache, you may encounter false positives during cache hits and false negatives during cache misses" -- the project names the failure itself | GPTCache README | 2026-09-21 |
+| Its maturity | "undergoing swift development, and as such, the API may be subject to change at any time"; "we no longer add support for new API or models" | GPTCache README | 2026-09-21 |
+| vLLM cache isolation | "vLLM supports isolating prefix cache reuse through optional per-request salting"; a `cache_salt` "is injected into the hash of the first block", "ensuring that only requests with the same salt can reuse cached KV blocks" | docs.vllm.ai, design/prefix_caching | 2026-09-21 |
+| Why it exists | "cache sharing is limited to users or requests that explicitly agree on a common salt", "enabling cache reuse within a trust group while isolating others"; also "prevents timing-based attacks where an adversary could infer cached content by observing latency differences" | docs.vllm.ai, design/prefix_caching | 2026-09-21 |
+| Hash collisions, multi-tenant | a non-cryptographic hash "theoretically increases the risk of hash collisions, which can cause undefined behavior or even leak private information in multi-tenant environments" | docs.vllm.ai, design/prefix_caching | 2026-09-21 |
+| Embeddings and negation, diagnostic | Cheng-Han Chiang, Yung-Sung Chuang, James Glass, Hung-yi Lee, "Revealing the Blind Spot of Sentence Encoder Evaluation by HEROS", arXiv:2306.05083 (2023). Minimal pairs made by "replacing a word with a synonym, an antonym, a typo, a random word, and converting the original sentence into its negation"; finds "most unsupervised sentence encoders are insensitive to negation" | arXiv abstract | 2026-09-21 |
+| Embeddings and negation, recent | Hongliu Cao, "Semantic Adapter for Universal Text Embeddings: Diagnosing and Mitigating Negation Blindness to Enhance Universality", arXiv:2504.00584 (2025, ECAI 2025). Finds "a significant lack of negation awareness in these models, often interpreting negated text pairs as semantically similar" | arXiv abstract | 2026-09-21 |

@@ -129,3 +129,9 @@ explanation.
 | Little's law | 41 | In any system in a steady state, the number of things inside it equals the rate they arrive times the time each spends inside. It asks nothing about arrivals or service, only that the system is stationary, which is why its failure means the steady state has gone. |
 | constrained decoding | 31 | Forbidding the tokens that would break a required format, between the logits and the sampler, so the model cannot produce an invalid answer. |
 | token mask | 31 | One bit per vocabulary entry saying whether that token is legal right now. Added to the logits before the softmax, so a forbidden token gets probability zero exactly. |
+| response cache | 32 | A store of whole answers, keyed by the request they answer. A hit skips the model completely: no prefill, no decode, no accelerator. The only layer in this book that can change the answer rather than just the cost of producing it. |
+| cache key | 32 | The part of a request a cache matches on. Everything the answer depends on belongs in it; anything left out is a way for one caller to be served another caller's answer. |
+| semantic cache | 32 | A response cache that matches on similarity instead of equality, so a rewording can hit. Equality has no false positives and a threshold does, which turns a lookup into a classifier. |
+| false hit | 32 | A cache answering with an entry that does not answer the question asked. Counted apart from hits and misses, because it is the only one of the three that reaches the caller as a wrong answer. |
+| time to live | 32 | How long a cached entry may be used before it is thrown away. Longer buys hits and sells freshness; there is no setting that avoids both. |
+| base rate | 32 | How often the thing a test looks for is really there. A test with a small error rate still returns mostly errors when the base rate is small enough, which is what decides whether a similarity threshold can be made safe. |

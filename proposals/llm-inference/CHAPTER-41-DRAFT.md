@@ -63,7 +63,7 @@ and more traffic and watch what comes out.
 | 36 + | 118% | 1105 | 35.81 s | 56.94 s | 51,868 ms | 10.6 ms | 9,146 | 101% |
 | 40 + | 131% | 1705 | 55.21 s | 85.59 s | 81,021 ms | 10.6 ms | 9,164 | 102% |
 
-One machine, seed 0. Every rate was run twice, at 6,000 requests and at 12,000; the columns are the longer run and "moves by" is how far the furthest of mean_time_s, p99_s, tokens_per_s shifted between the two. Bold rows keep both of the case study's promises -- 1,000 ms to a first token and 50 ms between tokens, at the 99th percentile. Rows marked * break at least one. Rows marked + never settled: their latencies grew with the length of the run, so they are numbers about the benchmark and not about the machine. Capacity is 9,164 tokens a second, which at 300 tokens a reply is 30.5 requests a second, and "of capacity" is measured against that.
+One machine, seed 0. Every rate was run twice, at 6,000 requests and at 12,000; the columns are the longer run and "moves by" is how far the furthest of the mean, the p99 and the throughput shifted between the two. Bold rows keep both of the case study's promises -- 1,000 ms to a first token and 50 ms between tokens, at the 99th percentile. Rows marked * break at least one. Rows marked + never settled: their latencies grew with the length of the run, so they are numbers about the benchmark and not about the machine. Capacity is 9,164 tokens a second, which at 300 tokens a reply is 30.5 requests a second, and "of capacity" is measured against that.
 
 Throughput rises with offered load and then stops: **9,164
 tokens a second**, which at 300 tokens a reply is

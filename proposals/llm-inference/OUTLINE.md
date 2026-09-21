@@ -619,11 +619,29 @@ code is written and exercised; only the numbers wait.
 **24, Quantization from the Ground Up** follows it, for the same
 reason: it needs only exact arithmetic on the model's own weights.
 Then **29, Speculative Decoding**, **31, Constrained Decoding**,
-**41, Capacity Planning** and **42, GPU FinOps** -- all Tier 0, all
-built on machinery Part III already has. 41 and 42 size and price the
-case study, which is what Design decision record VI will have to beat.
-29 and 31 are a pair worth reading together: one is exact and the
-other is not, and the chapters say so in each other's terms.
+**32, Caching Above the Model**, **41, Capacity Planning** and
+**42, GPU FinOps** -- all Tier 0, all built on machinery Part III
+already has. 41 and 42 size and price the case study, which is what
+Design decision record VI will have to beat. 29 and 31 are a pair
+worth reading together: one is exact and the other is not, and the
+chapters say so in each other's terms. 32 closes the loop back to
+Chapter 15: the same idea one layer up, where a hit is worth far more
+and can be wrong.
+
+Writing 32 turned up a measurement fault in the chapters that drive
+the scheduler. Chapters 17, 18, 19 and 41 each ran one simulation per
+configuration, short enough that the queue had not settled, and
+reported the tail latency off it. The fix is in the harness rather
+than in a constant: `harness.steady_state` runs a simulation at n and
+at 2n and reports how far each statistic moved, so a queue measurement
+cannot be quoted without being checked. What moved: Chapter 41's
+capacity, its operating load and the latency there; Chapter 18's
+first-token percentiles and the range of token budgets that keep both
+promises; and Chapter 19's headline, where colocating beat the best
+disaggregated split by three per cent on the short run and by nothing
+at all on the long one. The fleet is still 8 machines, so 42 and
+Design decision record I are unchanged.
+
 Next: **21** and **23** when a GPU is free; meanwhile the remaining
 Tier 0 chapters of Parts VI and VIII.
 
