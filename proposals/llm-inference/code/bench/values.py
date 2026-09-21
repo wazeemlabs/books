@@ -1592,6 +1592,46 @@ def ch31(d: dict) -> dict[str, str]:
     }
 
 
+def _edge_jump(p99: list[dict]) -> dict[str, str]:
+    """The largest step in the reported value between adjacent loads,
+    against the step in the real one.
+
+    A bucketed percentile does not drift, it jumps: while the value
+    stays inside a bucket the reported number barely moves, and the
+    step it takes when the value crosses an edge is the width of the
+    next bucket. That discontinuity is what an on-call engineer sees,
+    and it is not in the average error.
+    """
+    best: dict[str, str] = {}
+    worst = 0.0
+    for metric in {r["metric"] for r in p99}:
+        rows = sorted((r for r in p99 if r["metric"] == metric),
+                      key=lambda r: r["rate"])
+        for lo, hi in zip(rows, rows[1:]):
+            if lo["bucket_high"] == hi["bucket_high"]:
+                continue                       # same bucket, no edge crossed
+            real = hi["true_s"] / lo["true_s"] - 1
+            shown = hi["shown_s"] / lo["shown_s"] - 1
+            if real <= 0 or shown / real < worst:
+                continue
+            worst = shown / real
+            best = {
+                "jump_metric": metric,
+                "jump_from_rate": str(lo["rate"]),
+                "jump_to_rate": str(hi["rate"]),
+                "jump_true_from": f"{lo['true_s'] * 1e3:.1f} ms",
+                "jump_true_to": f"{hi['true_s'] * 1e3:.1f} ms",
+                "jump_true_pct": f"{real * 100:+.0f}%",
+                "jump_shown_from": f"{lo['shown_s'] * 1e3:.1f} ms",
+                "jump_shown_to": f"{hi['shown_s'] * 1e3:.1f} ms",
+                "jump_shown_pct": f"{shown * 100:+.0f}%",
+                "jump_amplification": f"{shown / real:.0f}",
+                "jump_bucket_from": f"{lo['bucket_low'] * 1e3:,.0f}-{lo['bucket_high'] * 1e3:,.0f} ms",
+                "jump_bucket_to": f"{hi['bucket_low'] * 1e3:,.0f}-{hi['bucket_high'] * 1e3:,.0f} ms",
+            }
+    return best
+
+
 def ch43(d: dict) -> dict[str, str]:
     a, dash, det = d["assumptions"], d["dashboards"], d["detection"]
     scr, card = d["scrapes"], d["cardinality"]
@@ -1626,6 +1666,9 @@ def ch43(d: dict) -> dict[str, str]:
         "itl_budget_bucket": f"{ilo * 1e3:,.0f}-{ihi * 1e3:,.0f} ms",
         "ttft_budget_bucket": f"{tlo:,.2f}-{thi:,.2f} s",
         "buckets_itl": str(len(dash["itl_buckets"])),
+        # The jump at a bucket edge, which is the pathology rather than
+        # the average error: two adjacent loads, one either side.
+        **_edge_jump(p99),
         # the fault
         "fault_share": f"{det['pool_share']:.0%}",
         "fault_gb": f"{det['pool_gb_faulty']:.1f} GB",

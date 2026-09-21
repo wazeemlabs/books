@@ -75,12 +75,20 @@ not: between tokens at 28 requests a second is
 10.2 ms in the trace and **20.8 ms** on the screen,
 +105%.
 
-The size of the error has nothing to do with the load and everything
-to do with which bucket the answer lands in. vLLM's between-tokens
-histogram has 19 buckets, and the one the case study's
-latencies live in runs from 10 to 25 milliseconds. A percentile
-interpolated inside a bucket two and a half times as wide as the value
-is not a measurement of the value.
+The average error is not the problem, though. The problem is in how
+the error arrives, and the two rows either side of that worst case
+show it. Between 26 and 28 requests a
+second the real p99 between tokens goes from 9.9 ms to
+10.2 ms — **+3%**, a nothing. The dashboard
+goes from 10.0 ms to 20.8 ms —
+**+109%**. The value crossed a bucket edge, from
+0-10 ms into 10-25 ms, and the reported number
+stepped the width of the new bucket.
+
+**A bucketed percentile does not drift, it jumps**, and it amplified
+this change 41 times. Somebody is going to open
+that graph, see the between-tokens p99 double overnight, and spend a
+day hunting a regression that is three per cent.
 
 ### What to do about it
 
@@ -284,9 +292,11 @@ scrape forever.
 
 ## Numbers to remember
 
+- **+3% against +109%** — the same change
+  in the real between-tokens p99 and in the reported one, either side
+  of a bucket edge. A bucketed percentile does not drift, it jumps.
 - **10.2 ms against 20.8 ms** — the same p99, in the
-  trace and on the dashboard. A percentile from buckets is a
-  percentile about buckets.
+  trace and on the dashboard.
 - **918x** — how far `num_requests_waiting` moves in a
   memory incident, while `num_requests_running` goes *down*, from
   64 to 53.
