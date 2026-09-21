@@ -32,7 +32,7 @@ from tinyserve.reference import (CONTEXT_TOKENS, GPU_BYTES, KV_BYTES_PER_TOKEN,
 from tinyserve.scheduler import Request, serve_continuous, serve_static
 from tinyserve.serving import decode_step, prefill_step
 
-from .harness import pct, write
+from .harness import pct, steady_state, write
 
 # The case study's traffic shape (STANDARDS.md section 7).
 PROMPT_MEAN, PROMPT_CV = 1200, 0.6
@@ -41,7 +41,12 @@ MAX_OUTPUT = 1024
 
 RATES = [4, 8, 12, 16, 20, 24, 28, 32]      # requests per second
 HEAD_TO_HEAD_RATE = 12
-N_REQUESTS = 600
+# Long enough for the queue to fill at the loads this sweep reaches.
+# A shorter run reports a tail that is too good, because the backlog
+# has not finished building when it ends; `settling` records the check
+# and Chapter 41 explains it.
+N_REQUESTS = 4_800
+SETTLING_KEYS = ["ttft_p99_ms", "itl_p99_ms", "tokens_per_s", "total_p99_s"]
 MAX_BATCH = 256
 SEED = 0
 
@@ -148,6 +153,20 @@ def timeline(rate: float, n: int, blocks: int, rng) -> dict:
     return out
 
 
+def settling(blocks: int) -> dict:
+    """Evidence that `N_REQUESTS` is long enough to have an answer.
+
+    The head-to-head run, measured at `N_REQUESTS` and at twice that.
+    A tail read off a queue that is still filling comes out too good,
+    and nothing in a single run says so.
+    """
+    def run(n: int) -> dict:
+        reqs = make_requests(n, HEAD_TO_HEAD_RATE, np.random.default_rng(SEED))
+        trace = serve_continuous(reqs, max_batch=MAX_BATCH, blocks=blocks)
+        return summarize(trace, HEAD_TO_HEAD_RATE, "continuous", blocks)
+    return steady_state(run, N_REQUESTS, SETTLING_KEYS)
+
+
 def main() -> None:
     pool_bytes = GPU_BYTES - WEIGHT_BYTES
     blocks = int(pool_bytes // (BLOCK_SIZE * KV_BYTES_PER_TOKEN))
@@ -171,6 +190,7 @@ def main() -> None:
         "rows": rows,
         "head_to_head": head,
         "pure_decode_itl_ms": pure,
+        "settling": settling(blocks),
         "mean_prefill_ms": prefill_step(PROMPT_MEAN).seconds * 1e3,
         "timeline": timeline(6.0, 12, blocks, np.random.default_rng(SEED)),
         "pool_sweep": pool_sweep(blocks),
@@ -179,6 +199,7 @@ def main() -> None:
             "pool_bytes": pool_bytes,
             "kv_bytes_per_token": KV_BYTES_PER_TOKEN,
             "max_batch": MAX_BATCH, "n_requests": N_REQUESTS,
+            "settling_keys": SETTLING_KEYS,
             "context": CONTEXT_TOKENS, "seed": SEED,
             "prompt_mean": PROMPT_MEAN, "output_mean": OUTPUT_MEAN,
             "head_to_head_rate": HEAD_TO_HEAD_RATE,

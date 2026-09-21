@@ -21,8 +21,8 @@ By the end of this chapter you can:
    wrong one costs.
 4. Say when disaggregation is worth it and when it is not, and read
    the published gains against the baseline they were measured on.
-5. Explain why a 7.4x in a paper and a 3% loss in this
-   chapter are both true.
+5. Explain why a 7.4x in a paper and no measurable gain at all in
+   this chapter are both true.
 
 ## Why it matters
 
@@ -140,48 +140,48 @@ phases every way there is.
 <!-- include: tables/ch19-split.md -->
 | Machines | Tokens/s | TTFT p50 | TTFT p99 | Between tokens, p50 | Between tokens, p99 | Sequences per decode machine |
 |---|---|---|---|---|---|---|
-| 1P + 11D | 16,713 | 13.6 s | 28.0 s | 5.2 ms | 5.4 ms | 6.6 |
-| 2P + 10D | 32,304 | 4.3 s | 9.0 s | 5.7 ms | 6.0 ms | 14.2 |
-| 3P + 9D | 45,840 | 1.2 s | 2.7 s | 6.5 ms | 7.2 ms | 22.8 |
-| **4P + 8D** | 56,066 | 45 ms | 267 ms | 7.6 ms | 8.2 ms | 31.3 |
-| 5P + 7D | 55,886 | 22 ms | 89 ms | 8.2 ms | 9.2 ms | 36.8 |
-| 6P + 6D | 54,739 | 18 ms | 72 ms | 9.0 ms | 10.7 ms | 44.9 |
-| 7P + 5D | 52,599 | 17 ms | 69 ms | 10.4 ms | 12.7 ms | 56.5 |
-| 8P + 4D | 48,958 | 16 ms | 67 ms | 12.4 ms | 15.9 ms | 75.7 |
-| 9P + 3D | 41,987 | 23 ms | 1.5 s | 16.3 ms | 19.9 ms | 106.1 |
-| 10P + 2D | 28,422 | 2.4 s | 8.1 s | 18.4 ms | 20.1 ms | 141.3 |
-| 11P + 1D | 14,373 | 13.0 s | 29.9 s | 19.1 ms | 20.5 ms | 192.3 |
-| _12 colocated_ | **57,861** | 23 ms | 77 ms | 6.6 ms | 8.4 ms | 21.2 |
+| 1P + 11D | 15,558 | 56.6 s | 112.7 s | 5.2 ms | 5.4 ms | 7.1 |
+| 2P + 10D | 30,547 | 18.1 s | 36.7 s | 5.7 ms | 6.1 ms | 16.5 |
+| 3P + 9D | 44,882 | 5.3 s | 11.4 s | 6.6 ms | 7.1 ms | 30.1 |
+| 4P + 8D | 58,644 | 75 ms | 553 ms | 8.0 ms | 8.8 ms | 48.3 |
+| **5P + 7D** | 59,491 | 22 ms | 83 ms | 8.8 ms | 10.0 ms | 60.0 |
+| 6P + 6D | 59,163 | 18 ms | 66 ms | 10.1 ms | 12.1 ms | 77.5 |
+| 7P + 5D | 58,383 | 17 ms | 63 ms | 12.7 ms | 15.4 ms | 108.2 |
+| 8P + 4D | 54,077 | 39 ms | 2.4 s | 18.5 ms | 19.9 ms | 159.8 |
+| 9P + 3D | 41,057 | 6.0 s | 15.6 s | 19.0 ms | 20.1 ms | 189.1 |
+| 10P + 2D | 27,301 | 20.1 s | 44.1 s | 19.1 ms | 20.3 ms | 213.0 |
+| 11P + 1D | 13,510 | 64.8 s | 132.6 s | 19.3 ms | 20.8 ms | 242.4 |
+| _12 colocated_ | **59,853** | 24 ms | 73 ms | 6.8 ms | 8.4 ms | 29.6 |
 
-2,000 requests at 200 a second (seed 0) through 12 accelerators, divided every way, over InfiniBand NDR. The last row is the same 12 accelerators each doing both phases with Chapter 18's scheduler at a 512-token budget. Throughput is measured over the arrival window with the first 50% discarded, so a fleet's drain tail is not counted as slow serving.
+8,000 requests at 200 a second (seed 0) through 12 accelerators, divided every way, over InfiniBand NDR. The last row is the same 12 accelerators each doing both phases with Chapter 18's scheduler at a 512-token budget. Throughput is measured over the arrival window with the first 50% discarded, so a fleet's drain tail is not counted as slow serving.
 
-The best split is **4 prefill and 8 decode
-machines** — about 1:2 — delivering 56,066 tokens a
-second. The worst delivers 14,373: **3.9x less from
+The best split is **5 prefill and 7 decode
+machines** — about 1:1 — delivering 59,491 tokens a
+second. The worst delivers 13,510: **4.4x less from
 the same hardware.**
 
 Both ends fail, for reasons you can name from
 Chapter 3, and they are not the same reason.
 
 **Too few prefill machines** and prompts queue before anybody reads
-them. At 1P + 11D the fleet delivers 16,713
-tokens a second and the p99 wait for a first token is 28 s.
+them. At 1P + 11D the fleet delivers 15,558
+tokens a second and the p99 wait for a first token is 113 s.
 The decode side is starved — look at the last column, which falls to
-6.6 sequences a machine. You have bought eleven machines'
+7.1 sequences a machine. You have bought eleven machines'
 worth of memory bandwidth and given it almost nothing to do.
 
 **Too few decode machines** and the opposite. At 11P +
 1D the prompts are read promptly, but every sequence in the
-service piles onto one decode machine: 192 of them at
-once, 20.5 ms between tokens, and 14,373 tokens a
-second. The first-token wait is 30 s too, not because
+service piles onto one decode machine: 242 of them at
+once, 20.8 ms between tokens, and 13,510 tokens a
+second. The first-token wait is 133 s too, not because
 prefill is slow but because the decode machine cannot accept anybody.
 
 The middle is where both are busy — and the curve around it is not
 symmetric, which is the practically important part. One machine *above*
-the best split delivers 0.3% less; one *below* it delivers
-18% less. Three above, 6% less; three below,
-70% less. **Err toward too much prefill.** The failure on that
+the best split delivers 0.6% less; one *below* it delivers
+1% less. Three above, 9% less; three below,
+49% less. **Err toward too much prefill.** The failure on that
 side is gentle and the failure on the other is a cliff.
 
 That asymmetry has a cause worth naming: a decode machine can always
@@ -191,7 +191,7 @@ be read just waits.
 
 And the right value depends on the traffic: the table at the end of
 this chapter shows the optimum moving from 2 prefill machines
-to 6 as prompts get longer. It is a parameter that has to
+to 5 as prompts get longer. It is a parameter that has to
 be re-derived whenever the workload shifts.
 
 ## Where the network bill lands
@@ -220,28 +220,28 @@ their *second* token.
 <!-- include: tables/ch19-links.md -->
 | Link | Speed | Tokens/s | Wait for the second token, p50 | p99 | Every later gap, p99 |
 |---|---|---|---|---|---|
-| NVLink, same node | 900 GB/s | 56,091 | **7.7 ms** | 8.5 ms | 8.2 ms |
-| InfiniBand NDR | 50 GB/s | 56,066 | **10.0 ms** | 17.6 ms | 8.2 ms |
-| PCIe 5.0 x16 | 64 GB/s | 56,078 | **9.4 ms** | 15.5 ms | 8.4 ms |
-| 100 GbE | 12 GB/s | 56,071 | **17.8 ms** | 47.6 ms | 8.2 ms |
-| 25 GbE | 3 GB/s | 56,042 | **49.7 ms** | 169.5 ms | 8.3 ms |
-| _colocated: no link_ | -- | 57,861 | **6.5 ms** | 7.9 ms | 8.4 ms |
+| NVLink, same node | 900 GB/s | 59,482 | **9.0 ms** | 10.4 ms | 10.2 ms |
+| InfiniBand NDR | 50 GB/s | 59,491 | **11.5 ms** | 18.5 ms | 10.0 ms |
+| PCIe 5.0 x16 | 64 GB/s | 59,484 | **11.0 ms** | 16.4 ms | 10.0 ms |
+| 100 GbE | 12 GB/s | 59,473 | **19.6 ms** | 47.0 ms | 10.2 ms |
+| 25 GbE | 3 GB/s | 59,478 | **52.2 ms** | 162.9 ms | 10.0 ms |
+| _colocated: no link_ | -- | 59,853 | **6.7 ms** | 7.9 ms | 8.4 ms |
 
-The same 4P + 8D fleet over each link. The prefill machine produces the first token before the cache goes anywhere, so the whole cost of the move lands in one place: the wait for the *second* token. Every gap after that is an ordinary decode step, which is why the last column barely moves.
+The same 5P + 7D fleet over each link. The prefill machine produces the first token before the cache goes anywhere, so the whole cost of the move lands in one place: the wait for the *second* token. Every gap after that is an ordinary decode step, which is why the last column barely moves.
 
 The right-hand column is the one to be surprised by. Across every link
 in the table — a 288x range of bandwidth, from inside a server
 down to commodity Ethernet — throughput varies by
-0.1% and every gap after the second varies by
+0.0% and every gap after the second varies by
 0.2 ms. That gap is a decode step and nothing else. The decode machines never see
 a prompt, so nothing can interrupt them, and their inter-token latency
 is the pure thing Chapter 16 predicted.
 
-The second token is another matter. It goes from 7.7 ms on
-NVLink to 50 ms at the median on 25 GbE, with a p99
-of 169 ms — which breaks the case study's 50 ms
+The second token is another matter. It goes from 9.0 ms on
+NVLink to 52 ms at the median on 25 GbE, with a p99
+of 163 ms — which breaks the case study's 50 ms
 promise on a single token, once, per request. A colocated fleet's
-second token costs 6.5 ms, the same as any other.
+second token costs 6.7 ms, the same as any other.
 
 This is a good example of why percentiles over all gaps can hide
 things. One bad gap in 300 is the 99.7th percentile of that
@@ -252,43 +252,52 @@ separately.** Nothing else will show you the network.
 ## The comparison nobody quotes
 
 Now the number this chapter exists for. The same 12
-accelerators, the same 2,000 requests, the same arrivals — once
-split 4P + 8D, and once with every machine doing both
+accelerators, the same 8,000 requests, the same arrivals — once
+split 5P + 7D, and once with every machine doing both
 phases under Chapter 18's scheduler.
 
-**Colocated wins: 57,861 tokens a second against 56,066,
-1.03x.** It also has a better wait for a first token
-(77 ms against 267 ms at the p99) and a better median
-wait between tokens (6.6 ms against 7.6 ms). The
-disaggregated fleet is very slightly ahead on the between-token p99
-(8.2 ms against 8.4 ms) and that is all it wins.
+**Neither design makes more tokens than the other.** Colocated
+delivers 59,853 tokens a second against the best split's
+59,491 — a margin of 0.6%, and running the same
+comparison on 3 independent arrival streams puts it
+between -0.2% and +0.6%. It lands on both sides of
+zero. There is no throughput difference here to find.
 
-Three per cent sounds like a rounding error, and at this particular
-load it is not one. The traffic asks for 59,603 tokens a
-second. The colocated fleet produces 97% of that and
-keeps up; the best split produces 94% and
-does not keep up. Three per cent of 12 machines is a thirteenth
-machine, bought to serve traffic the other design already serves.
+What colocating does win is latency, and it wins it on every measure:
+73 ms to a first token against 83 ms at the p99,
+6.8 ms between tokens against 8.8 ms at the median, and
+8.4 ms against 10.0 ms at the tail. The reason is the one
+the rest of this chapter has been building: colocating never moves a
+cache over a wire.
+
+A margin this small is worth being careful with, which is why the
+comparison is run on several streams rather than one. It is also why
+it is run on 8,000 requests. An earlier draft of this chapter
+used a quarter of that and reported colocating three per cent ahead —
+a difference that does not survive a longer run, because at a quarter
+of the traffic neither fleet's queue had finished filling.
+Chapter 41 has the test that catches it.
 
 <!-- include: tables/ch19-regimes.md -->
 | Regime | Best split | Disaggregated | Colocated | Ratio |
 |---|---|---|---|---|
-| 100-token prompts at 200 req/s | 2P + 10D | 58,600 tok/s | 58,593 tok/s | **1.00x** |
-| 300-token prompts at 200 req/s | 2P + 10D | 58,514 tok/s | 58,514 tok/s | **1.00x** |
-| 1,200-token prompts at 200 req/s | 4P + 8D | 56,066 tok/s | 57,861 tok/s | **0.97x** |
-| 4,000-token prompts at 200 req/s | 7P + 5D | 23,301 tok/s | 38,891 tok/s | **0.60x** |
-| 4,000-token prompts at 60 req/s | 6P + 6D | 17,301 tok/s | 17,398 tok/s | **0.99x** |
-| 2 accelerators at 33 req/s | 1P + 1D | 9,655 tok/s | 9,779 tok/s | **0.99x** |
-| 4 accelerators at 67 req/s | 2P + 2D | 19,215 tok/s | 19,296 tok/s | **1.00x** |
-| 8 accelerators at 133 req/s | 3P + 5D | 37,996 tok/s | 38,578 tok/s | **0.98x** |
-| 12 accelerators at 200 req/s | 4P + 8D | 56,066 tok/s | 57,861 tok/s | **0.97x** |
+| 100-token prompts at 200 req/s | 2P + 10D | 59,940 tok/s | 59,945 tok/s | **1.00x** |
+| 300-token prompts at 200 req/s | 2P + 10D | 59,933 tok/s | 59,939 tok/s | **1.00x** |
+| 1,200-token prompts at 200 req/s | 5P + 7D | 59,491 tok/s | 59,853 tok/s | **0.99x** |
+| 4,000-token prompts at 200 req/s | 6P + 6D | 24,972 tok/s | 38,469 tok/s | **0.65x** |
+| 4,000-token prompts at 60 req/s | 5P + 7D | 18,067 tok/s | 18,102 tok/s | **1.00x** |
+| 2 accelerators at 33 req/s | 1P + 1D | 10,056 tok/s | 10,088 tok/s | **1.00x** |
+| 4 accelerators at 67 req/s | 2P + 2D | 20,024 tok/s | 20,098 tok/s | **1.00x** |
+| 8 accelerators at 133 req/s | 3P + 5D | 39,869 tok/s | 39,952 tok/s | **1.00x** |
+| 12 accelerators at 200 req/s | 5P + 7D | 59,491 tok/s | 59,853 tok/s | **0.99x** |
 
 Every disaggregated row re-searches the split, so none of them is a straw man. The colocated arm is one accelerator per replica running Chapter 18's scheduler. The 4,000-token row holds the prompt tokens arriving per second at the case study's, so the fleet is not simply saturated; the rows above it do not, which is why both designs fall behind at 200 req/s with long prompts.
 
 The table above says the same thing in every regime we tried: short
 prompts, long prompts, small fleets, large ones. Across fleet sizes
-disaggregation delivers 0.97x to 1.00x of what the same machines
-deliver colocated. It never wins.
+disaggregation delivers 0.99x to 1.00x of what the same machines
+deliver colocated — the same, within the noise, everywhere we
+looked. It never wins, and it never loses either.
 
 Before concluding that three OSDI and ISCA papers are wrong, read
 vLLM's own documentation, which says it plainly:
@@ -414,7 +423,7 @@ the fleets here rarely preempt, so the effect is under-measured.
 - **Instrument the second token.** It is the only place the network
   shows up, and no standard dashboard has it.
 - **Expect to re-tune the split.** It is a function of your prompt and
-  reply lengths, and those drift. A fleet divided 1:2 for
+  reply lengths, and those drift. A fleet divided 1:1 for
   chat traffic is divided wrong for document summarisation.
 
 ## Numbers to remember
@@ -424,12 +433,12 @@ the fleets here rarely preempt, so the effect is under-measured.
 | KV cache of a 1,200-token prompt | 157 MB at 128 KiB a token |
 | Moving it: InfiniBand NDR / NVLink / 25 GbE | 3.1 ms / 0.2 ms / 50 ms |
 | Link at which moving costs as much as computing | 8.3 GB/s (1,200 tokens), 6.7 GB/s (8,192) |
-| Best split of 12 accelerators at 200 req/s | 4P + 8D (1:2), 56,066 tok/s |
-| Cost of the worst split | 14,373 tok/s — 3.9x less |
-| Where the transfer lands | the second token: 10.0 ms on InfiniBand NDR, 50 ms on 25 GbE |
+| Best split of 12 accelerators at 200 req/s | 5P + 7D (1:1), 59,491 tok/s |
+| Cost of the worst split | 13,510 tok/s — 4.4x less |
+| Where the transfer lands | the second token: 11.5 ms on InfiniBand NDR, 52 ms on 25 GbE |
 | Where it does not land | every later gap: within 0.2 ms across all links |
-| Disaggregated against colocated, same fleet | 56,066 against 57,861 — colocated by 3% |
-| Across every regime tried | 0.97x to 1.00x |
+| Disaggregated against colocated, same fleet | 59,491 against 59,853 — the same, -0.2% to +0.6% across 3 arrival streams |
+| Across every regime tried | 0.99x to 1.00x |
 
 ## Sources
 
@@ -465,7 +474,7 @@ the fleets here rarely preempt, so the effect is under-measured.
 25 GbE network. Using the transfer table, decide in one
 paragraph whether to disaggregate, and say which number decided it.
 
-**★ 19.2** The best split here is 1:2. Without running
+**★ 19.2** The best split here is 1:1. Without running
 anything, predict which way it moves if (a) replies get twice as long,
 (b) prompts get twice as long, (c) prefix caching
 (Chapter 15) starts hitting on half the prompt tokens.
@@ -473,9 +482,9 @@ Then run `make ch19` with each change and check.
 
 **★★ 19.3** Our prefill machines take one prompt at a time. Batch them:
 let a prefill worker take as many prompts as fit in a token budget, as
-Chapter 18's iterations do. How much of the
-3% gap does that close, and why does it close less than
-you expected?
+Chapter 18's iterations do. Predict what it does to the
+throughput gap and to the first-token p99 before you run it, and say
+which of the two you expect to move.
 
 **★★ 19.4** The second-token cost is invisible in a p99 over all gaps.
 Write the Prometheus query you would actually alert on, given

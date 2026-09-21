@@ -45,11 +45,11 @@ measurement.
 |---|---|---|---|
 | **Page the KV cache in blocks of 16 tokens** | reserving each sequence's whole context up front, or paging in a larger block | Chapter 14 | reserving the context admits 59 sequences where paging admits 327, and at this block size paging wastes 7.7 tokens of the sequence's own memory |
 | **Prefix caching on, with a prefix tree and least-recently-used eviction of leaves** | no prefix cache, an unstructured block cache, or evicting the least frequently used block | Chapter 15 | 85% of prompt tokens are already in the cache at 7 GB, against an 85.4% ceiling, and the lookup costs 135 microseconds a request |
-| **Continuous batching: decide the batch every iteration** | a static batch formed on a timeout | Chapter 17 | 1.9x the throughput, and a median first token 1,568x sooner, at the same 12 requests a second on the same memory |
-| **Chunked prefill, with a 512-token per-iteration budget** | giving a prefill an iteration of its own, or choosing a larger budget | Chapter 18 | of the budgets that keep both promises at 24 requests a second, this one has the highest throughput (5,586 tokens a second) and the lowest wait between tokens (8.4 ms at the 99th percentile) |
-| **First come, first served, with no priority tiers** | shortest job first, or longest job first | Chapter 18 | with the memory this service has, the queue order is worth 0.2% of the median end-to-end time, and the simplest order is the one that needs no estimate of how long a reply will be |
-| **Preempt by recomputing, not by swapping the cache out to host memory** | copying an evicted cache out over PCIe and back | Chapter 18 | 1.25x the throughput, although recomputing loses every individual comparison: one 1,500-token sequence costs 23.8 ms to recompute against 6.1 ms to copy |
-| **One fleet where every machine does both phases** | splitting the same fleet into 4 prefill machines and 8 decode machines | Chapter 19 | 1.03x the throughput on identical hardware, a first token 3.5x faster at the 99th percentile, and a second token that does not wait for a cache to cross a network |
+| **Continuous batching: decide the batch every iteration** | a static batch formed on a timeout | Chapter 17 | 1.9x the throughput, and a median first token 8,659x sooner, at the same 12 requests a second on the same memory |
+| **Chunked prefill, with a 512-token per-iteration budget** | giving a prefill an iteration of its own, or choosing a larger budget | Chapter 18 | of the budgets that keep both promises at 24 requests a second, this one has the highest throughput (6,764 tokens a second) and the lowest wait between tokens (9.4 ms at the 99th percentile) |
+| **First come, first served, with no priority tiers** | shortest job first, or longest job first | Chapter 18 | with the memory this service has, the queue order is worth 0.7% of the median end-to-end time, and the simplest order is the one that needs no estimate of how long a reply will be |
+| **Preempt by recomputing, not by swapping the cache out to host memory** | copying an evicted cache out over PCIe and back | Chapter 18 | 1.00x the throughput, although recomputing loses every individual comparison: one 1,500-token sequence costs 23.8 ms to recompute against 6.1 ms to copy |
+| **One fleet where every machine does both phases** | splitting the same fleet into 5 prefill machines and 7 decode machines | Chapter 19 | 1.01x the throughput on identical hardware, a first token 1.1x faster at the 99th percentile, and a second token that does not wait for a cache to cross a network |
 
 Every row is read out of the named chapter's results file when this table is generated. Nothing in this table was measured for this record, and nothing in it was typed in by hand: change a chapter's measurement and the row changes with it.
 
@@ -80,8 +80,8 @@ magnitude sooner (Chapter 17). Prefix caching reaches
 85% of prompt tokens already in memory for 7 GB of
 cache, at a lookup cost three orders of magnitude below the prefill it
 avoids (Chapter 15). Preempting by recomputation rather
-than by copying the cache out delivers 1.25x the
-throughput and a first-token p99 2.1x better
+than by copying the cache out delivers 1.00x the
+throughput and a first-token p99 3.1x better
 (Chapter 18) — a wide margin, arrived at counter-intuitively,
 which is the subject of the next section. A service that did any of
 these four differently would be worse at everything, not better at
@@ -95,19 +95,19 @@ in that band, not a different kind of answer from the rows either side
 of it.
 
 **Close, and decided on something other than the measurement.** The
-queue order is worth 0.2% of the median end-to-end time at
+queue order is worth 0.7% of the median end-to-end time at
 this service's memory. That is not a result; it is an absence of one.
 First come, first served was chosen because when three orders perform
 identically, the one that needs no estimate of how long a reply will be
 is the one to ship. Squeeze the pool to 1.9 GB and the absence
-becomes a result — shortest job first is 10.9x better on
+becomes a result — shortest job first is 22.9x better on
 the median — which is exactly why the condition is written down in the
 next table rather than left for someone to rediscover.
 
 **Close, and decided against the literature.** Disaggregating prefill
 and decode is the most-published idea in this part of the field, and on
 this traffic, on this hardware, the colocated fleet won:
-1.03x the throughput and a first token several times
+1.01x the throughput and a first token several times
 faster. Chapter 19 spent a section on why
 that is not a contradiction of the papers. It is the decision in this
 record with the shortest expected life, and the one to revisit first
@@ -125,19 +125,23 @@ copying a sequence's cache to host memory is, per event,
 3.9x cheaper than throwing the work away and
 recomputing it: one 1,500-token sequence costs
 24 ms to recompute and 6 ms to copy over PCIe 5.0.
-Recomputing still won the system — 1.25x the throughput —
+Recomputing still won the system — 1.00x the throughput —
 because a recomputed sequence re-enters through the chunked prefill
 path and takes its memory back gradually, while a swapped one needs
 its whole cache restored before it can take a single step and sits in
 the queue until that is possible. The arithmetic measured one event.
 The system measured the shape of the re-entry, and they disagreed.
 
-**A few per cent of throughput is a machine.** The colocated fleet
-beat the best disaggregated split of the same hardware by
-3%, which sounds like nothing. At this load it is
-the difference between a fleet that keeps up and one that does not,
-and a fleet that does not keep up is one that needs another machine.
-A percentage measured near a saturation point is not a small number.
+**A few per cent is not a result.** The colocated fleet first came
+out ahead of the best disaggregated split of the same hardware by
+three per cent, and that number went into an earlier version of this
+record as a reason to prefer it. It was not a reason. Re-run on four
+times the traffic and on three independent arrival streams, the margin
+is +0.6% and lands on both sides of zero. The right
+conclusion was available either way -- colocating is no worse and
+needs no network -- but it was nearly reached through a number that
+was not there. Any margin close to the run-to-run spread has to be
+measured more than once before it is allowed to decide anything.
 
 ### How many machines
 
@@ -223,7 +227,7 @@ measured anyway.
 | Prefix caching on, with a prefix tree and least-recently-used eviction of leaves | traffic with no shared prefixes, where the index costs something and returns nothing. Nothing measured here makes the feature worth turning off when prefixes are shared at all |
 | Continuous batching: decide the batch every iteration | nothing in this book. Static batching lost on every measure at every rate tried |
 | Chunked prefill, with a 512-token per-iteration budget | a looser between-token promise, which would buy a larger budget and a better first token; or a tighter one, which the smaller budgets serve at a first token this service could not sell |
-| First come, first served, with no priority tiers | running the pool near full. Squeezed, shortest first is 10.9x better on the median and 13.5x better on the worst slowdown, and this decision flips |
+| First come, first served, with no priority tiers | running the pool near full. Squeezed, shortest first is 22.9x better on the median and 7.5x better on the worst slowdown, and this decision flips |
 | Preempt by recomputing, not by swapping the cache out to host memory | a swap-in that restores a cache gradually rather than all at once. What lost here was the shape of the re-entry, not the cost of the copy: even over NVLink, which is fast enough on the arithmetic, swapping still lost |
 | One fleet where every machine does both phases | hardware that differs by phase, or a promise tight enough that one fleet has to over-provision to keep it. Neither is true here, and this is the decision in this record most likely to be wrong for a service that is not this one |
 
@@ -240,12 +244,12 @@ Prefix caching was measured across the whole range: at
 3% of the pool the hit rate is 55%,
 at the whole pool 85% (Chapter 15). The queue
 order was measured at two pool sizes, and the two answers disagree by
-10.9x on the median (Chapter 18). The
+22.9x on the median (Chapter 18). The
 preemption mode was measured at one — the squeezed
 1.9 GB — because at a full pool it cannot be measured at all:
 this service preempts 0 sequences there, and
 Chapter 17's pool sweep finds the first preemption only
-at 10% of the pool, 3 of
+at 10% of the pool, 95 of
 them. Block size was measured at one pool size and one alone.
 
 So one of those four settings is doing nothing here, and would be doing

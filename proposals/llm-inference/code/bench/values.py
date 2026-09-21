@@ -672,6 +672,8 @@ def ch17(d: dict) -> dict[str, str]:
     ms = lambda x: f"{x:,.0f} ms"
     s_ = lambda x: f"{x:,.1f} s"
     return {
+        "requests_long": f"{2 * a['n_requests']:,}",
+        "settling_drift": f"{d['settling']['worst_drift'] * 100:.0f}%",
         "rate": str(a["head_to_head_rate"]),
         "requests": f"{a['n_requests']:,}",
         "max_batch": str(a["max_batch"]),
@@ -773,6 +775,13 @@ def ch18(d: dict) -> dict[str, str]:
     pick = high[chosen]
     smallest = high[min(k for k in high if k)]
     largest = high[max(high)]
+    # Which budgets actually keep both promises at the harder rate.
+    # Written out rather than described, because the range is the
+    # chapter's claim and it moves when the traffic does.
+    passing = sorted(k for k, r in high.items()
+                     if k and r["meets_ttft"] and r["meets_itl"])
+    passing_low_rate = sorted(k for k, r in low.items()
+                              if k and r["meets_ttft"] and r["meets_itl"])
     pol = {(r["pool"], r["policy"]): r for r in d["policies"]}
     sq = lambda name: pol[("squeezed", name)]
     fu = lambda name: pol[("full", name)]
@@ -788,6 +797,19 @@ def ch18(d: dict) -> dict[str, str]:
         "rate": str(a["rate"]),
         "rate_high": str(a["rate_high"]),
         "requests": f"{a['n_requests']:,}",
+        "requests_long": f"{2 * a['n_requests']:,}",
+        "settling_drift": f"{d['settling']['worst_drift'] * 100:.0f}%",
+        "passing_low": f"{min(passing):,}",
+        "passing_high": f"{max(passing):,}",
+        "passing_count": str(len(passing)),
+        "low_passing_low": f"{min(passing_low_rate):,}",
+        "low_passing_count": str(len(passing_low_rate)),
+        "low_failing": ", ".join(f"{k:,}" for k in sorted(low)
+                                 if k and k not in passing_low_rate) or "none",
+        "offered_tok": f"{smallest['offered_tokens_per_s']:,.0f}",
+        "first_failing_high": (f"{min(k for k in high if k and k > max(passing)):,}"
+                               if any(k for k in high if k and k > max(passing))
+                               else "none"),
         "block": str(a["block"]),
         "max_batch": str(a["max_batch"]),
         "pool_gb": f"{a['pool_bytes'] / 1e9:.0f} GB",
@@ -907,6 +929,7 @@ def _delta(splits: list[dict], best: dict, offset: int) -> str:
 def ch19(d: dict) -> dict[str, str]:
     a = d["assumptions"]
     splits, co, best = d["splits"], d["colocated"], d["best_split"]
+    h2h = d["head_to_head"]
     worst = min(splits, key=lambda r: r["tokens_per_s"])
     tr = d["transfer"]
     at_prompt = next(r for r in tr["rows"] if r["tokens"] == a["prompt_mean"])
@@ -989,7 +1012,15 @@ def ch19(d: dict) -> dict[str, str]:
         "co_itl99": f"{co['itl_p99_ms']:.1f} ms",
         "co_batch": f"{co['mean_batch']:.1f}",
         "co_over_best": f"{co['tokens_per_s'] / best['tokens_per_s']:.2f}x",
-        "co_gain_pct": f"{(co['tokens_per_s'] / best['tokens_per_s'] - 1) * 100:.0f}%",
+        "co_gain_pct": f"{(co['tokens_per_s'] / best['tokens_per_s'] - 1) * 100:.1f}%",
+        # The margin across seeds. One arrival stream can put either
+        # design in front, so the range is the finding, not the point.
+        "gain_median": f"{h2h['gain_median'] * 100:+.1f}%",
+        "gain_low": f"{h2h['gain_low'] * 100:+.1f}%",
+        "gain_high": f"{h2h['gain_high'] * 100:+.1f}%",
+        "gain_seeds": str(len(h2h["seeds"])),
+        "gain_spans_zero": "yes" if h2h["gain_spans_zero"] else "no",
+        "splits_chosen": " and ".join(f"{n}P" for n in h2h["splits_chosen"]),
         "offered_sampled": tok(co["offered_sampled_tokens_per_s"]),
         "co_keeps": "keeps up" if co["keeping_up"] else "does not keep up",
         "best_keeps": "keeps up" if best["keeping_up"] else "does not keep up",
@@ -1561,6 +1592,175 @@ def ch31(d: dict) -> dict[str, str]:
     }
 
 
+def ch32(d: dict) -> dict[str, str]:
+    a = d["assumptions"]
+    conc, ag = d["concentration"], d["agent_shape"]
+    sim, sem, sc, w = d["similarity"], d["semantic"], d["scale"], d["worth"]
+    exact = {(r["shape"], r["normalizer"]): r for r in d["exact"]}
+    keys = {(r["shape"], r["key"]): r for r in d["keys"]}
+    stale = {r["ttl_label"]: r for r in d["staleness"]}
+    fold = "case and punctuation"
+    typed, drop = "as typed", "and stop words dropped"
+    at_skew = [r for r in conc["rows"] if r["zipf_s"] == a["zipf_s"]]
+    small = min(at_skew, key=lambda r: r["catalogue"])
+    large = max(at_skew, key=lambda r: r["catalogue"])
+    # At the operating catalogue, so the two sentences about the two
+    # variables each hold the other one fixed.
+    at_size = [r for r in conc["rows"] if r["catalogue"] == a["catalogue"]]
+    flat = min(at_size, key=lambda r: r["zipf_s"])
+    sharp = max(at_size, key=lambda r: r["zipf_s"])
+    semrow = next(r for r in sem["rows"]
+                  if r["threshold"] == sem["example_threshold"])
+    kinds = {k["kind"]: k for k in sem["confusion_kinds"]}
+    ident = kinds["an identifier in the question"]
+    word = kinds["a decisive word"]
+    example = (ident["examples"] or word["examples"] or [{}])[0]
+    worst_key = max(d["keys"], key=lambda r: r["wrong_rate"])
+    pol = d["semantic_policy_only"]
+    psafe = next(r for r in pol["rows"]
+                 if r["threshold"] == pol["example_threshold"])
+    # One step down the threshold from the safe setting: what anyone
+    # tuning for hits tries next, rather than a step chosen to look bad.
+    below = [r for r in sorted(pol["rows"], key=lambda r: -r["threshold"])
+             if r["threshold"] < psafe["threshold"]]
+    plow = below[0]
+    # The most generous per-pair error rate on the grid: the argument
+    # has to survive an embedder far better than any that exists.
+    per_pair = 1e-6
+    grid = next(g for g in sc["grid"] if abs(g["per_pair"] - per_pair) < 1e-12)
+    false_at = {r["entries"]: r["any_false_hit"] for r in grid["rows"]}
+    pct = lambda x: f"{x * 100:.0f}%"
+    pct1 = lambda x: f"{x * 100:.1f}%"
+    # Two decimals where the quantity is a fraction of a per cent, so
+    # the small side of a trade-off does not round away to nothing.
+    pct2 = lambda x: f"{x * 100:.2f}%"
+    short, long_ = d["staleness"][1], d["staleness"][-1]
+    # The knee: the last lifetime whose staleness is still negligible.
+    knee = max((r for r in d["staleness"] if r["stale_rate"] < 0.005),
+               key=lambda r: r["ttl_s"])
+    return {
+        # the traffic
+        "hours": str(a["hours"]),
+        "catalogue": f"{a['catalogue']:,}",
+        "zipf": f"{a['zipf_s']:g}",
+        "faq_requests": f"{a['n_faq']:,}",
+        "agent_steps": str(a["agent_steps"]),
+        "agent_first_share": pct(ag["first_step_share"]),
+        "topics": str(a["labelled_topics"]),
+        "questions": str(sim["questions"]),
+        "tenants": str(len(a["tenants"])),
+        # what decides the hit rate
+        "small_catalogue": f"{small['catalogue']:,}",
+        "small_hit": pct(small["hit_rate"]),
+        "large_catalogue": f"{large['catalogue']:,}",
+        "large_hit": pct(large["hit_rate"]),
+        "flat_skew": f"{flat['zipf_s']:g}",
+        "flat_hit": pct(flat["hit_rate"]),
+        "sharp_skew": f"{sharp['zipf_s']:g}",
+        "sharp_hit": pct(sharp["hit_rate"]),
+        "top100_share": pct(next(r["top_100_share"] for r in at_skew
+                                 if r["catalogue"] == a["catalogue"])),
+        "faq_hit": pct1(exact[("FAQ", fold)]["hit_rate"]),
+        "chat_hit": pct1(exact[("chat", fold)]["hit_rate"]),
+        "agent_hit": pct1(exact[("agent", fold)]["hit_rate"]),
+        "typed_hit": pct1(exact[("FAQ", typed)]["hit_rate"]),
+        "stopword_hit": pct1(exact[("FAQ", drop)]["hit_rate"]),
+        "stopword_wrong": pct1(exact[("FAQ", drop)]["wrong_rate"]),
+        "stopword_gain": pct1(exact[("FAQ", drop)]["hit_rate"]
+                              - exact[("FAQ", fold)]["hit_rate"]),
+        # the key
+        "chat_safe_hit": pct1(keys[("chat", "everything the answer depends on")]["hit_rate"]),
+        "chat_nohist_hit": pct1(keys[("chat", "no conversation")]["hit_rate"]),
+        "chat_nohist_wrong": pct1(keys[("chat", "no conversation")]["wrong_rate"]),
+        "chat_nohist_share": pct(keys[("chat", "no conversation")]["wrong_share_of_hits"]),
+        "faq_notenant_hit": pct1(keys[("FAQ", "no tenant")]["hit_rate"]),
+        "faq_notenant_wrong": pct1(keys[("FAQ", "no tenant")]["wrong_rate"]),
+        "faq_safe_hit": pct1(keys[("FAQ", "everything the answer depends on")]["hit_rate"]),
+        "worst_key": f"{worst_key['shape']} traffic keyed on {worst_key['key']}",
+        "worst_key_wrong": pct1(worst_key["wrong_rate"]),
+        "worst_key_share": pct(worst_key["wrong_share_of_hits"]),
+        # similarity
+        "same_p50": f"{sim['same_p50']:.2f}",
+        "same_p90": f"{sim['same_p90']:.2f}",
+        "different_max": f"{sim['different_max']:.2f}",
+        "different_p99": f"{sim['different_p99']:.2f}",
+        "same_below": pct(sim["same_below_different_max"]),
+        "confusable_max": f"{sim['confusable_max']:.2f}",
+        "same_identical": pct1(sim["same_identical_after_folding"]),
+        "same_reachable": pct2(sim["same_reachable_above_ceiling"]),
+        "closest_a": sim["closest_wrong_pairs"][0]["a"],
+        "closest_b": sim["closest_wrong_pairs"][0]["b"],
+        "closest_sim": f"{sim['closest_wrong_pairs'][0]['similarity']:.2f}",
+        # the stream
+        "sem_threshold": f"{sem['example_threshold']:.2f}",
+        "sem_hit": pct1(semrow["hit_rate"]),
+        "sem_extra": pct1(semrow["extra_over_exact"]),
+        "sem_wrong": pct1(semrow["wrong_rate"]),
+        "wrong_per_extra": (f"{semrow['wrong_per_extra_hit']:,.0f}"
+                            if semrow["wrong_per_extra_hit"] else "--"),
+        "identifier_share": pct(ident["share"]),
+        "decisive_share": pct(word["share"]),
+        "example_asked": example.get("asked", ""),
+        "example_from": example.get("answered_from", ""),
+        "example_sim": f"{example.get('similarity', 0):.2f}",
+        # the same threshold where nothing carries an identifier
+        "policy_exact": pct1(pol["exact_rate"]),
+        "policy_hit": pct1(psafe["hit_rate"]),
+        "policy_extra": pct2(psafe["extra_over_exact"]),
+        "policy_wrong": pct2(psafe["wrong_rate"]),
+        "policy_lower_threshold": f"{plow['threshold']:.2f}",
+        "policy_lower_extra": pct2(plow["extra_over_exact"]),
+        "policy_lower_wrong": pct2(plow["wrong_rate"]),
+        # What one step down the threshold costs per hit it buys.
+        "policy_lower_cost": (
+            f"{plow['wrong_rate'] / (plow['extra_over_exact'] - psafe['extra_over_exact']):,.0f}"
+            if plow["extra_over_exact"] > psafe["extra_over_exact"] else "--"),
+        # the arithmetic
+        "twin_rate": pct1(sc["twin_rate"]),
+        "twin_rate_complement": pct1(1 - sc["twin_rate"]),
+        "per_pair": f"one in {1 / per_pair:,.0f}",
+        "false_1k": pct1(false_at[1_000]),
+        "false_100k": pct1(false_at[100_000]),
+        "false_1m": pct1(false_at[1_000_000]),
+        # lifetime
+        "ttl_short": short["ttl_label"],
+        "ttl_short_hit": pct(short["hit_rate"]),
+        "ttl_short_stale": f"{short['stale_rate'] * 100:.2f}%",
+        "ttl_long": long_["ttl_label"],
+        "ttl_long_hit": pct(long_["hit_rate"]),
+        "ttl_long_stale": pct1(long_["stale_rate"]),
+        "changes_per_day": f"{a['policy_changes_per_day']:g}",
+        "ttl_knee": knee["ttl_label"],
+        "ttl_knee_hit": pct(knee["hit_rate"]),
+        "ttl_knee_stale": pct2(knee["stale_rate"]),
+        "ttl_long_share_of_hits": pct1(long_["stale_share_of_hits"]),
+        "ttl_stale_growth": f"{long_['stale_rate'] / knee['stale_rate']:,.0f}",
+        "ttl_hit_gain": f"{(long_['hit_rate'] - knee['hit_rate']) * 100:.0f}",
+        # what a hit is worth
+        "prefix_hit": pct1(w["prefix_hit_rate"]),
+        "response_hit": pct(w["response_hit_rate"]),
+        "cap_none": f"{w['capacity']['no cache']:.0f}",
+        "cap_prefix": f"{w['capacity']['prefix cache']:.0f}",
+        "cap_response": f"{w['capacity']['response cache']:.0f}",
+        "fleet_none": str(w["fleet"]["no cache"]),
+        "fleet_prefix": str(w["fleet"]["prefix cache"]),
+        "fleet_response": str(w["fleet"]["response cache"]),
+        "cost_none": f"${w['usd_per_hour']['no cache']:,.2f}",
+        "cost_response": f"${w['usd_per_hour']['response cache']:,.2f}",
+        "cost_prefix": f"${w['usd_per_hour']['prefix cache']:,.2f}",
+        "prefix_gain": f"{w['prefix_gain'] * 100:+.0f}%",
+        "response_hit_matching_prefix": pct(w["response_hit_matching_prefix"]),
+        "response_gain": f"{w['response_gain'] * 100:+.0f}%",
+        "ttft_at_capacity": f"{w['ttft_p99_at_capacity_ms']:,.0f} ms",
+        "ttft_eased": f"{w['ttft_p99_eased_ms']:,.0f} ms",
+        "eased_rate": f"{w['eased_rate']:.0f}",
+        "eased_exact": f"{w['capacity']['no cache'] * (1 - w['response_hit_rate']):.0f}",
+        "demand": str(a["requests_per_s"]),
+        "machines_saved": str(w["fleet"]["no cache"]
+                              - w["fleet"]["response cache"]),
+    }
+
+
 def ddr1(d: dict) -> dict[str, str]:
     """Design decision record I: the values its prose quotes.
 
@@ -1667,7 +1867,7 @@ def ddr1(d: dict) -> dict[str, str]:
         "swap_ms": f"{by_chapter['ch18'][2]['evidence']['one sequence, PCIe 5.0 ms']:.0f} ms",
         "recompute_over_swap": f"{by_chapter['ch18'][2]['evidence']['one sequence, recompute ms'] / by_chapter['ch18'][2]['evidence']['one sequence, PCIe 5.0 ms']:.1f}x",
         "context_tokens": f"{a['prompt_tokens'] + a['output_tokens']:,}",
-        "colocated_gain_pct": f"{(by_chapter['ch19'][0]['evidence']['tokens/s, colocated'] / by_chapter['ch19'][0]['evidence']['tokens/s, best split'] - 1) * 100:.0f}%",
+        "colocated_gain_pct": f"{(by_chapter['ch19'][0]['evidence']['tokens/s, colocated'] / by_chapter['ch19'][0]['evidence']['tokens/s, best split'] - 1) * 100:+.1f}%",
     }
 
 
@@ -1680,7 +1880,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
             "ch20": ch20, "ch22": ch22,
-            "ch24": ch24, "ch29": ch29, "ch31": ch31,
+            "ch24": ch24, "ch29": ch29, "ch31": ch31, "ch32": ch32,
             "ch41": ch41, "ch42": ch42, "ddr1": ddr1}[chapter](d)
 
 

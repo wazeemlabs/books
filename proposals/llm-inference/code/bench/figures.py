@@ -114,6 +114,25 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "concentration" in d and "staleness" in d:  # Chapter 32: caching
+        a = d["assumptions"]
+        w = d["worth"]
+        return (f"SIMULATED TRAFFIC over an authored question set, not a "
+                f"trace: one {a['hours']}-hour day of {a['n_faq']:,} "
+                f"single-turn requests, {a['chat_sessions']:,} "
+                f"conversations and {a['agent_sessions']:,} agent tasks, "
+                f"drawn Zipf({a['zipf_s']}) over {a['catalogue']:,} distinct "
+                f"questions, seed {a['seed']} - the {a['labelled_topics']} "
+                f"topics that carry a right answer are in "
+                f"tinyserve/questions.py and are authored, so the "
+                f"correctness numbers describe that set and not the "
+                f"internet; similarity is character 5-gram overlap, a "
+                f"lexical measure named as such where it is used - the "
+                f"capacity rows are Chapter 18's scheduler at "
+                f"{a['n_scheduled']:,} requests and again at twice that, "
+                f"agreeing with Chapter 41's bare machine at "
+                f"{w['capacity']['no cache']:.0f} requests a second - "
+                f"commit {p['commit']}, {p['measured_utc']}")
     if "validity" in d and "distortion" in d:  # Chapter 31: constrained
         a = d["assumptions"]
         return (f"EXACT ARITHMETIC over a grammar, not a timing run: "
@@ -1850,7 +1869,9 @@ def fig_load(d: dict) -> None:
     ax2.set_yscale("log")
     ax2.set_xlabel("requests arriving a second")
     ax2.set_ylabel("wait for the first token, p99 (ms, log scale)")
-    ax2.legend(frameon=False, fontsize=7.6, loc="center right")
+    # Centre left: the band between the budget line and the static
+    # curve is the only part of this panel neither curve crosses.
+    ax2.legend(frameon=False, fontsize=7.6, loc="center left")
     ax2.set_title("and what the user waits to see it start", loc="left",
                   fontsize=10)
     T.style(ax2)
@@ -2237,20 +2258,27 @@ def fig_split(d: dict) -> None:
     itl = [r["itl_p99_ms"] for r in rows]
     ax2.set_yscale("log")
     ax2.set_ylim(min(itl) / 2.0, max(ttft) * 2.4)
-    # The amber curve is a U, so it crosses this line on both sides of
-    # the panel. Above the line the arms are further apart than below
-    # it, which is the only place a label of this width fits between
-    # them.
-    mid = x[len(x) // 2]
-    ax2.annotate(f"first-token budget: {a['ttft_budget_ms']:,} ms",
+    # The amber curve is a U crossing this line twice, and the label
+    # has to sit between the crossings. Where those fall depends on the
+    # data, so they are found rather than guessed: the middle of the
+    # stretch of splits that are under the budget.
+    under = [v for v, r in zip(x, rows)
+             if r["ttft_p99_ms"] <= a["ttft_budget_ms"]]
+    mid = (min(under) + max(under)) / 2 if under else x[len(x) // 2]
+    ax2.annotate(f"budget: {a['ttft_budget_ms']:,} ms",
                  (mid, a["ttft_budget_ms"]), textcoords="offset points",
                  xytext=(0, 5), ha="center", va="bottom", fontsize=6.8,
                  color=T.INK)
-    # Stopped below the budget label and the legend. A full-height rule
-    # marks the best split where the curves are, and strikes through
-    # everything written in the empty space above them.
+    # Stopped below the budget line, so the rule marks the best split
+    # where the curves are without striking through the label written
+    # on that line. Where "below" falls depends on the y range, which
+    # depends on the data, so it is computed rather than guessed.
+    import math
+    ylo, yhi = ax2.get_ylim()
+    frac = ((math.log10(a["ttft_budget_ms"]) - math.log10(ylo))
+            / (math.log10(yhi) - math.log10(ylo)))
     ax2.axvline(best["prefill_workers"], color=T.INK, linewidth=0.9,
-                alpha=0.4, ymax=0.55)
+                alpha=0.4, ymax=max(0.05, frac - 0.04))
     ax2.set_xticks(x, [str(v) for v in x], fontsize=7.6)
     ax2.set_xlabel("prefill machines")
     ax2.set_ylabel("p99 latency (ms, log scale)")
@@ -3250,6 +3278,195 @@ def fig_own_or_rent(d: dict) -> None:
 
 # --- Chapter 31: deciding what the model may say ----------------------
 
+# --- Chapter 32: the cache in front of the model ----------------------
+
+
+def fig_concentration(d: dict) -> None:
+    """The hit rate is a property of the traffic, not of the cache."""
+    rows = d["concentration"]["rows"]
+    skews = sorted({r["zipf_s"] for r in rows})
+
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    shades = [0.35, 0.6, 0.88]
+    for skew, shade in zip(skews, shades):
+        sub = sorted((r for r in rows if r["zipf_s"] == skew),
+                     key=lambda r: r["catalogue"])
+        x = [r["catalogue"] for r in sub]
+        y = [r["hit_rate"] * 100 for r in sub]
+        ax.plot(x, y, marker="o", markersize=T.MARKER_SIZE,
+                linewidth=T.LINE_WIDTH, color=T.SEQUENTIAL(shade),
+                label=f"skew {skew:g}")
+    ax.set_xscale("log")
+    ax.set_xticks([r["catalogue"] for r in rows
+                   if r["zipf_s"] == skews[0]],
+                  [f"{r['catalogue']:,}" for r in rows
+                   if r["zipf_s"] == skews[0]], fontsize=7.5)
+    ax.set_xlabel("distinct questions the traffic asks")
+    ax.set_ylabel("requests answered from the cache (%)")
+    ax.set_title("Two numbers decide a cache's hit rate, and neither is the "
+                 "cache's", loc="left", fontsize=10.5)
+    ax.set_ylim(0, 100)
+    ax.legend(frameon=False, fontsize=8, loc="lower left",
+              title="how concentrated the asking is",
+              title_fontsize=8)
+    T.style(ax)
+    top = max(rows, key=lambda r: r["hit_rate"])
+    bot = min(rows, key=lambda r: r["hit_rate"])
+    save(fig, "ch32-concentration", d,
+         alt=("Exact-match hit rate against the number of distinct questions "
+              "in the traffic, on a log x axis, with one line for each of "
+              f"{len(skews)} Zipf skews. The rate falls as the catalogue "
+              "grows and rises as the asking concentrates: from "
+              f"{bot['hit_rate'] * 100:.0f}% at "
+              f"{bot['catalogue']:,} questions and skew {bot['zipf_s']:g} to "
+              f"{top['hit_rate'] * 100:.0f}% at {top['catalogue']:,} and skew "
+              f"{top['zipf_s']:g}. Nothing about the cache appears on this "
+              "chart, which is the point: measure these two numbers on your "
+              "own logs before building anything."))
+
+
+def fig_keys(d: dict) -> None:
+    """Every field left out of the key buys hits and sells correctness."""
+    shapes = []
+    for r in d["keys"]:
+        if r["shape"] not in shapes:
+            shapes.append(r["shape"])
+    order = [r["key"] for r in d["keys"] if r["shape"] == shapes[0]]
+
+    fig, ax = plt.subplots(figsize=(6.9, 4.3), dpi=200)
+    shades = [0.35, 0.6, 0.88]
+    for shape, shade in zip(shapes, shades):
+        sub = {r["key"]: r for r in d["keys"] if r["shape"] == shape}
+        x = [sub[k]["hit_rate"] * 100 for k in order]
+        y = [sub[k]["wrong_rate"] * 100 for k in order]
+        ax.plot(x, y, marker="o", markersize=T.MARKER_SIZE,
+                linewidth=T.LINE_WIDTH, color=T.SEQUENTIAL(shade),
+                label=shape)
+    # Name the two ends of the worst trajectory, which is the story.
+    worst = max(d["keys"], key=lambda r: r["wrong_rate"])
+    safe = next(r for r in d["keys"] if r["shape"] == worst["shape"]
+                and r["wrong_rate"] == 0)
+    L.label_points(ax, [
+        (safe["hit_rate"] * 100, 0.0,
+         f"{safe['shape']}, {safe['key']}"),
+        (worst["hit_rate"] * 100, worst["wrong_rate"] * 100,
+         f"{worst['shape']}, {worst['key']}")], fontsize=7.4)
+    ax.set_xlabel("requests answered from the cache (%)")
+    ax.set_ylabel("requests answered wrongly (%)")
+    ax.set_title("A shorter key always hits more", loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=8, loc="upper left", title="traffic",
+              title_fontsize=8)
+    T.style(ax)
+    save(fig, "ch32-keys", d,
+         alt=("Wrong answers against cache hits, with one line per kind of "
+              "traffic and one point per cache key. Every key that leaves "
+              "out something the answer depends on moves up and to the "
+              "right: it hits more often and it is wrong more often. The "
+              "safe key sits on the floor at zero wrong answers. The worst "
+              f"is {worst['shape']} traffic keyed on {worst['key']}, at "
+              f"{worst['hit_rate'] * 100:.0f}% hits and "
+              f"{worst['wrong_rate'] * 100:.0f}% of all requests answered "
+              "with something the model would not have said."))
+
+
+def fig_similarity(d: dict) -> None:
+    """Whether a threshold can separate the two cases, and what a cache
+    full of entries does to whatever answer you reach."""
+    import numpy as np
+    sim, sc = d["similarity"], d["scale"]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.4, 3.9), dpi=200)
+
+    # Every pair, as a point on the similarity axis. A summary would
+    # hide the thing worth seeing: where the two sets overlap.
+    rng = np.random.default_rng(0)
+    series = [("pairs that must share\nan answer", sim["same_scores"], 1.0,
+               T.BLUE, "o"),
+              ("pairs that must not", sim["different_scores"], 0.0,
+               T.AMBER, "s")]
+    for label, scores, y, colour, marker in series:
+        xs = np.asarray(scores)
+        ys = y + rng.uniform(-0.16, 0.16, len(xs))
+        ax1.plot(xs, ys, marker, markersize=2.6, alpha=0.45, color=colour,
+                 linestyle="none")
+    ceiling = sim["different_max"]
+    ax1.axvline(ceiling, color=T.INK, linewidth=1.0, linestyle=":")
+    ax1.set_yticks([0.0, 1.0], [series[1][0], series[0][0]], fontsize=7.6)
+    ax1.set_ylim(-0.45, 1.45)
+    ax1.set_xlim(-0.03, 1.03)
+    ax1.set_xlabel("similarity")
+    ax1.set_title("Every pair in the set, scored", loc="left", fontsize=9.5)
+    ax1.annotate(f"worst false pair: {ceiling:.2f}", xy=(ceiling, -0.36),
+                 xytext=(ceiling - 0.04, -0.36), fontsize=7.2,
+                 ha="right", va="center", color=T.INK)
+    T.style(ax1)
+    ax1.grid(axis="y", visible=False)
+
+    for row, shade in zip(sc["grid"], [0.3, 0.5, 0.7, 0.9]):
+        ax2.plot([r["entries"] for r in row["rows"]],
+                 [r["any_false_hit"] * 100 for r in row["rows"]],
+                 marker="o", markersize=T.MARKER_SIZE,
+                 linewidth=T.LINE_WIDTH, color=T.SEQUENTIAL(shade),
+                 label=f"{row['per_pair']:.0e}")
+    ax2.set_xscale("log")
+    ax2.set_xlabel("entries in the cache")
+    ax2.set_ylabel("chance of at least one false match (%)")
+    ax2.set_title("and the cache multiplies whichever you pick",
+                  loc="left", fontsize=9.5)
+    ax2.legend(frameon=False, fontsize=7.2, loc="upper left",
+               title="per-pair rate", title_fontsize=7.2)
+    T.style(ax2)
+
+    save(fig, "ch32-similarity", d,
+         alt=("Two panels. On the left, every pair of questions in the "
+              f"labelled set plotted at its similarity: {sim['same_answer_pairs']} "
+              f"pairs that must share an answer on the upper row, "
+              f"{sim['different_answer_pairs']:,} that must not on the "
+              "lower. The dotted line marks the most similar pair that "
+              f"must NOT share an answer, at {ceiling:.2f}. "
+              f"{sim['same_below_different_max'] * 100:.0f}% of the pairs "
+              "that should match score below it, so a threshold set above "
+              "the line catches almost none of them and a threshold set "
+              "below it starts matching pairs with different answers. On "
+              "the right, the chance that at least one entry in the cache "
+              "clears the threshold by accident, against how many entries "
+              "there are, for four per-pair false-match rates. A lookup "
+              "compares every entry and takes the best, so the rate that "
+              "matters grows with the size of the cache."))
+
+
+def fig_ttl(d: dict) -> None:
+    """A lifetime trades hits against answers that were true yesterday."""
+    rows = d["staleness"]
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    x = [r["ttl_s"] for r in rows]
+    ax.plot(x, [r["hit_rate"] * 100 for r in rows], marker="o",
+            markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE,
+            label="answered from the cache")
+    ax.plot(x, [r["stale_rate"] * 100 for r in rows], marker="s",
+            markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+            linestyle="--", color=T.AMBER,
+            label="answered from before the answer changed")
+    ax.set_xscale("log")
+    ax.set_xticks(x, [r["ttl_label"] for r in rows], fontsize=7.5)
+    ax.set_xlabel("how long an entry is allowed to live")
+    ax.set_ylabel("share of all requests (%)")
+    ax.set_title("Staleness is cheap until it is not",
+                 loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    T.style(ax)
+    last = rows[-1]
+    save(fig, "ch32-ttl", d,
+         alt=("Cache hits and stale answers against how long an entry is "
+              "allowed to live, on a log x axis. Both rise together: a "
+              "longer lifetime means more questions find an answer waiting "
+              "and more of those answers were written before the underlying "
+              f"fact moved. At {last['ttl_label']} the cache answers "
+              f"{last['hit_rate'] * 100:.0f}% of requests and "
+              f"{last['stale_rate'] * 100:.1f}% of all requests are answers "
+              "that were true when they were stored and are not any more. "
+              "There is no setting at which both curves are low."))
+
+
 def fig_states(d: dict) -> None:
     """States explode with nesting; the masks do not."""
     rows = d["table"]["rows"]
@@ -3387,7 +3604,9 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch29": [fig_rule, fig_exactness, fig_speculative_speedup],
             "ch41": [fig_little, fig_utilization, fig_sizing],
             "ch42": [fig_price_spread, fig_duty, fig_own_or_rent],
-            "ch31": [fig_states, fig_validity, fig_distortion]}
+            "ch31": [fig_states, fig_validity, fig_distortion],
+            "ch32": [fig_concentration, fig_keys, fig_similarity,
+                     fig_ttl]}
 
 
 def _check_no_shared_figure_functions() -> None:

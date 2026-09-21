@@ -145,8 +145,8 @@ the single most valuable loop in this book.
 > produces exactly one new token for each sequence in the batch. So
 > "deciding the batch every iteration" means deciding it every time a
 > token is about to be produced — at the batch this server actually
-> ran, on average 22.7 sequences, about once every
-> 6.1 ms.
+> ran, on average 28.0 sequences, about once every
+> 6.4 ms.
 >
 > A static batcher makes that decision once and then runs thousands of
 > iterations without revisiting it. That is the only difference between
@@ -188,7 +188,7 @@ an aggressive scheduler; it is a broken one.
 
 ## The same traffic, two schedulers
 
-Now the measurement. 600 requests arrive as a Poisson process
+Now the measurement. 4,800 requests arrive as a Poisson process
 at 12 a second, with the case study's prompt and reply lengths
 (1,200 and 300 tokens on average). The same
 arrivals, the same lengths, the same cost for a prefill and for a
@@ -197,34 +197,34 @@ decode step, go through both schedulers. Only the scheduler differs.
 <!-- include: tables/ch17-head-to-head.md -->
 | | Static batching | Continuous batching | Ratio |
 |---|---|---|---|
-| Output tokens a second | 1,637 | 3,081 | **1.9x** |
-| Time to first token, p50 | 31,472 ms | 20 ms | **1,568x** |
-| Time to first token, p99 | 54,040 ms | 87 ms | **619x** |
-| Between tokens, p50 | 12.6 ms | 6.2 ms | **2.0x** |
-| Between tokens, p99 | 18.7 ms | 41.5 ms | **2.2x worse** |
-| End to end, p50 | 36.6 s | 1.9 s | **19x** |
-| Slots the batch held, mean | 127 | 22.7 | **--** |
-| Sequences actually advancing, mean | 37.4 | 22.7 | **--** |
+| Output tokens a second | 1,788 | 3,433 | **1.9x** |
+| Time to first token, p50 | 193,363 ms | 22 ms | **8,659x** |
+| Time to first token, p99 | 376,764 ms | 85 ms | **4,411x** |
+| Between tokens, p50 | 18.3 ms | 6.5 ms | **2.8x** |
+| Between tokens, p99 | 20.7 ms | 52.0 ms | **2.5x worse** |
+| End to end, p50 | 197.4 s | 2.0 s | **99x** |
+| Slots the batch held, mean | 225 | 28.0 | **--** |
+| Sequences actually advancing, mean | 65.0 | 28.0 | **--** |
 | Slots held that held live work | 29% | 100% | **--** |
-| Peak of the block pool | 74% | 13% | **6x** |
-| Time to drain, over the arrival window | 2.1x | 1.10x | **--** |
+| Peak of the block pool | 86% | 20% | **4x** |
+| Time to drain, over the arrival window | 1.9x | 1.01x | **--** |
 
-The same 600 requests, the same arrivals (12 a second, Poisson), the same prompt and output lengths, the same cost model for a prefill and a decode step. Only the scheduler differs. Static forms a batch when 256 requests have arrived or one second has passed, whichever comes first, and is given all the memory it asks for. Every ratio is the better number over the worse one, except where it says otherwise.
+The same 4800 requests, the same arrivals (12 a second, Poisson), the same prompt and output lengths, the same cost model for a prefill and a decode step. Only the scheduler differs. Static forms a batch when 256 requests have arrived or one second has passed, whichever comes first, and is given all the memory it asks for. Every ratio is the better number over the worse one, except where it says otherwise.
 
 Six things in that table are worth saying out loud.
 
-**Throughput nearly doubles** — 1,637 to 3,081 output
+**Throughput nearly doubles** — 1,788 to 3,433 output
 tokens a second, 1.9x — with no change to the model, the
 hardware, or the arithmetic. The extra tokens come entirely from slots
 that were previously held by sequences with nothing to do.
 
 **The wait to see anything at all collapses**, from
-31,472 ms to 20 ms at the median: 1,568x. This
+193,363 ms to 22 ms at the median: 8,659x. This
 is the number that changes what the product feels like. A user waiting
-31.5 s before the first word appears has left.
+193.4 s before the first word appears has left.
 
-**End to end, the median request finishes 19x sooner** —
-36.6 s against 1.9 s. Notice that this is a much
+**End to end, the median request finishes 99x sooner** —
+197.4 s against 2.0 s. Notice that this is a much
 bigger factor than the throughput gain. Throughput measures what the
 server produced; this measures what a person experienced, and the two
 come apart precisely because static batching makes short requests wait
@@ -236,8 +236,8 @@ batching a slot cannot be held by a finished sequence, because the
 sequence leaves the batch in the iteration it finishes. There is no
 tuning involved. The waste is structurally impossible.
 
-**Memory use drops 6x** — from 74% of the block
-pool to 13%. This one surprises people, because continuous
+**Memory use drops 4x** — from 86% of the block
+pool to 20%. This one surprises people, because continuous
 batching is usually sold as a throughput technique. But the static
 batch holds every sequence's cache until the *last* one finishes, so
 its peak is the sum of a whole batch at its longest. Continuous
@@ -245,7 +245,7 @@ batching releases each sequence's blocks the moment it is done, so the
 peak is only what is genuinely in flight.
 
 **And the one that does not improve**: the p99 wait between tokens gets
-*worse*, 18.7 ms to 41.5 ms. Hold that thought for two
+*worse*, 20.7 ms to 52.0 ms. Hold that thought for two
 sections.
 
 ### Head-of-line blocking, which is what we actually removed
@@ -263,7 +263,7 @@ did not need to wait. It waited because of where it was standing.
 
 Continuous batching does not make the server faster at any single
 thing. It removes the queue discipline that was making short work wait
-for long work. That is why the end-to-end gain (19x) is so
+for long work. That is why the end-to-end gain (99x) is so
 much larger than the throughput gain (1.9x): most of what it
 recovers was never a hardware problem.
 
@@ -280,14 +280,14 @@ rises is what tells you how to size a fleet.
 <!-- include: tables/ch17-load.md -->
 | Requests a second | Offered | Static: tokens/s | Static: TTFT p99 | Continuous: tokens/s | Continuous: TTFT p99 | Continuous: between tokens, p99 |
 |---|---|---|---|---|---|---|
-| 4 | 1,200 | 1,056 \* | 14.8 s | **1,094** | 70 ms | 21 ms |
-| 8 | 2,400 | 1,591 \* | 37.2 s | **2,121** | 76 ms | 31 ms |
-| 12 | 3,600 | 1,637 \* | 54.0 s | **3,081** | 87 ms | 42 ms |
-| 16 | 4,800 | 1,709 \* | 60.2 s | **3,960** \* | 91 ms | 58 ms |
-| 20 | 6,000 | 1,799 \* | 61.3 s | **4,734** \* | 95 ms | 81 ms |
-| 24 | 7,200 | 1,815 \* | 63.8 s | **5,374** \* | 96 ms | 114 ms |
-| 28 | 8,400 | 1,822 \* | 66.9 s | **5,839** \* | 105 ms | 153 ms |
-| 32 | 9,600 | 1,756 \* | 73.9 s | **6,077** \* | 1,485 ms | 152 ms |
+| 4 | 1,200 | 1,145 \* | 16.9 s | **1,156** | 70 ms | 23 ms |
+| 8 | 2,400 | 1,739 \* | 202.5 s | **2,301** | 79 ms | 36 ms |
+| 12 | 3,600 | 1,788 \* | 376.8 s | **3,433** | 85 ms | 52 ms |
+| 16 | 4,800 | 1,793 \* | 475.5 s | **4,552** | 94 ms | 74 ms |
+| 20 | 6,000 | 1,805 \* | 530.3 s | **5,646** | 107 ms | 114 ms |
+| 24 | 7,200 | 1,766 \* | 588.5 s | **6,665** | 402 ms | 186 ms |
+| 28 | 8,400 | 1,780 \* | 600.3 s | **6,924** \* | 20,764 ms | 118 ms |
+| 32 | 9,600 | 1,796 \* | 621.8 s | **6,964** \* | 41,164 ms | 117 ms |
 
 \* not keeping up: the server took more than 10% longer to drain than the requests took to arrive, or missed the 1,000 ms p99 time-to-first-token budget. Offered load is the arrival rate times the mean output length (300 tokens), which is what the service would have to produce to keep up.
 
@@ -297,17 +297,17 @@ what the server would have to produce to keep up. Continuous batching
 tracks it closely and then bends away. Static batching leaves it almost
 immediately and flattens: no amount of extra traffic moves it, because
 the server is already saturated. Across the sweep the ceiling is
-1,822 tokens a second against 6,077 — **3.3x**,
+1,805 tokens a second against 6,964 — **3.9x**,
 on identical hardware running an identical model.
 
 The right panel is worse than it looks, because it is on a log scale.
-Static batching's p99 wait for a first token is 15 s
-at 4 requests a second and 74 s at
+Static batching's p99 wait for a first token is 17 s
+at 4 requests a second and 622 s at
 32. It never comes near the case study's
 1,000 ms budget at any rate tested — including the lightest one.
-Continuous batching stays under 1,000 ms up to 12
-requests a second, and reaches 1,485 ms at the top of the
-sweep — at a load where it is delivering 6,077 tokens a second,
+Continuous batching stays under 1,000 ms up to 24
+requests a second, and reaches 41,164 ms at the top of the
+sweep — at a load where it is delivering 6,964 tokens a second,
 which static batching never reaches at any rate.
 
 So the honest summary of the table is not "continuous batching is
@@ -329,6 +329,12 @@ you can plan against.
 > the row's other numbers describe a server already in trouble. A
 > saturated server's "average latency" is not a measurement; it is a
 > stopwatch on your test harness.
+>
+> The same idea sets how long the test has to run. Every configuration
+> here was measured at 4,800 requests and again at
+> 9,600; the ones that keep up moved by under
+> 3% between the two, and the ones that do not keep up
+> roughly doubled. Chapter 41 makes the check a rule.
 
 ## What it costs: your tokens, somebody else's prefill
 
@@ -342,12 +348,13 @@ started.
 *Provenance in `code/figures/ch17-itl.caption.txt`.*
 
 Continuous batching's *median* wait between tokens is
-6.2 ms at 12 requests a second — close to the
-6.1 ms a decode step alone costs at that batch size, which is the
-floor. Its p99 is 41.5 ms: **7x the floor**, and
-climbing to 153 ms at the top of the sweep. Static
+6.5 ms at 12 requests a second — close to the
+6.4 ms a decode step alone costs at that batch size, which is the
+floor. Its p99 is 52.0 ms: **8x the floor**, already
+past the 50 ms this service promised, and climbing to
+186 ms at the top of the sweep. Static
 batching's p99 sits between 8 ms and
-19 ms across the whole sweep and barely moves.
+21 ms across the whole sweep and barely moves.
 
 The mechanism is not subtle, and it follows directly from the loop.
 Look at it again: *if somebody is waiting and there is room, start
@@ -360,7 +367,7 @@ Then the loop goes round, sees the queue is still not empty, and starts
 another one. And another. Under load, several prefills can land
 back-to-back between two of your tokens, and the gap you experience is
 their sum. That is the whole of the tail in Figure 17.3: the
-153 ms at the top of the sweep is several 19 ms
+186 ms at the top of the sweep is several 19 ms
 prefills landing one after another, with your next token queued behind
 all of them.
 
@@ -372,7 +379,7 @@ Static batching does not have this problem for the simple reason that
 it has no mid-flight arrivals at all. Its decode phase is
 uninterruptible because nothing is allowed to interrupt it. That is not
 a virtue worth keeping — it buys a stable p99 between tokens at the
-price of a 31.5 s median wait for the first one — but it
+price of a 193.4 s median wait for the first one — but it
 does explain the one column where it wins.
 
 The fix is not to admit fewer requests. It is to stop treating a
@@ -386,7 +393,7 @@ Chapter 18.
 
 The batch-size flag is the obvious knob and almost never the binding
 constraint. Our head-to-head ran with a cap of 256 sequences
-and the continuous scheduler averaged 22.7. It never came
+and the continuous scheduler averaged 28.0. It never came
 close to the cap. Something else was deciding.
 
 That something is memory, and Chapter 13 already
@@ -400,35 +407,35 @@ nothing else changed:
 <!-- include: tables/ch17-pool.md -->
 | Block pool | Sequences in flight | Tokens/s | TTFT p99 | Preemptions | Tokens generated twice |
 |---|---|---|---|---|---|
-| 64.0 GB (100%) | 22.7 | **3,081** | 0.1 s | 0 | 0.0% |
-| 16.0 GB (25%) | 22.7 | **3,081** | 0.1 s | 0 | 0.0% |
-| 6.4 GB (10%) | 22.7 | **3,080** | 0.8 s | 3 | 0.0% |
-| 3.2 GB (5%) | 15.9 | **2,339** | 18.8 s | 82 | 1.5% |
-| 1.9 GB (3%) | 9.7 | **1,604** | 53.9 s | 98 | 2.1% |
-| 1.3 GB (2%) | 6.4 | **1,114** | 102.4 s | 116 | 3.0% |
+| 64.0 GB (100%) | 28.0 | **3,433** | 0.1 s | 0 | 0.0% |
+| 16.0 GB (25%) | 28.0 | **3,433** | 0.1 s | 0 | 0.0% |
+| 6.4 GB (10%) | 28.1 | **3,426** | 2.7 s | 95 | 0.2% |
+| 3.2 GB (5%) | 16.3 | **2,365** | 183.5 s | 487 | 1.1% |
+| 1.9 GB (3%) | 9.7 | **1,577** | 479.9 s | 761 | 2.2% |
+| 1.3 GB (2%) | 6.3 | **1,086** | 881.4 s | 973 | 3.5% |
 
 Continuous batching at 12 requests a second through smaller and smaller pools. The full pool is 64 GB, which is what is left on one accelerator after the weights. Nothing else changes.
 
 Two readings, and they point in opposite directions.
 
 **The pool has enormous headroom at this load.** Shrinking it to
-10% of what the accelerator actually has — 6.4 GB
-instead of 64 GB — costs essentially nothing: 3,080
-tokens a second against 3,081, with 3
-preemptions across 600 requests. At 12 requests a second
+25% of what the accelerator actually has — 16.0 GB
+instead of 64 GB — costs essentially nothing: 3,433
+tokens a second against 3,433, with 0
+preemptions across 4,800 requests. At 12 requests a second
 with these reply lengths, the server simply does not need the memory.
 If you are sizing hardware from a spreadsheet, this is the row that
 saves you money.
 
 **And then it falls off a cliff.** At 2% of the pool
-(1.3 GB) throughput drops 2.8x to 1,114 tokens
-a second, there are 116 preemptions, and the p99 wait for
-a first token is 102.4 s.
+(1.3 GB) throughput drops 3.2x to 1,086 tokens
+a second, there are 973 preemptions, and the p99 wait for
+a first token is 881.4 s.
 
 Two things are going wrong there, and it is worth separating them
 because they call for different fixes. The first, and by far the
 larger, is that the pool has become the batch-size cap: sequences in
-flight drop from 22.7 to 6.4, and Chapter 16
+flight drop from 28.0 to 6.3, and Chapter 16
 has already said what a small batch costs — the weights are fetched
 just as often and fewer tokens ride on each fetch.
 
@@ -436,7 +443,7 @@ The second is that some of the work is now done twice. When a preempted
 sequence is admitted again, the tokens it had already generated are
 gone; it starts from its prompt. vLLM documents exactly this: a
 preempted request "will be re-scheduled in future and re-start its
-prefill phase." In our smallest pool, 3.0% of every token
+prefill phase." In our smallest pool, 3.5% of every token
 produced was produced twice.
 
 The first of those is what costs you the throughput. The second is what
@@ -520,7 +527,7 @@ our decode-step floor as a floor.
 second rather than waiting for 256 arrivals, it is given the
 same paged allocator as the continuous scheduler, and it is never
 refused memory. A real static server with a rectangular KV tensor would
-hold considerably more memory than 74% of the pool, and one
+hold considerably more memory than 86% of the pool, and one
 that waited for a full batch would have a far worse first-token
 latency. The comparison understates the gap.
 
@@ -581,16 +588,16 @@ picture.
 
 | Quantity | Value |
 |---|---|
-| Throughput, static → continuous, at 12 req/s | 1,637 → 3,081 tok/s (1.9x) |
-| Ceiling across the sweep | 1,822 → 6,077 tok/s (3.3x) |
-| Time to first token, p50 | 31,472 ms → 20 ms (1,568x) |
-| End to end, p50 | 36.6 s → 1.9 s (19x) |
+| Throughput, static → continuous, at 12 req/s | 1,788 → 3,433 tok/s (1.9x) |
+| Ceiling across the sweep | 1,805 → 6,964 tok/s (3.9x) |
+| Time to first token, p50 | 193,363 ms → 22 ms (8,659x) |
+| End to end, p50 | 197.4 s → 2.0 s (99x) |
 | Slots holding live work | 29% → 100% |
-| Peak block-pool use | 74% → 13% (6x less) |
-| What it costs: between-token p99 | 18.7 ms → 41.5 ms, against a 6.1 ms floor |
-| Load the SLO survives, of 4-32 req/s | static: none of the rates tested; continuous: up to 12 |
-| Pool needed at 12 req/s | 6.4 GB of 64 GB (10%) |
-| Where it collapses | 1.3 GB: 116 preemptions, 3.0% of tokens produced twice |
+| Peak block-pool use | 86% → 20% (4x less) |
+| What it costs: between-token p99 | 20.7 ms → 52.0 ms, against a 6.4 ms floor |
+| Load the SLO survives, of 4-32 req/s | static: none of the rates tested; continuous: up to 24 |
+| Pool needed at 12 req/s | 16.0 GB of 64 GB (25%) |
+| Where it collapses | 1.3 GB: 973 preemptions, 3.5% of tokens produced twice |
 
 ## Sources
 
@@ -620,7 +627,7 @@ picture.
 ## Exercises
 
 **★ 17.1** The table says throughput rose 1.9x and the median
-request finished 19x sooner. Explain in two sentences why
+request finished 99x sooner. Explain in two sentences why
 those are different numbers, and say which one you would put in a
 design document arguing for the change.
 
@@ -643,7 +650,7 @@ first-come-first-served anyway, and what would have to be true for the
 alternative to be usable.
 
 **★★★ 17.5** The smallest pool in the table generated
-3.0% of its tokens twice. Implement swapping as the
+3.5% of its tokens twice. Implement swapping as the
 alternative to recomputing: on preemption, copy the victim's blocks to
 host memory at a bandwidth you choose, and copy them back on
 re-admission. Find the PCIe bandwidth at which swapping beats

@@ -42,7 +42,12 @@ OUTPUT_MEAN, OUTPUT_CV = 300, 0.8
 MAX_OUTPUT = 1024
 
 RATE = REQUESTS_PER_S          # the case study's busy hour: 200 a second
-N_REQUESTS = 2000
+# Long enough for each machine's queue to fill. At 2,000 the fleet's
+# 12 machines saw under 200 requests each, and the head-to-head came
+# out 3% in favour of colocating -- a margin that vanishes when the
+# run is long enough to have settled. See `head_to_head`.
+N_REQUESTS = 8000
+SEEDS = (0, 1, 2)
 # Half the arrival window is discarded as warm-up. A fleet starts empty
 # and takes about one reply's duration to reach the batch size it will
 # hold, so a measurement that starts at zero measures the ramp. Half is
@@ -167,26 +172,27 @@ def split_sweep(blocks: int, link: float) -> list[dict]:
 
 
 def colocated(blocks: int, workers: int = FLEET, rate: float = RATE,
-              prompt_mean: int = PROMPT_MEAN) -> dict:
-    reqs = make_requests(N_REQUESTS, rate, np.random.default_rng(SEED),
+              prompt_mean: int = PROMPT_MEAN, seed: int = SEED) -> dict:
+    reqs = make_requests(N_REQUESTS, rate, np.random.default_rng(seed),
                          prompt_mean)
     trace = serve_colocated(reqs, workers=workers, blocks=blocks,
                             token_budget=TOKEN_BUDGET, max_batch=MAX_BATCH)
     return summarize(trace, rate, workers=workers, design="colocated",
-                     prompt_mean=prompt_mean)
+                     prompt_mean=prompt_mean, seed=seed)
 
 
 def one_split(blocks: int, prefill: int, link: float, rate: float = RATE,
               prompt_mean: int = PROMPT_MEAN, fleet: int = FLEET,
-              link_name: str = DEFAULT_LINK) -> dict:
-    reqs = make_requests(N_REQUESTS, rate, np.random.default_rng(SEED),
+              link_name: str = DEFAULT_LINK, seed: int = SEED) -> dict:
+    reqs = make_requests(N_REQUESTS, rate, np.random.default_rng(seed),
                          prompt_mean)
     trace = serve_disaggregated(reqs, prefill_workers=prefill,
                                 decode_workers=fleet - prefill, blocks=blocks,
                                 link_bytes_per_s=link, max_batch=MAX_BATCH)
     return summarize(trace, rate, prefill_workers=prefill,
                      decode_workers=fleet - prefill, design="disaggregated",
-                     link=link_name, prompt_mean=prompt_mean, workers=fleet)
+                     link=link_name, prompt_mean=prompt_mean, workers=fleet,
+                     seed=seed)
 
 
 def link_sweep(blocks: int, prefill: int) -> list[dict]:
@@ -197,7 +203,7 @@ def link_sweep(blocks: int, prefill: int) -> list[dict]:
 
 def best_split(blocks: int, link: float, rate: float = RATE,
                prompt_mean: int = PROMPT_MEAN, fleet: int = FLEET,
-               link_name: str = DEFAULT_LINK) -> dict:
+               link_name: str = DEFAULT_LINK, seed: int = SEED) -> dict:
     """The split that delivers most, searched rather than assumed.
 
     A fleet divided for one prompt distribution is not divided right
@@ -209,7 +215,7 @@ def best_split(blocks: int, link: float, rate: float = RATE,
     for prefill in range(1, fleet):
         r = one_split(blocks, prefill, link, rate=rate,
                       prompt_mean=prompt_mean, fleet=fleet,
-                      link_name=link_name)
+                      link_name=link_name, seed=seed)
         if best is None or r["tokens_per_s"] > best["tokens_per_s"]:
             best = r
     return best
@@ -235,6 +241,33 @@ def fleet_sweep(blocks: int, link: float) -> list[dict]:
     return rows
 
 
+def head_to_head(blocks: int, link: float) -> dict:
+    """The comparison the chapter exists for, run at several seeds.
+
+    The two designs come out within a couple of per cent of each other,
+    which is close enough that one arrival stream can put either in
+    front. A single run would report whichever way that one landed as
+    the finding. So the same comparison is made on
+    `len(SEEDS)` independent streams and the margin is reported with
+    its range, which is the only honest way to state a difference this
+    small.
+    """
+    rows = []
+    for seed in SEEDS:
+        co = colocated(blocks, seed=seed)
+        bs = best_split(blocks, link, seed=seed)
+        rows.append({"seed": seed, "colocated": co, "best_split": bs,
+                     "colocated_over_split":
+                         co["tokens_per_s"] / bs["tokens_per_s"] - 1})
+    gains = sorted(r["colocated_over_split"] for r in rows)
+    return {"rows": rows, "seeds": list(SEEDS),
+            "gain_median": gains[len(gains) // 2],
+            "gain_low": gains[0], "gain_high": gains[-1],
+            "gain_spans_zero": gains[0] <= 0.0 <= gains[-1],
+            "splits_chosen": sorted({r["best_split"]["prefill_workers"]
+                                     for r in rows})}
+
+
 def main() -> None:
     pool_bytes = GPU_BYTES - WEIGHT_BYTES
     blocks = int(pool_bytes // (BLOCK_SIZE * KV_BYTES_PER_TOKEN))
@@ -249,6 +282,7 @@ def main() -> None:
         "splits": splits,
         "best_split": best,
         "colocated": co,
+        "head_to_head": head_to_head(blocks, link),
         "links": link_sweep(blocks, best["prefill_workers"]),
         "prompts": prompt_sweep(blocks, link),
         "long_prompts": [
@@ -262,6 +296,7 @@ def main() -> None:
             "kv_bytes_per_token": KV_BYTES_PER_TOKEN,
             "max_batch": MAX_BATCH, "token_budget": TOKEN_BUDGET,
             "n_requests": N_REQUESTS, "rate": RATE, "seed": SEED,
+            "seeds": list(SEEDS),
             "prompt_mean": PROMPT_MEAN, "output_mean": OUTPUT_MEAN,
             "warm_fraction": WARM_FRACTION,
             "context": CONTEXT_TOKENS,

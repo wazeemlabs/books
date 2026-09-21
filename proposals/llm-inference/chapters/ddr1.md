@@ -121,12 +121,16 @@ its whole cache restored before it can take a single step and sits in
 the queue until that is possible. The arithmetic measured one event.
 The system measured the shape of the re-entry, and they disagreed.
 
-**A few per cent of throughput is a machine.** The colocated fleet
-beat the best disaggregated split of the same hardware by
-{{colocated_gain_pct}}, which sounds like nothing. At this load it is
-the difference between a fleet that keeps up and one that does not,
-and a fleet that does not keep up is one that needs another machine.
-A percentage measured near a saturation point is not a small number.
+**A few per cent is not a result.** The colocated fleet first came
+out ahead of the best disaggregated split of the same hardware by
+three per cent, and that number went into an earlier version of this
+record as a reason to prefer it. It was not a reason. Re-run on four
+times the traffic and on three independent arrival streams, the margin
+is {{colocated_gain_pct}} and lands on both sides of zero. The right
+conclusion was available either way -- colocating is no worse and
+needs no network -- but it was nearly reached through a number that
+was not there. Any margin close to the run-to-run spread has to be
+measured more than once before it is allowed to decide anything.
 
 ### How many machines
 

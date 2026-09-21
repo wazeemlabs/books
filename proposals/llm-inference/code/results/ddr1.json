@@ -1,18 +1,18 @@
 {
   "provenance": {
-    "measured_utc": "2026-09-20T15:46:11Z",
+    "measured_utc": "2026-09-21T08:37:11Z",
     "hardware": {
-      "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
-      "cores_available": 4,
+      "cpu": "Apple M4 Max",
+      "cores_available": 16,
       "gpu": null
     },
     "software": {
-      "python": "3.11.15",
-      "numpy": "2.4.6",
-      "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
-      "blas": "scipy-openblas"
+      "python": "3.14.7",
+      "numpy": "2.5.3",
+      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "blas": "accelerate"
     },
-    "commit": "f2936fa"
+    "commit": "2a7c34f"
   },
   "decisions": [
     {
@@ -52,13 +52,13 @@
       "decision": "Continuous batching: decide the batch every iteration",
       "instead_of": "a static batch formed on a timeout",
       "chapter": "ch17",
-      "because": "1.9x the throughput, and a median first token 1,568x sooner, at the same 12 requests a second on the same memory",
+      "because": "1.9x the throughput, and a median first token 8,659x sooner, at the same 12 requests a second on the same memory",
       "evidence": {
-        "tokens/s, static": 1637.2803542838615,
-        "tokens/s, continuous": 3080.7512540928838,
-        "TTFT p50 ms, static": 31471.603440563973,
-        "TTFT p50 ms, continuous": 20.064846526455682,
-        "slots holding live work, static": 0.2941036871186529,
+        "tokens/s, static": 1787.5654794356412,
+        "tokens/s, continuous": 3433.470714648767,
+        "TTFT p50 ms, static": 193363.06099611876,
+        "TTFT p50 ms, continuous": 22.331573404841265,
+        "slots holding live work, static": 0.2895724002026612,
         "slots holding live work, continuous": 1.0
       },
       "would_change": "nothing in this book. Static batching lost on every measure at every rate tried"
@@ -67,23 +67,20 @@
       "decision": "Chunked prefill, with a 512-token per-iteration budget",
       "instead_of": "giving a prefill an iteration of its own, or choosing a larger budget",
       "chapter": "ch18",
-      "because": "of the budgets that keep both promises at 24 requests a second, this one has the highest throughput (5,586 tokens a second) and the lowest wait between tokens (8.4 ms at the 99th percentile)",
+      "because": "of the budgets that keep both promises at 24 requests a second, this one has the highest throughput (6,764 tokens a second) and the lowest wait between tokens (9.4 ms at the 99th percentile)",
       "evidence": {
         "budgets that keep both promises": [
           512,
           1024,
-          2048,
-          4096,
-          8192,
-          16384
+          2048
         ],
-        "tokens/s, prefill on its own iteration": 5374.430208450273,
-        "tokens/s, this budget": 5586.321260709005,
-        "between-token p99 ms, prefill on its own iteration": 114.01581714493905,
-        "between-token p99 ms, this budget": 8.406605946268657,
-        "between-token p99 ms, largest budget tried": 42.47632827733333,
-        "TTFT p99 ms, this budget": 115.99563821162842,
-        "TTFT p99 ms, next budget down": 1476.1378014209572,
+        "tokens/s, prefill on its own iteration": 6664.794129908763,
+        "tokens/s, this budget": 6764.39565266715,
+        "between-token p99 ms, prefill on its own iteration": 185.89756659382553,
+        "between-token p99 ms, this budget": 9.437888267462686,
+        "between-token p99 ms, largest budget tried": 50.15109221572525,
+        "TTFT p99 ms, this budget": 259.0950397226544,
+        "TTFT p99 ms, next budget down": 20057.55052227477,
         "between-token promise, ms": 50,
         "first-token promise, ms": 1000
       },
@@ -93,32 +90,32 @@
       "decision": "First come, first served, with no priority tiers",
       "instead_of": "shortest job first, or longest job first",
       "chapter": "ch18",
-      "because": "with the memory this service has, the queue order is worth 0.2% of the median end-to-end time, and the simplest order is the one that needs no estimate of how long a reply will be",
+      "because": "with the memory this service has, the queue order is worth 0.7% of the median end-to-end time, and the simplest order is the one that needs no estimate of how long a reply will be",
       "evidence": {
-        "end-to-end p50 s, FCFS, full pool": 1.8823102843593125,
-        "end-to-end p50 s, shortest first, full pool": 1.8779498725904435,
-        "end-to-end p50 s, FCFS, squeezed pool": 26.867889097399853,
-        "end-to-end p50 s, shortest first, squeezed pool": 2.465140051818959,
-        "worst slowdown, FCFS, squeezed pool": 253.05957216700378,
-        "worst slowdown, shortest first, squeezed pool": 18.747315179530062,
+        "end-to-end p50 s, FCFS, full pool": 1.941352787478106,
+        "end-to-end p50 s, shortest first, full pool": 1.9283420331812025,
+        "end-to-end p50 s, FCFS, squeezed pool": 48.804181270336,
+        "end-to-end p50 s, shortest first, squeezed pool": 2.132495914577504,
+        "worst slowdown, FCFS, squeezed pool": 460.64976363024175,
+        "worst slowdown, shortest first, squeezed pool": 61.07347843902395,
         "squeezed pool, GB": 1.91889408,
         "full pool, GB": 63.99459328
       },
-      "would_change": "running the pool near full. Squeezed, shortest first is 10.9x better on the median and 13.5x better on the worst slowdown, and this decision flips"
+      "would_change": "running the pool near full. Squeezed, shortest first is 22.9x better on the median and 7.5x better on the worst slowdown, and this decision flips"
     },
     {
       "decision": "Preempt by recomputing, not by swapping the cache out to host memory",
       "instead_of": "copying an evicted cache out over PCIe and back",
       "chapter": "ch18",
-      "because": "1.25x the throughput, although recomputing loses every individual comparison: one 1,500-token sequence costs 23.8 ms to recompute against 6.1 ms to copy",
+      "because": "1.00x the throughput, although recomputing loses every individual comparison: one 1,500-token sequence costs 23.8 ms to recompute against 6.1 ms to copy",
       "evidence": {
-        "tokens/s, recompute": 2738.1278498589963,
-        "tokens/s, swap over PCIe 5.0": 2181.8494010160475,
-        "tokens/s, swap over NVLink": 2222.8394726844663,
-        "sequences in flight, recompute": 18.27089936608558,
-        "sequences in flight, swap": 12.56784165617569,
-        "TTFT p99 ms, recompute": 11695.598366858163,
-        "TTFT p99 ms, swap over PCIe 5.0": 24381.887379020824,
+        "tokens/s, recompute": 3435.442676265699,
+        "tokens/s, swap over PCIe 5.0": 3435.450826608794,
+        "tokens/s, swap over NVLink": 3435.4338829015655,
+        "sequences in flight, recompute": 22.109701340759397,
+        "sequences in flight, swap": 21.95143267369998,
+        "TTFT p99 ms, recompute": 10419.598894073426,
+        "TTFT p99 ms, swap over PCIe 5.0": 32027.034835823466,
         "one sequence, recompute ms": 23.848748993939395,
         "one sequence, PCIe 5.0 ms": 6.144,
         "link fast enough to break even, GB/s": 16.48790886683099
@@ -127,19 +124,19 @@
     },
     {
       "decision": "One fleet where every machine does both phases",
-      "instead_of": "splitting the same fleet into 4 prefill machines and 8 decode machines",
+      "instead_of": "splitting the same fleet into 5 prefill machines and 7 decode machines",
       "chapter": "ch19",
-      "because": "1.03x the throughput on identical hardware, a first token 3.5x faster at the 99th percentile, and a second token that does not wait for a cache to cross a network",
+      "because": "1.01x the throughput on identical hardware, a first token 1.1x faster at the 99th percentile, and a second token that does not wait for a cache to cross a network",
       "evidence": {
-        "tokens/s, colocated": 57861.484750705364,
-        "tokens/s, best split": 56065.58997667765,
-        "tokens/s the traffic asks for": 59602.7,
+        "tokens/s, colocated": 59853.20330561738,
+        "tokens/s, best split": 59490.878074806074,
+        "tokens/s the traffic asks for": 58592.8,
         "keeps up, colocated": true,
-        "keeps up, best split": false,
-        "TTFT p99 ms, colocated": 77.35234792445934,
-        "TTFT p99 ms, best split": 266.9159532170727,
-        "second token p50 ms, colocated": 6.492406982686568,
-        "second token p50 ms, best split": 9.976144238806407,
+        "keeps up, best split": true,
+        "TTFT p99 ms, colocated": 73.03713146907675,
+        "TTFT p99 ms, best split": 82.92115874371518,
+        "second token p50 ms, colocated": 6.707423751641791,
+        "second token p50 ms, best split": 11.522539520000807,
         "link": "InfiniBand NDR"
       },
       "would_change": "hardware that differs by phase, or a promise tight enough that one fleet has to over-provision to keep it. Neither is true here, and this is the decision in this record most likely to be wrong for a service that is not this one"
@@ -155,10 +152,10 @@
       63.99459328
     ],
     "order_preemptions_full": 0,
-    "order_preemptions_squeezed": 1324,
+    "order_preemptions_squeezed": 3502,
     "preemptions_at_full_pool": 0,
     "largest_pool_share_that_preempts": 0.1,
-    "preemptions_there": 3,
+    "preemptions_there": 95,
     "block_size_pools": 1
   },
   "sizing": [

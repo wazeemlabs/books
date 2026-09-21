@@ -40,7 +40,7 @@ from tinyserve.cost import flops_forward
 from tinyserve.reference import MODEL
 from tinyserve.serving import decode_step, mixed_step, prefill_step
 
-from .harness import pct, write
+from .harness import pct, steady_state, write
 
 # The case study's traffic shape (STANDARDS.md section 7).
 PROMPT_MEAN, PROMPT_CV = 1200, 0.6
@@ -49,7 +49,12 @@ MAX_OUTPUT = 1024
 
 RATE = 12                      # requests a second, Chapter 17's head-to-head
 RATE_HIGH = 24                 # where Chapter 17's tail broke the promise
-N_REQUESTS = 600
+# Long enough for the queue to fill at the harder of the two rates.
+# At 600 the tail was still building when the run ended and the wait
+# for a first token came out about half what it settles at; `settling`
+# below records the check, and Chapter 41 explains why it is needed.
+N_REQUESTS = 4_800
+SETTLING_KEYS = ["ttft_p99_ms", "itl_p99_ms", "tokens_per_s", "total_p99_s"]
 MAX_BATCH = 256
 SEED = 0
 BUDGETS = [128, 256, 512, 1024, 2048, 4096, 8192, 16384]
@@ -282,6 +287,22 @@ def preemption(blocks: int, budget: int) -> list[dict]:
     return rows
 
 
+def settling(blocks: int, budget: int, rate: float) -> dict:
+    """Evidence that `N_REQUESTS` is long enough to have an answer.
+
+    A tail latency read off a queue that is still filling is too good,
+    and nothing about the run says so. This measures the chapter's own
+    configuration twice, at `N_REQUESTS` and at twice that, and records
+    how far each number moved.
+    """
+    def run(n: int) -> dict:
+        reqs = make_requests(n, rate, np.random.default_rng(SEED))
+        trace = serve_chunked(reqs, max_batch=MAX_BATCH, blocks=blocks,
+                              token_budget=budget)
+        return summarize(trace, blocks, token_budget=budget, rate=rate)
+    return steady_state(run, N_REQUESTS, SETTLING_KEYS)
+
+
 def main() -> None:
     pool_bytes = GPU_BYTES - WEIGHT_BYTES
     blocks = int(pool_bytes // (BLOCK_SIZE * KV_BYTES_PER_TOKEN))
@@ -303,6 +324,7 @@ def main() -> None:
         "budgets": low,
         "budgets_high": high,
         "chosen_budget": chosen,
+        "settling": settling(blocks, chosen, RATE_HIGH),
         "policies": policy_sweep(blocks, chosen, RATE_HIGH),
         "preemption": preemption(blocks, chosen),
         "swap_arithmetic": swap_arithmetic(),
@@ -317,6 +339,7 @@ def main() -> None:
             "blocks": blocks, "block": BLOCK_SIZE, "pool_bytes": pool_bytes,
             "kv_bytes_per_token": KV_BYTES_PER_TOKEN,
             "max_batch": MAX_BATCH, "n_requests": N_REQUESTS,
+            "settling_keys": SETTLING_KEYS,
             "rate": RATE, "rate_high": RATE_HIGH,
             "context": CONTEXT_TOKENS, "seed": SEED,
             "prompt_mean": PROMPT_MEAN, "output_mean": OUTPUT_MEAN,

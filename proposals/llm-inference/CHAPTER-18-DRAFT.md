@@ -29,8 +29,8 @@ Chapter 17 ended with one number going the wrong way.
 Deciding the batch at every iteration won on throughput, on the wait
 for a first token, on memory and on end-to-end time — and lost on the
 wait *between* tokens, whose 99th percentile rose to
-41.5 ms against a 7.1 ms floor, and to
-114 ms once the traffic reached 24 requests a
+52.0 ms against a 7.9 ms floor, and to
+186 ms once the traffic reached 24 requests a
 second. At that rate it breaks the case study's promise of
 50 ms between words.
 
@@ -160,7 +160,7 @@ how much), and no extra bytes.
 > (`--max-num-batched-tokens`, `--chunked-prefill-size`) and not a
 > sequence count. A sequence count cannot tell a one-token decode from
 > a ten-thousand-token prompt, and the difference between those two is
-> the difference between a 7.1 ms iteration and a
+> the difference between a 7.9 ms iteration and a
 > 159 ms one.
 
 ## Choosing the budget
@@ -184,30 +184,30 @@ the promise.
 <!-- include: tables/ch18-budget.md -->
 | Token budget | Tokens/s | TTFT p50 | TTFT p99 | Between tokens, p50 | Between tokens, p99 | Iterations carrying prefill | Keeps |
 |---|---|---|---|---|---|---|---|
-| _prefill alone_ | 5,374 | 25 ms | 96 ms | 10.5 ms | 114.0 ms | 18% | TTFT only |
-| 128 | 3,721 | 7.6 s | 16.5 s | 6.2 ms | 6.6 ms | 87% | between-token only |
-| 256 | 5,384 | 211 ms | 1.5 s | 7.2 ms | 8.2 ms | 72% | between-token only |
-| **512** | 5,586 | 35 ms | 116 ms | 7.9 ms | 8.4 ms | 39% | both |
-| 1,024 | 5,536 | 30 ms | 104 ms | 8.4 ms | 16.5 ms | 26% | both |
-| 2,048 | 5,506 | 27 ms | 107 ms | 8.8 ms | 33.1 ms | 19% | both |
-| 4,096 | 5,499 | 27 ms | 108 ms | 8.9 ms | 42.5 ms | 17% | both |
-| 8,192 | 5,499 | 27 ms | 103 ms | 8.9 ms | 42.5 ms | 17% | both |
-| 16,384 | 5,499 | 27 ms | 103 ms | 8.9 ms | 42.5 ms | 17% | both |
+| _prefill alone_ | 6,665 | 33 ms | 402 ms | 17.3 ms | 185.9 ms | 36% | TTFT only |
+| 128 | 3,886 | 77.1 s | 153.3 s | 6.2 ms | 6.6 ms | 98% | between-token only |
+| 256 | 6,163 | 10.3 s | 20.1 s | 7.4 ms | 8.0 ms | 96% | between-token only |
+| **512** | 6,764 | 42 ms | 259 ms | 8.0 ms | 9.4 ms | 57% | both |
+| 1,024 | 6,754 | 35 ms | 160 ms | 9.4 ms | 17.0 ms | 42% | both |
+| 2,048 | 6,746 | 32 ms | 132 ms | 10.3 ms | 33.1 ms | 32% | both |
+| 4,096 | 6,744 | 32 ms | 130 ms | 10.5 ms | 50.2 ms | 30% | TTFT only |
+| 8,192 | 6,744 | 32 ms | 128 ms | 10.5 ms | 50.2 ms | 30% | TTFT only |
+| 16,384 | 6,744 | 32 ms | 128 ms | 10.5 ms | 50.2 ms | 30% | TTFT only |
 
-600 requests at a rate of 24 a second (seed 0), the rate at which the previous chapter's scheduler stopped keeping its promise. The first row is that scheduler: a prefill gets an iteration to itself. Every row below mixes prefill into the same iteration as the decodes, splitting it when it does not fit in the budget. "Keeps" is against the case study's p99 promises: 1,000 ms to the first token and 50 ms between them.
+4800 requests at a rate of 24 a second (seed 0), the rate at which the previous chapter's scheduler stopped keeping its promise. The first row is that scheduler: a prefill gets an iteration to itself. Every row below mixes prefill into the same iteration as the decodes, splitting it when it does not fit in the budget. "Keeps" is against the case study's p99 promises: 1,000 ms to the first token and 50 ms between them.
 
 Read the first row and then the row marked in bold, because between
 them they contain the chapter.
 
 The first row is Chapter 17's scheduler: a prefill gets
-an iteration to itself. 5,374 tokens a second, and
-114 ms between tokens at the 99th percentile — more than twice
+an iteration to itself. 6,665 tokens a second, and
+186 ms between tokens at the 99th percentile — more than twice
 the 50 ms promise. **It fails.**
 
 The bold row is a stall-free schedule with a 512-token budget.
-5,586 tokens a second — 1.04x the throughput, not
-less — with 8.4 ms between tokens, **14x better**,
-and 116 ms to the first token. It keeps both promises. There
+6,764 tokens a second — 1.01x the throughput, not
+less — with 9.4 ms between tokens, **20x better**,
+and 259 ms to the first token. It keeps both promises. There
 is no trade against the previous chapter here at all: it is better on
 every column.
 
@@ -222,30 +222,38 @@ Yi-34B on two, against vLLM.
 The trade that *does* exist is inside the sweep, between the rows:
 
 **Too small and the prompts cannot keep up.** At 128
-tokens, 87% of all iterations are carrying prefill and it
-still is not enough: the wait for a first token reaches
-16.5 s at the 99th percentile and throughput falls to
-3,721. Once the decoding sequences alone consume the budget,
+tokens, 98% of all iterations are carrying prefill and it
+still is not enough: throughput falls to 3,886, against the
+7,200 the traffic is offering. A server producing less than
+it is asked for has a queue that grows for as long as the traffic
+lasts, so the 153.3 s this run reports for the 99th
+percentile wait is a number about how long the run was rather than
+about the server — Chapter 41 shows how to tell.
+Once the decoding sequences alone consume the budget,
 there is nothing left for prefill at all, and new work simply stops
 being admitted. A budget smaller than your steady-state batch is not a
 conservative setting; it is a stall of a different kind.
 
-**Too large and you are back where you started.** At
-16,384 tokens, an entire 1,200-token prompt fits
-in one iteration, so it is never split, and the between-token p99
-returns to 42.5 ms — near the previous chapter's
-114 ms. The knob is doing nothing because nothing ever exceeds
-it.
+**Too large and the knob stops doing anything.** At
+16,384 tokens an entire 1,200-token prompt fits
+in one iteration, so it is never split, and the between-token p99 is
+50.2 ms — better than the previous chapter's 186 ms,
+because the prompt now rides along with the decodes instead of
+displacing them, and over the 50 ms promise all the same. A
+budget nothing ever exceeds is not a budget.
 
-**And the middle is wide.** Every budget from 512 up keeps both
-promises at this load; 512 is simply the one that delivers most.
-Throughput varies by a few per cent across the whole range, which is
-the right way round: the knob controls latency, and you can turn it
-without watching the throughput graph.
+**And the middle is narrow.** Exactly 3 of the
+budgets keep both promises at this load, 512 to
+2,048; by 4,096 the between-token p99 has
+crossed the promise, and 512 is the one of the three that
+delivers most. Throughput varies by a few per cent across the whole
+range, which is the right way round: the knob controls latency, and
+you can turn it without watching the throughput graph. What it does
+not give you is a default you can leave alone.
 
 At the lighter load of 12 requests a second the same budget gives
-3,084 tokens a second at 8.3 ms between tokens,
-against 3,081 and 41.5 ms for the previous
+3,435 tokens a second at 8.3 ms between tokens,
+against 3,433 and 52.0 ms for the previous
 chapter's scheduler. Same conclusion, more headroom.
 
 ## Who goes first
@@ -264,14 +272,14 @@ The answer, on this traffic, is a useful surprise.
 <!-- include: tables/ch18-policy.md -->
 | Block pool | Queue order | End to end p50 | End to end p99 | Slowdown p50 | Slowdown p99 | Worst slowdown | Tokens/s |
 |---|---|---|---|---|---|---|---|
-| 64 GB (full) | `fcfs` | 1.88 s | 7.99 s | **1.6x** | 2x | 2x | 5,586 |
-| 64 GB (full) | `shortest-output` | 1.88 s | 8.00 s | **1.6x** | 2x | 2x | 5,585 |
-| 64 GB (full) | `longest-output` | 1.89 s | 7.98 s | **1.6x** | 2x | 3x | 5,587 |
-| 1.9 GB (squeezed) | `fcfs` | 26.87 s | 38.62 s | **18.7x** | 111x | 253x | 2,686 |
-| 1.9 GB (squeezed) | `shortest-output` | 2.47 s | 54.65 s | **2.5x** | 18x | 19x | 2,822 |
-| 1.9 GB (squeezed) | `longest-output` | 40.80 s | 63.67 s | **35.0x** | 236x | 411x | 2,683 |
+| 64 GB (full) | `fcfs` | 1.94 s | 8.28 s | **1.7x** | 2x | 3x | 6,764 |
+| 64 GB (full) | `shortest-output` | 1.93 s | 8.33 s | **1.7x** | 2x | 2x | 6,764 |
+| 64 GB (full) | `longest-output` | 1.94 s | 8.27 s | **1.7x** | 2x | 9x | 6,764 |
+| 1.9 GB (squeezed) | `fcfs` | 48.80 s | 59.18 s | **38.4x** | 200x | 461x | 5,746 |
+| 1.9 GB (squeezed) | `shortest-output` | 2.13 s | 189.23 s | **1.9x** | 53x | 61x | 5,836 |
+| 1.9 GB (squeezed) | `longest-output` | 83.62 s | 245.02 s | **80.2x** | 831x | 1750x | 5,249 |
 
-The same 600 requests at 24 a second through three queue orders, twice: once with the whole block pool and once with it squeezed to 3% of it. Slowdown is how much longer a request took than it would have taken alone on an idle server -- the fairness number, and the one that moves. `shortest-output` and `longest-output` sort by the true reply length, which a real server does not know; they are the best and worst a perfect oracle could do.
+The same 4800 requests at 24 a second through three queue orders, twice: once with the whole block pool and once with it squeezed to 3% of it. Slowdown is how much longer a request took than it would have taken alone on an idle server -- the fairness number, and the one that moves. `shortest-output` and `longest-output` sort by the true reply length, which a real server does not know; they are the best and worst a perfect oracle could do.
 
 **With the whole 64 GB pool, the order changes nothing.** The
 three policies finish the median request within 0.7% of each
@@ -288,24 +296,24 @@ headroom, measure nothing, and conclude the feature does not work.
 decides everything.** Now there is a queue, and:
 
 - First-come-first-served finishes the median request in
-  26.9 s and stretches the unluckiest request to
-  253 times what it would have taken alone.
-- Shortest-output-first finishes the median in 2.5 s —
-  **11x faster** — and, far more strikingly, holds the
-  worst slowdown to 19x against FCFS's
-  253x. It even delivers slightly more tokens a second
-  (2,822 against 2,686), because short requests
+  48.8 s and stretches the unluckiest request to
+  461 times what it would have taken alone.
+- Shortest-output-first finishes the median in 2.1 s —
+  **23x faster** — and, far more strikingly, holds the
+  worst slowdown to 61x against FCFS's
+  461x. It even delivers slightly more tokens a second
+  (5,836 against 5,746), because short requests
   release their memory sooner.
 - Longest-output-first — the same oracle used backwards, included to
   bound the damage a bad policy can do — pushes the median to
-  40.8 s and the worst slowdown to 411x.
+  83.6 s and the worst slowdown to 1750x.
 
 <!-- defines: shortest-job-first -->Preferring the shortest work is
 **shortest-job-first**, and it is one of the oldest results in
 scheduling: it minimises the average wait. The table shows both why it
 is tempting and what it costs. Look at the end-to-end p99 column, not
-the slowdown one: shortest-output-first takes it from 38.6 s
-to 54.6 s, **1.4x worse**. The long requests are
+the slowdown one: shortest-output-first takes it from 59.2 s
+to 189.2 s, **3.2x worse**. The long requests are
 not slowed relative to their own size — their slowdown is much better
 — but in wall-clock seconds they wait longer, because everything short
 keeps arriving and going in front of them.
@@ -370,19 +378,19 @@ Now run it.
 <!-- include: tables/ch18-preemption.md -->
 | Way out of a full pool | Tokens/s | Sequences in flight | Preemptions | Prompt tokens read | Copied | Time copying | TTFT p99 |
 |---|---|---|---|---|---|---|---|
-| recompute | **2,738** | 18.3 | 1,163 | 3.04x over | 0 GB | 0.00 s | 11.7 s |
-| swap over PCIe 4.0 x16 | **2,139** | 12.6 | 357 | 1.00x over | 52 GB | 3.28 s | 26.0 s |
-| swap over PCIe 5.0 x16 | **2,182** | 12.6 | 357 | 1.00x over | 52 GB | 1.64 s | 24.4 s |
-| swap over NVLink (H100) | **2,223** | 12.6 | 357 | 1.00x over | 52 GB | 0.12 s | 22.9 s |
+| recompute | **3,435** | 22.1 | 1,601 | 1.36x over | 0 GB | 0.00 s | 10.4 s |
+| swap over PCIe 4.0 x16 | **3,435** | 22.5 | 1,532 | 1.00x over | 245 GB | 15.30 s | 35.4 s |
+| swap over PCIe 5.0 x16 | **3,435** | 22.0 | 1,442 | 1.00x over | 230 GB | 7.18 s | 32.0 s |
+| swap over NVLink (H100) | **3,435** | 21.5 | 1,361 | 1.00x over | 216 GB | 0.48 s | 28.9 s |
 
 A 1.9 GB pool (3% of the accelerator's free memory) at 12 requests a second, small enough that the server has to take sequences back out of the batch. Recomputing throws the evicted cache away; swapping copies it to host memory and back across the named link.
 
-Recomputing delivers 2,738 tokens a second. Swapping over PCIe
-5.0 delivers 2,182 — **1.25x worse** — and its p99
-wait for a first token is 24.4 s against 11.7 s,
-2.1x worse. Recomputing wins the system even though it
+Recomputing delivers 3,435 tokens a second. Swapping over PCIe
+5.0 delivers 3,435 — **1.00x worse** — and its p99
+wait for a first token is 32.0 s against 10.4 s,
+3.1x worse. Recomputing wins the system even though it
 loses every individual event, and it wins while re-reading every prompt
-3.04x over.
+1.36x over.
 
 The explanation is in the "sequences in flight" column, and it is a
 lesson about scheduling rather than about bandwidth.
@@ -419,13 +427,13 @@ def _evict(trace: Trace, pool: Pool, decoding: list[Request],
 A **recomputed** sequence comes back empty. It re-enters through the
 chunked prefill path, taking its memory a few hundred tokens at a time,
 so the pool refills gradually and other sequences keep finishing in the
-meantime. The batch stays at 18.3 sequences.
+meantime. The batch stays at 22.1 sequences.
 
 A **swapped** sequence comes back *whole*. It needs its entire cache
 restored in one go before it can take a single step, and in a pool that
 is already full there is rarely room. So it waits, and while it waits
 it is holding a place in the queue: the batch falls to
-12.6 — 1.5x smaller — and a smaller batch is
+22.0 — 1.0x smaller — and a smaller batch is
 exactly what Chapter 16 said costs throughput.
 
 Throwing the work away turns out to be a form of backpressure. The
@@ -443,7 +451,7 @@ better (zero over head) and therefore on by default, the preemption and
 recompute strategy should work better."
 
 The number that actually matters is neither: it is the preemption count
-itself. 1,163 preemptions in 600 requests means the
+itself. 1,601 preemptions in 4,800 requests means the
 pool is too small, and no choice of eviction mechanism fixes that.
 
 ## Where this is soft
@@ -507,9 +515,10 @@ confirmation of it.
   you have a p99 between-token promise, that advice is not for you;
   sweep it against your own SLO, which takes an afternoon.
 - **Sweep the budget at the load you are worried about, not at an easy
-  one.** At 12 requests a second in our sweep, every budget
-  passed. The budget only revealed itself as a decision at
-  24.
+  one.** At 12 requests a second in our sweep, 7
+  of the budgets passed and only 128 failed. At
+  24 the passing range narrows to 3, and
+  the knob turns into a decision.
 - **Leave the queue order alone until there is a queue.** Check
   `vllm:num_requests_waiting` first. If it is near zero, a scheduling
   policy cannot help you and a bigger pool or more replicas can.
@@ -530,15 +539,15 @@ confirmation of it.
 | Quantity | Value |
 |---|---|
 | One 8,192-token prompt landing in your reply | 165 ms of silence, whole; 9.9 ms chunked (17x) |
-| Prefill of the case study's 1,200-token prompt | 19 ms, against a 7.1 ms decode step |
-| Stall-free against prefill-alone, at 24 req/s | 5,374 → 5,586 tok/s, between-token p99 114 ms → 8.4 ms |
+| Prefill of the case study's 1,200-token prompt | 19 ms, against a 7.9 ms decode step |
+| Stall-free against prefill-alone, at 24 req/s | 6,665 → 6,764 tok/s, between-token p99 186 ms → 9.4 ms |
 | The budget that did it | 512 tokens an iteration |
-| Budget too small (128) | first token p99 16.5 s, throughput 3,721 |
-| Budget too large (16,384) | between-token p99 back to 42.5 ms |
+| Budget too small (128) | first token p99 153.3 s, throughput 3,886 |
+| Budget too large (16,384) | between-token p99 back to 50.2 ms |
 | Queue order, pool with headroom | changes the median by 0.7% |
-| Queue order, pool squeezed to 3% | FCFS 26.9 s → shortest-first 2.5 s (11x), p99 1.4x worse |
+| Queue order, pool squeezed to 3% | FCFS 48.8 s → shortest-first 2.1 s (23x), p99 3.2x worse |
 | Recompute or swap, one 1,500-token sequence | 24 ms against 6.1 ms; they tie at 16 GB/s |
-| Recompute or swap, the whole server | 2,738 against 2,182 tok/s — the cheaper event lost |
+| Recompute or swap, the whole server | 3,435 against 3,435 tok/s — the cheaper event lost |
 
 ## Sources
 
@@ -572,7 +581,7 @@ Figure 18.1.
 
 **★ 18.2** The table shows throughput almost flat from 512 to
 16,384 tokens, while the between-token p99 rises from
-8.4 ms to 42.5 ms over the same range. A colleague
+9.4 ms to 50.2 ms over the same range. A colleague
 proposes 16,384 "for throughput". Write the two-sentence
 reply.
 
@@ -585,13 +594,13 @@ explain why the p99 behaves the way it does.
 predictor that does not cheat: estimate the output length from the
 prompt alone (its length, or a keyword), with whatever accuracy you can
 get, and measure how much of shortest-output-first's
-11x median improvement survives. At what accuracy does it
+23x median improvement survives. At what accuracy does it
 stop being worth having?
 
 **★★★ 18.5** Swapping lost because a swapped sequence needs its whole
 cache back at once. Implement *chunked* swap-in: bring the cache back
 a few blocks at a time so the sequence can re-enter gradually, as a
-recomputed one does. Does it recover the 1.25x gap? Then
+recomputed one does. Does it recover the 1.00x gap? Then
 add a prefix cache to the recompute path and re-run both. Which one is
 the default you would ship, and what property of your traffic decides
 it?

@@ -1231,6 +1231,84 @@ def ch29_reference(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch32_shapes(d: dict) -> str:
+    """What an exact-match cache hits, and what folding the question adds."""
+    a = d["assumptions"]
+    out = ["| Traffic | What the key folds | Distinct keys | Hit rate | "
+           "Served wrong |", "|---|---|---|---|---|"]
+    for r in d["exact"]:
+        wrong = ("none" if not r["wrong_hits"]
+                 else f"**{r['wrong_rate'] * 100:.2f}%**")
+        out.append(f"| {r['shape']} | {r['normalizer']} "
+                   f"| {r['distinct_keys']:,} | {r['hit_rate'] * 100:.1f}% "
+                   f"| {wrong} |")
+    ag = d["agent_shape"]
+    out += ["", f"One day of traffic over a catalogue of {a['catalogue']:,} "
+                f"distinct questions asked with a Zipf skew of "
+                f"{a['zipf_s']}, seed {a['seed']}: {a['n_faq']:,} single-turn "
+                f"requests, {a['chat_sessions']:,} conversations averaging "
+                f"{a['chat_turns_mean']} turns, and {a['agent_sessions']:,} "
+                f"agent tasks of {a['agent_steps']} steps each. Only "
+                f"{ag['first_step_share'] * 100:.0f}% of the agent requests "
+                f"are the first step of a task; every later one carries a "
+                f"transcript no other session has produced, so it cannot "
+                f"repeat. Folding case and punctuation is free. Dropping "
+                f"function words is not: it makes \"is this covered\" and "
+                f"\"is this not covered\" the same key."]
+    return "\n".join(out)
+
+
+def ch32_keys(d: dict) -> str:
+    """What each field left out of the key buys, and costs."""
+    a = d["assumptions"]
+    out = ["| Traffic | What the key holds | Hit rate | Served wrong | "
+           "Of the hits |", "|---|---|---|---|---|"]
+    for r in d["keys"]:
+        wrong = ("none" if not r["wrong_hits"]
+                 else f"**{r['wrong_rate'] * 100:.1f}%**")
+        share = ("--" if not r["wrong_hits"]
+                 else f"{r['wrong_share_of_hits'] * 100:.0f}%")
+        out.append(f"| {r['shape']} | {r['key']} | {r['hit_rate'] * 100:.1f}% "
+                   f"| {wrong} | {share} |")
+    out += ["", f"The same traffic, keyed four ways, with case and "
+                f"punctuation folded in all of them. "
+                f"{len(a['tenants'])} customers share the service "
+                f"({', '.join(f'{w:.0%}' for w in a['tenant_weights'])} of "
+                f"the traffic); the answer to a policy question depends on "
+                f"which of them asked. Every shorter key raises the hit "
+                f"rate, which is what makes it tempting. \"Served wrong\" "
+                f"is the share of all requests answered with something other "
+                f"than what the model would have said."]
+    return "\n".join(out)
+
+
+def ch32_worth(d: dict) -> str:
+    """What a hit is worth, on Chapter 18's scheduler."""
+    w, a = d["worth"], d["assumptions"]
+    out = ["| In front of the model | Requests a second a machine | "
+           f"Machines for {a['requests_per_s']} a second | Dollars an hour | "
+           "First token p99 at capacity |", "|---|---|---|---|---|"]
+    for name in ("no cache", "prefix cache", "response cache"):
+        cap = w["capacity"][name]
+        row = next(r for r in w["sweeps"][name] if r["arriving_per_s"] == cap)
+        out.append(f"| {name} | {cap:.0f} | {w['fleet'][name]} "
+                   f"| ${w['usd_per_hour'][name]:,.2f} "
+                   f"| {row['ttft_p99_ms']:,.0f} ms |")
+    out += ["", f"The machine of Chapter 41, measured the same way: every "
+                f"offered load run at {a['n_scheduled']:,} requests and "
+                f"again at twice that, and the capacity is the highest load "
+                f"whose numbers settled and which kept both promises. The "
+                f"prefix cache is Chapter 15's measured hit -- "
+                f"{w['prefix_hit_rate'] * 100:.1f}% of prompt tokens already "
+                f"computed -- and saves only the reading of them. The "
+                f"response cache hits {w['response_hit_rate'] * 100:.0f}% of "
+                f"*requests* and saves everything about them. Memory is not "
+                f"what binds here: the bare machine peaked at "
+                f"{w['peak_blocks_no_cache']:,} of {w['blocks_available']:,} "
+                f"blocks."]
+    return "\n".join(out)
+
+
 def ch41_load(d: dict) -> str:
     """What each offered load does to the server."""
     a, cap = d["assumptions"], d["capacity"]
@@ -1527,6 +1605,8 @@ def main() -> None:
                  ("ch42-own-or-rent", ch42_own_or_rent)),
         "ch31": (("ch31-validity", ch31_validity),
                  ("ch31-states", ch31_states), ("ch31-cost", ch31_cost)),
+        "ch32": (("ch32-shapes", ch32_shapes), ("ch32-keys", ch32_keys),
+                 ("ch32-worth", ch32_worth)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),
                  ("ddr1-would-change", ddr1_would_change),
                  ("ddr1-fleet", ddr1_fleet)),
