@@ -258,8 +258,14 @@ def main(argv: list[str]) -> None:
     dry = "--dry-run" in argv
     acc = device.require_accelerator()
     quiet = device.load()
+    contention = None
     if not dry:
         device.require_quiet_machine()
+        # And the accelerator itself. A quiet processor is not a quiet
+        # GPU: another process can own the device while every core
+        # sits idle, and the only sign of it in the numbers is a fit
+        # that will not settle.
+        contention = device.require_quiet_accelerator(acc)
 
     counts = (10, 20) if dry else COUNTS
     dispatch = dispatch_cost(acc, counts)
@@ -270,6 +276,7 @@ def main(argv: list[str]) -> None:
 
     payload = {
         "accelerator": acc,
+        "accelerator_contention": contention,
         "machine_load": quiet,
         "dispatch": dispatch,
         "sizes": sizes,
@@ -319,9 +326,11 @@ def main(argv: list[str]) -> None:
     print(f"  a {ops['layers']}-layer forward dispatches {ops['total']} "
           f"operations, {ops['work']} of which reach the GPU "
           f"({ops['work_per_layer']:.0f} a layer)")
-    print(f"  eager {fused['eager_ms']:.2f} ms, compiled "
-          f"{fused['compiled_ms']:.2f} ms, {fused['speedup']:.2f}x, "
-          f"largest difference {fused['relative_diff']:.1e} relative")
+    print(f"  one layer: eager {fused['eager_us']:.1f} us over "
+          f"{fused['work_ops_eager']} GPU operations, compiled "
+          f"{fused['compiled_us']:.1f} us ({fused['speedup']:.2f}x, "
+          f"{fused['saved_us']:.1f} us saved), largest difference "
+          f"{fused['relative_diff']:.1e} relative")
     print(f"  graph capture on this backend: "
           f"{'yes' if acc['graph_capture'] else 'no'}")
 

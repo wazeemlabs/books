@@ -17,6 +17,8 @@ number wearing a GPU label, and nothing downstream would notice.
 
 from __future__ import annotations
 
+import time
+
 import os
 import platform
 import re
@@ -241,6 +243,62 @@ def require_quiet_machine() -> dict[str, Any]:
     return now
 
 
+# How much a fixed piece of GPU work is allowed to vary between
+# repeats before the accelerator counts as contended. A quiet GPU
+# repeats a kernel to well under a per cent; a GPU shared with another
+# process does not.
+NOISY_SPREAD = 0.05
+
+
+def accelerator_contention(acc: dict[str, Any], runs: int = 9) -> dict[str, Any]:
+    """Time the same fixed kernel repeatedly and report the spread.
+
+    The CPU load guard above is the wrong instrument for a GPU
+    measurement: a machine can be idle on every core while another
+    process owns the accelerator, and the timings come out noisy with
+    nothing in the load average to say why. This asks the accelerator
+    itself, by giving it the same work several times and seeing
+    whether it takes the same time.
+    """
+    import torch
+
+    dev = torch.device(acc["kind"])
+    a = torch.randn(1024, 1024, device=dev, dtype=torch.float32)
+    b = torch.randn(1024, 1024, device=dev, dtype=torch.float32)
+
+    def once() -> float:
+        synchronize(acc)
+        start = time.perf_counter()
+        for _ in range(8):
+            a @ b
+        synchronize(acc)
+        return time.perf_counter() - start
+
+    for _ in range(3):
+        once()
+    times = sorted(once() for _ in range(runs))
+    best, median = times[0], times[len(times) // 2]
+    spread = (median - best) / best if best else float("inf")
+    return {"best_s": best, "median_s": median, "spread": spread,
+            "runs": runs, "contended": spread > NOISY_SPREAD,
+            "threshold": NOISY_SPREAD}
+
+
+def require_quiet_accelerator(acc: dict[str, Any]) -> dict[str, Any]:
+    """Refuse to time a GPU that something else is also using."""
+    now = accelerator_contention(acc)
+    if now["contended"]:
+        raise RuntimeError(
+            f"the accelerator is contended: the same kernel took "
+            f"{now['best_s'] * 1e3:.2f} ms at best and "
+            f"{now['median_s'] * 1e3:.2f} ms typically, a spread of "
+            f"{now['spread'] * 100:.1f}% against a {NOISY_SPREAD * 100:.0f}% "
+            "limit. Something else is using the GPU. A microsecond "
+            "measurement taken now would be that other thing's "
+            "schedule, not this one's.")
+    return now
+
+
 def synchronize(acc: dict[str, Any] | None = None) -> None:
     """Wait for the accelerator to finish what it was given.
 
@@ -355,6 +413,22 @@ if __name__ == "__main__":
         print(f"  {acc['kind']}: {acc['name']}, "
               f"{acc['memory_bytes'] / 1e9:.0f} GB, torch {acc['torch']}, "
               f"graph capture: {'yes' if acc['graph_capture'] else 'no'}")
+
+
+def test_the_contention_guard_reads_a_spread_the_load_average_cannot() -> None:
+    """The guard has to key off the accelerator, not the processor.
+
+    Run without an accelerator there is nothing to check and the
+    guard says so rather than passing silently; run with one, it must
+    return a spread and a verdict that agree with each other.
+    """
+    acc = accelerator()
+    if acc is None:
+        return
+    got = accelerator_contention(acc, runs=5)
+    assert got["spread"] >= 0.0
+    assert got["contended"] == (got["spread"] > NOISY_SPREAD)
+    assert got["median_s"] >= got["best_s"]
 
 
 def test_the_accelerator_guard_refuses_what_it_should() -> None:

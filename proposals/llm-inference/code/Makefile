@@ -179,6 +179,7 @@ from tinyserve.flash import test_swapping_the_kernel_changes_no_token as w; w();
 from tinyserve.flash import test_a_decode_step_has_almost_no_square_term_to_save as x; x(); \
 from tinyserve.flash import test_keeping_the_block_resident_is_strictly_a_bound as y; y(); \
 from tinyserve.device import test_the_accelerator_guard_refuses_what_it_should as z; z(); \
+from tinyserve.device import test_the_contention_guard_reads_a_spread_the_load_average_cannot as z2; z2(); \
 from tinyserve.precision import test_the_hand_rounding_matches_numpys_float16 as aa; aa(); \
 from tinyserve.precision import test_each_format_reports_the_range_its_bits_allow as ab; ab(); \
 from tinyserve.precision import test_rounding_is_unbiased as ac; ac(); \
