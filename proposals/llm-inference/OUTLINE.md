@@ -618,10 +618,15 @@ Chapter 22 needs only exact arithmetic on bit fields. Its measurement
 code is written and exercised; only the numbers wait.
 **24, Quantization from the Ground Up** follows it, for the same
 reason: it needs only exact arithmetic on the model's own weights.
-Then **29, Speculative Decoding**, **31, Constrained Decoding**,
-**32, Caching Above the Model**, **41, Capacity Planning** and
-**42, GPU FinOps** -- all Tier 0, all built on machinery Part III
-already has. 41 and 42 size and price the case study, which is what
+Then **29, Speculative Decoding**, **30, Self-Speculation and Draft
+Heads**, **31, Constrained Decoding**, **32, Caching Above the
+Model**, **41, Capacity Planning** and **42, GPU FinOps** -- all
+Tier 0, all built on machinery Part III already has. 30 is the one
+that needed a corpus rather than a model: its drafting rates are
+measured on this book's own prose, and its sharpest result -- that a
+draft tree tuned at batch 1 makes a server four times slower at batch
+128 -- is the roofline of Part II applied to a technique the papers
+report at batch 1. 41 and 42 size and price the case study, which is what
 Design decision record VI will have to beat. 29 and 31 are a pair
 worth reading together: one is exact and the other is not, and the
 chapters say so in each other's terms. 32 closes the loop back to

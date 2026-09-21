@@ -1231,6 +1231,89 @@ def ch29_reference(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch30_heads(d: dict) -> str:
+    """What each way of drafting weighs."""
+    h = d["heads"]
+    out = ["| Drafter | Parameters | Bytes | Of the model | Every decode "
+           "step |", "|---|---|---|---|---|"]
+    for r in h["rows"]:
+        out.append(f"| {r['name']} | {r['parameters'] / 1e9:.2f}B "
+                   f"| {r['bytes'] / 1e9:.2f} GB "
+                   f"| {r['share_of_model'] * 100:.1f}% "
+                   f"| x{r['step_ratio']:.3f} |")
+    out += ["", f"Exact arithmetic over the reference model "
+                f"({h['d_model']:,} hidden, {h['vocab']:,} vocabulary, "
+                f"{h['weight_bytes'] / 1e9:.1f} GB of weights in bf16). A "
+                f"Medusa head is a square residual block plus its own "
+                f"projection to the whole vocabulary, which is where all of "
+                f"the cost is. EAGLE's figure is the one its authors publish "
+                f"for {h['eagle_for']}, the smallest model in their table, "
+                f"rather than a guess at the architecture. The last column "
+                f"is what the extra weights do to a decode step, which is "
+                f"memory-bound: bigger weights take proportionally longer to "
+                f"read, on every step, including the ones where the draft "
+                f"guesses wrong."]
+    return "\n".join(out)
+
+
+def ch30_drafting(d: dict) -> str:
+    """How far a draft built from the prompt alone gets."""
+    a = d["assumptions"]
+    out = ["| The reply is | A guess at all | 1 token | 2 | 4 | 8 | "
+           "Tokens a round | Speedup at 8 nodes |",
+           "|---|---|---|---|---|---|---|---|"]
+    payoff = d["payoff"]
+    for r in d["drafting"]:
+        reach = r["reach"]["1"]
+        eight = next(x for x in payoff[r["task"]] if x["budget"] == 8)
+        cells = " | ".join(f"{reach[i] * 100:.0f}%" for i in (0, 1, 3, 7))
+        out.append(f"| {r['task']} | {r['had_a_guess'] * 100:.0f}% | {cells} "
+                   f"| {eight['chain_tokens']:.2f} "
+                   f"| x{eight['chain_speedup']:.2f} |")
+    out += ["", f"Measured over {a['output_tokens']:,} words of real prose "
+                f"per row, with the context indexed as the reply is written "
+                f"and n-grams of {a['min_n']} to {a['max_n']} words, seed "
+                f"{a['seed']}. The columns are the chance of getting at "
+                f"least that many tokens from one round, which is the "
+                f"product of the per-depth rates and not any one of them. "
+                f"The first two rows are input-grounded replies -- an "
+                f"extract from the document, and the same extract with one "
+                f"word in ten changed. The third continues the document "
+                f"without quoting it. The fourth is the control: a reply "
+                f"with nothing to do with the prompt, which still earns a "
+                f"little by copying from what it has already written."]
+    return "\n".join(out)
+
+
+def ch30_batch(d: dict) -> str:
+    """What the batch does to the tree."""
+    a = d["assumptions"]
+    free = {r["batch"]: r["free_nodes"] for r in d["free_nodes"]}
+    need = {(r["name"], r["batch"]): r for r in d["demands"]
+            if r["budget"] == 64}
+    out = ["| Batch | Nodes a pass carries free | Best tree | Its speedup | "
+           "The batch-1 tree instead | Tokens 64 nodes must yield |",
+           "|---|---|---|---|---|---|"]
+    for r in d["best_budget"]:
+        n = need[("Medusa, 3 heads", r["batch"])]
+        out.append(f"| {r['batch']} | {free[r['batch']]:,} "
+                   f"| {tuple(r['best_tree'])} ({r['best_nodes']} nodes) "
+                   f"| x{r['best_speedup']:.2f} "
+                   f"| x{r['widest_speedup']:.2f} "
+                   f"| {n['tokens_needed']:.2f} |")
+    out += ["", f"Arithmetic over the reference model at a "
+                f"{a['context']:,}-token context, for a drafter whose "
+                f"top-1 acceptance is {r['alpha']:.2f} and whose ranked "
+                f"alternatives are modelled rather than measured. \"Nodes a "
+                f"pass carries free\" is where the verification pass stops "
+                f"being memory-bound and starts paying for every extra "
+                f"token. The fifth column is the same tree the first row "
+                f"chose, run at that batch. The last is what a round would "
+                f"have to accept, with Medusa's three heads on the model, "
+                f"for 64 nodes to be worth verifying at all."]
+    return "\n".join(out)
+
+
 def ch32_shapes(d: dict) -> str:
     """What an exact-match cache hits, and what folding the question adds."""
     a = d["assumptions"]
@@ -1605,6 +1688,9 @@ def main() -> None:
                  ("ch42-own-or-rent", ch42_own_or_rent)),
         "ch31": (("ch31-validity", ch31_validity),
                  ("ch31-states", ch31_states), ("ch31-cost", ch31_cost)),
+        "ch30": (("ch30-heads", ch30_heads),
+                 ("ch30-drafting", ch30_drafting),
+                 ("ch30-batch", ch30_batch)),
         "ch32": (("ch32-shapes", ch32_shapes), ("ch32-keys", ch32_keys),
                  ("ch32-worth", ch32_worth)),
         "ddr1": (("ddr1-decisions", ddr1_decisions),

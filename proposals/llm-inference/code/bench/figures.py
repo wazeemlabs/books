@@ -114,6 +114,22 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "drafting" in d and "best_budget" in d:  # Chapter 30: self-speculation
+        a = d["assumptions"]
+        return (f"MEASURED ON TEXT plus arithmetic over the reference "
+                f"model, not a timing run: the drafting rates come from "
+                f"{a['output_tokens']:,} words of real prose per task, "
+                f"drawn from this book's own chapters "
+                f"({', '.join(a['document'])} as the document, "
+                f"{a['elsewhere']} as the control), word-level rather than "
+                f"sub-word, seed {a['seed']} - head sizes are exact over "
+                f"the published architectures (Medusa) and the published "
+                f"parameter count (EAGLE, {a['eagle_for']}) - what a "
+                f"verification pass costs is the book's roofline over the "
+                f"reference model at a {a['context']:,}-token context, and "
+                f"how a draft ranks its second and third guesses is a "
+                f"model pinned to its top-1 rate, labelled as such wherever "
+                f"it is used - commit {p['commit']}, {p['measured_utc']}")
     if "concentration" in d and "staleness" in d:  # Chapter 32: caching
         a = d["assumptions"]
         w = d["worth"]
@@ -3278,6 +3294,157 @@ def fig_own_or_rent(d: dict) -> None:
 
 # --- Chapter 31: deciding what the model may say ----------------------
 
+# --- Chapter 30: drafting without a second model ----------------------
+
+
+def fig_heads(d: dict) -> None:
+    """What each way of drafting weighs, and what that costs per step."""
+    rows = [r for r in d["heads"]["rows"] if "2 heads" not in r["name"]]
+    names = [r["name"] for r in rows][::-1]
+    gb = [r["bytes"] / 1e9 for r in rows][::-1]
+    ratio = [r["step_ratio"] for r in rows][::-1]
+
+    fig, ax = plt.subplots(figsize=(6.9, 3.8), dpi=200)
+    y = range(len(names))
+    shades = [T.SEQUENTIAL(0.25 + 0.6 * v / max(gb)) if max(gb) else T.BLUE
+              for v in gb]
+    ax.barh(list(y), gb, color=shades, height=0.62)
+    ax.set_yticks(list(y), names, fontsize=8)
+    ax.set_xlabel("gigabytes added to the weights (bf16)")
+    ax.set_title("A draft head is read on every step, right or wrong",
+                 loc="left", fontsize=10.5)
+    span = max(gb) if max(gb) else 1.0
+    for i, (v, r) in enumerate(zip(gb, ratio)):
+        ax.text(v + span * 0.015, i, f"every step x{r:.3f}", va="center",
+                fontsize=7.4, color=T.INK)
+    ax.set_xlim(0, span * 1.32)
+    T.style(ax)
+    ax.grid(axis="y", visible=False)
+    worst = max(d["heads"]["rows"], key=lambda r: r["bytes"])
+    save(fig, "ch30-heads", d,
+         alt=("Bytes each way of drafting adds to the weights, as "
+              "horizontal bars, labelled with what that does to a decode "
+              f"step. {worst['name']} adds {worst['bytes'] / 1e9:.2f} GB, "
+              f"{worst['share_of_model'] * 100:.0f}% of the model, because "
+              "each head carries its own projection to the whole "
+              "vocabulary. Drafting from the prompt adds nothing. A decode "
+              "step is memory-bound, so the extra weights slow every step "
+              "in proportion, including the steps whose guesses are "
+              "thrown away."))
+
+
+def fig_drafting(d: dict) -> None:
+    """How far a draft built from the prompt alone actually gets."""
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    shades = [0.9, 0.7, 0.5, 0.3]
+    styles = ["-", "--", "-.", ":"]
+    for row, shade, style in zip(d["drafting"], shades, styles):
+        reach = row["reach"]["1"]
+        ax.plot(range(1, len(reach) + 1), [v * 100 for v in reach],
+                marker="o", markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+                linestyle=style, color=T.SEQUENTIAL(shade), label=row["task"])
+    ax.set_xlabel("tokens in one round")
+    ax.set_ylabel("chance of getting at least this many (%)")
+    ax.set_title("What the prompt can tell you about the reply",
+                 loc="left", fontsize=10.5)
+    ax.set_ylim(0, 100)
+    ax.legend(frameon=False, fontsize=7.6, loc="upper right",
+              title="the reply is", title_fontsize=7.6)
+    T.style(ax)
+    top, bottom = d["drafting"][0], d["drafting"][2]
+    save(fig, "ch30-drafting", d,
+         alt=("The chance of getting at least n tokens from one round of "
+              "drafting, for four shapes of reply, with the draft built "
+              "from nothing but the prompt and what has been written so "
+              f"far. A reply extracted from the prompt reaches four tokens "
+              f"{top['reach']['1'][3] * 100:.0f}% of the time. A reply that "
+              "continues the prompt without quoting it reaches even one "
+              f"token {bottom['reach']['1'][0] * 100:.0f}% of the time. The "
+              "method is not a little worse on ungrounded text; it is a "
+              "different proposition."))
+
+
+def fig_trees(d: dict) -> None:
+    """A chain and a tree of the same size are not worth the same."""
+    t = d["trees"]
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    shades = [0.3, 0.5, 0.7, 0.9]
+    for alpha, shade in zip(t["alphas"], shades):
+        rows = sorted((r for r in t["rows"] if r["alpha"] == alpha),
+                      key=lambda r: r["budget"])
+        ax.plot([r["budget"] for r in rows],
+                [r["gain"] * 100 for r in rows], marker="o",
+                markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+                color=T.SEQUENTIAL(shade), label=f"top-1 {alpha:g}")
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(t["budgets"], [str(b) for b in t["budgets"]], fontsize=7.6)
+    ax.set_xlabel("tokens the verification pass carries")
+    ax.set_ylabel("what a tree adds over a chain of the same size (%)")
+    ax.set_title("Breadth is worth buying, if the draft ranks its guesses",
+                 loc="left", fontsize=10.5)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    T.style(ax)
+    best = max(t["rows"], key=lambda r: r["gain"])
+    save(fig, "ch30-trees", d,
+         alt=("What arranging the same number of draft tokens as a tree "
+              "rather than a chain adds, against how many tokens the "
+              "verification pass carries, for four levels of top-1 "
+              "acceptance. The gain rises with the budget and is largest "
+              f"where the draft is weakest: {best['gain'] * 100:.0f}% at "
+              f"top-1 {best['alpha']:g} with {best['budget']} tokens. This "
+              "panel is a model of how a draft ranks its second and third "
+              "guesses, pinned to its top-1 rate; the n-gram drafter "
+              "measured elsewhere in this chapter gets almost nothing from "
+              "breadth, because its alternatives are rarer matches rather "
+              "than better guesses."))
+
+
+def fig_batch(d: dict) -> None:
+    """The setting the papers report at is not the setting you run at."""
+    rows = d["best_budget"]
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    x = [r["batch"] for r in rows]
+    ax.plot(x, [r["best_speedup"] for r in rows], marker="o",
+            markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE,
+            label="the best tree for that batch")
+    ax.plot(x, [r["widest_speedup"] for r in rows], marker="s",
+            markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+            linestyle="--", color=T.AMBER,
+            label=f"the tree chosen at batch 1 ({rows[0]['widest_nodes']} tokens)")
+    ax.axhline(1.0, color=T.INK, linewidth=0.9, alpha=0.5)
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log")
+    ax.set_xticks(x, [str(v) for v in x], fontsize=7.6)
+    ax.set_yticks([0.25, 0.5, 1, 2, 4], ["0.25x", "0.5x", "1x", "2x", "4x"],
+                  fontsize=7.6)
+    # A log axis relabels its own minor ticks, which on top of the
+    # multipliers above reads as two different scales at once.
+    from matplotlib.ticker import NullFormatter
+    ax.yaxis.set_minor_formatter(NullFormatter())
+    ax.set_xlabel("sequences decoding together")
+    ax.set_ylabel("faster than decoding one token at a time")
+    ax.set_title("A tree tuned at batch 1 is a slowdown at batch 128",
+                 loc="left", fontsize=10.5)
+    ax.annotate("no faster than not doing it", xy=(x[1], 1.0),
+                xytext=(0, -12), textcoords="offset points", fontsize=7.2,
+                ha="center", va="top", color=T.INK)
+    ax.legend(frameon=False, fontsize=7.8, loc="lower left")
+    T.style(ax)
+    last = rows[-1]
+    save(fig, "ch30-batch", d,
+         alt=("Speedup against how many sequences are decoding together, on "
+              "log axes, with a line at one. The solid line is the best "
+              "tree for each batch, which shrinks as the batch grows: "
+              f"{rows[0]['best_nodes']} tokens at batch 1 and "
+              f"{last['best_nodes']} at batch {last['batch']}. The dashed "
+              "line is the tree chosen at batch 1, run at every batch: it "
+              f"falls to x{last['widest_speedup']:.2f} at batch "
+              f"{last['batch']}, which is {1 / last['widest_speedup']:.1f} "
+              "times slower than not speculating at all. The verification "
+              "pass is free only while it is memory-bound, and a batch "
+              "uses that room up."))
+
+
 # --- Chapter 32: the cache in front of the model ----------------------
 
 
@@ -3605,6 +3772,7 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch41": [fig_little, fig_utilization, fig_sizing],
             "ch42": [fig_price_spread, fig_duty, fig_own_or_rent],
             "ch31": [fig_states, fig_validity, fig_distortion],
+            "ch30": [fig_heads, fig_drafting, fig_trees, fig_batch],
             "ch32": [fig_concentration, fig_keys, fig_similarity,
                      fig_ttl]}
 

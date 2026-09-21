@@ -1592,6 +1592,89 @@ def ch31(d: dict) -> dict[str, str]:
     }
 
 
+def ch30(d: dict) -> dict[str, str]:
+    a = d["assumptions"]
+    heads_, draft, trees_ = d["heads"], d["drafting"], d["trees"]
+    payoff, batches = d["payoff"], d["best_budget"]
+    by_name = {r["name"]: r for r in heads_["rows"]}
+    by_task = {r["task"]: r for r in draft}
+    medusa = by_name["Medusa, 3 heads"]
+    eagle = by_name["EAGLE draft head"]
+    free = {r["batch"]: r for r in d["free_nodes"]}
+    need = {(r["name"], r["batch"]): r for r in d["demands"]
+            if r["budget"] == 64}
+    one, many = batches[0], batches[-1]
+    grounded = a["grounded_task"]
+    edited = "an extract, lightly edited"
+    prose_task = "prose continuing the prompt"
+    control = "text unrelated to the prompt"
+    at8 = {name: next(r for r in rows if r["budget"] == 8)
+           for name, rows in payoff.items()}
+    pct = lambda x: f"{x * 100:.0f}%"
+    best_tree = max(trees_["rows"], key=lambda r: r["gain"])
+    mid = next(r for r in trees_["rows"]
+               if r["alpha"] == 0.7 and r["budget"] == 64)
+    return {
+        # what a head weighs
+        "medusa_heads": "3",
+        "medusa_params": f"{medusa['parameters'] / 1e9:.2f}B",
+        "medusa_gb": f"{medusa['bytes'] / 1e9:.2f} GB",
+        "medusa_share": f"{medusa['share_of_model'] * 100:.1f}%",
+        "medusa_step": f"{medusa['step_ratio']:.3f}",
+        "eagle_gb": f"{eagle['bytes'] / 1e9:.2f} GB",
+        "eagle_share": f"{eagle['share_of_model'] * 100:.1f}%",
+        "eagle_step": f"{eagle['step_ratio']:.3f}",
+        "eagle_for": a["eagle_for"],
+        "vocab": f"{heads_['vocab']:,}",
+        "d_model": f"{heads_['d_model']:,}",
+        "weights_gb": f"{heads_['weight_bytes'] / 1e9:.1f} GB",
+        # drafting from the prompt
+        "output_tokens": f"{a['output_tokens']:,}",
+        "max_n": str(a["max_n"]),
+        "min_n": str(a["min_n"]),
+        "grounded_reach1": pct(by_task[grounded]["reach"]["1"][0]),
+        "grounded_reach4": pct(by_task[grounded]["reach"]["1"][3]),
+        "grounded_tokens": f"{at8[grounded]['chain_tokens']:.2f}",
+        "grounded_speedup": f"{at8[grounded]['chain_speedup']:.2f}x",
+        "edited_reach1": pct(by_task[edited]["reach"]["1"][0]),
+        "edited_reach4": pct(by_task[edited]["reach"]["1"][3]),
+        "edited_tokens": f"{at8[edited]['chain_tokens']:.2f}",
+        "edited_speedup": f"{at8[edited]['chain_speedup']:.2f}x",
+        "edit_rate": pct(a["edit_rate"]),
+        "prose_reach1": pct(by_task[prose_task]["reach"]["1"][0]),
+        "prose_guess": pct(by_task[prose_task]["had_a_guess"]),
+        "prose_speedup": f"{at8[prose_task]['chain_speedup']:.2f}x",
+        "control_speedup": f"{at8[control]['chain_speedup']:.2f}x",
+        "control_reach1": pct(by_task[control]["reach"]["1"][0]),
+        # trees
+        "tree_alpha": f"{mid['alpha']:g}",
+        "tree_budget": str(mid["budget"]),
+        "tree_chain_tokens": f"{mid['chain_tokens']:.2f}",
+        "tree_tokens": f"{mid['tree_tokens']:.2f}",
+        "tree_shape": str(tuple(mid["tree"])),
+        "tree_gain": f"{mid['gain'] * 100:.0f}%",
+        "tree_best_gain": f"{best_tree['gain'] * 100:.0f}%",
+        "tree_best_alpha": f"{best_tree['alpha']:g}",
+        "tree_max_tokens": f"{max(r['tree_tokens'] for r in trees_['rows']):.2f}",
+        "ngram_breadth_gain": (
+            f"{(max(r['tree_speedup'] for r in payoff[grounded]) / at8[grounded]['chain_speedup'] - 1) * 100:.0f}%"),
+        # the batch
+        "free_one": f"{free[1]['free_nodes']:,}",
+        "free_many": f"{free[many['batch']]['free_nodes']:,}",
+        "batch_many": str(many["batch"]),
+        "best_nodes_one": str(one["best_nodes"]),
+        "best_nodes_many": str(many["best_nodes"]),
+        "best_speedup_one": f"{one['best_speedup']:.2f}x",
+        "best_speedup_many": f"{many['best_speedup']:.2f}x",
+        "widest_speedup_many": f"{many['widest_speedup']:.2f}x",
+        "widest_slowdown_many": f"{1 / many['widest_speedup']:.1f}x",
+        "widest_nodes": str(one["widest_nodes"]),
+        "need_medusa_many": f"{need[('Medusa, 3 heads', many['batch'])]['tokens_needed']:.2f}",
+        "need_medusa_one": f"{need[('Medusa, 3 heads', 1)]['tokens_needed']:.2f}",
+        "context": f"{a['context']:,}",
+    }
+
+
 def ch32(d: dict) -> dict[str, str]:
     a = d["assumptions"]
     conc, ag = d["concentration"], d["agent_shape"]
@@ -1880,7 +1963,8 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
             "ch20": ch20, "ch22": ch22,
-            "ch24": ch24, "ch29": ch29, "ch31": ch31, "ch32": ch32,
+            "ch24": ch24, "ch29": ch29, "ch30": ch30, "ch31": ch31,
+            "ch32": ch32,
             "ch41": ch41, "ch42": ch42, "ddr1": ddr1}[chapter](d)
 
 

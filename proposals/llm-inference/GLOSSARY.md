@@ -135,3 +135,6 @@ explanation.
 | false hit | 32 | A cache answering with an entry that does not answer the question asked. Counted apart from hits and misses, because it is the only one of the three that reaches the caller as a wrong answer. |
 | time to live | 32 | How long a cached entry may be used before it is thrown away. Longer buys hits and sells freshness; there is no setting that avoids both. |
 | base rate | 32 | How often the thing a test looks for is really there. A test with a small error rate still returns mostly errors when the base rate is small enough, which is what decides whether a similarity threshold can be made safe. |
+| draft head | 30 | An extra output layer on the model you already serve, trained to predict the token after next rather than the next one. Removes the second model speculative decoding needs, and adds its weight to every decode step instead. |
+| prompt lookup | 30 | Drafting by finding where the last few words appeared earlier in the context and proposing whatever followed them then. No parameters and no training; nothing at all to propose when the reply does not quote the prompt. |
+| tree attention | 30 | Verifying several alternative continuations in one forward pass, with an attention mask that stops the branches from seeing each other. Worth exactly as much as the draft's ranking of its own second and third guesses. |
