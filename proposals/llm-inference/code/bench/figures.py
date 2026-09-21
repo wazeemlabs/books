@@ -114,6 +114,22 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "mixture" in d and "long_context" in d:  # Chapter 33: the regimes
+        a = d["assumptions"]
+        mm = d["mixture"]["model"]
+        return (f"ARITHMETIC over published specifications, not a "
+                f"measurement: the reference model's "
+                f"{a['weight_bytes'] / 1e9:.1f} GB of weights and "
+                f"{a['kv_bytes_per_token']:,} bytes of cache a token on an "
+                f"accelerator with {a['gpu_bytes'] / 1e9:.0f} GB at "
+                f"{a['hbm_bytes_per_s'] / 1e12:.2f} TB/s - the mixture is "
+                f"{mm['name']}, {mm['total'] / 1e9:.0f}B total and "
+                f"{mm['active'] / 1e9:.0f}B activated, with its expert "
+                f"count and routing from its own technical report "
+                f"(FACTS.md), and uniform routing assumed, which is what "
+                f"its load balancing is for - link speeds are published "
+                f"specifications - commit {p['commit']}, "
+                f"{p['measured_utc']}")
     if "sign_off" in d and "pairing" in d:  # Chapter 28: what you lost
         a = d["assumptions"]
         return (f"SIMULATED EXPERIMENTS, not model evaluations: every "
@@ -3305,6 +3321,149 @@ def fig_own_or_rent(d: dict) -> None:
 
 # --- Chapter 31: deciding what the model may say ----------------------
 
+# --- Chapter 33: where the roofline moves -----------------------------
+
+
+def fig_context(d: dict) -> None:
+    """A long prompt costs memory first and arithmetic second."""
+    lc = d["long_context"]
+    rows = lc["rows"]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.4, 3.9), dpi=200)
+    x = [r["context"] for r in rows]
+
+    ax1.plot(x, [r["sequences_that_fit"] for r in rows], marker="o",
+             markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE)
+    ax1.set_xscale("log", base=2)
+    ax1.set_yscale("log")
+    ax1.set_xticks(x, [f"{v // 1024}K" for v in x], fontsize=7.2)
+    ax1.set_xlabel("context (tokens)")
+    ax1.set_ylabel("sequences that fit on one accelerator")
+    ax1.set_title("Memory goes first", loc="left", fontsize=9.5)
+    from matplotlib.ticker import NullFormatter
+    ax1.xaxis.set_minor_formatter(NullFormatter())
+    T.style(ax1)
+
+    ax2.plot(x, [r["prefill_s"] * 1e3 for r in rows], marker="o",
+             markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE,
+             label="prefill (ms)")
+    ax2.plot(x, [r["attention_share_of_prefill"] * 100 for r in rows],
+             marker="s", markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+             linestyle="--", color=T.AMBER, label="attention's share (%)")
+    ax2.set_xscale("log", base=2)
+    ax2.set_yscale("log")
+    ax2.set_xticks(x, [f"{v // 1024}K" for v in x], fontsize=7.2)
+    ax2.xaxis.set_minor_formatter(NullFormatter())
+    ax2.set_xlabel("context (tokens)")
+    ax2.set_title("then arithmetic", loc="left", fontsize=9.5)
+    ax2.legend(frameon=False, fontsize=7.4, loc="upper left")
+    T.style(ax2)
+
+    last = rows[-1]
+    save(fig, "ch33-context", d,
+         alt=("Two panels against context length, both on log axes. On the "
+              "left, how many sequences fit on one accelerator once the "
+              f"weights are loaded: {rows[0]['sequences_that_fit']:,} at "
+              f"{rows[0]['context'] // 1024}K tokens and "
+              f"{last['sequences_that_fit']} at {last['context'] // 1024}K, "
+              "because a cache grows linearly and the space does not. On "
+              "the right, what one prefill costs and how much of it is "
+              f"attention: {last['prefill_s']:.1f} seconds at "
+              f"{last['context'] // 1024}K, of which "
+              f"{last['attention_share_of_prefill'] * 100:.0f}% is the "
+              "quadratic term. One sequence's cache outweighs the entire "
+              f"model at {lc['cache_outweighs_model_at']:,.0f} tokens."))
+
+
+def fig_thinking(d: dict) -> None:
+    """A reply that thinks costs more than its length suggests."""
+    th = d["thinking"]
+    rows = [r for r in th["rows"] if r["thinking_tokens"] > 0]
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    x = [r["thinking_tokens"] for r in rows]
+    ax.plot(x, [r["usd_per_answer"] / th["baseline_usd"] for r in rows],
+            marker="o", markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+            color=T.BLUE, label="what the answer costs")
+    ax.plot(x, [r["output_tokens"] / th["visible_tokens"] for r in rows],
+            marker="s", markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+            linestyle="--", color=T.AMBER, label="how many tokens it wrote")
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log")
+    ax.set_xticks(x, [f"{v // 1024}K" for v in x], fontsize=7.4)
+    from matplotlib.ticker import NullFormatter
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.set_xlabel("thinking tokens before the answer")
+    ax.set_ylabel("times the answer with no thinking")
+    ax.set_title("Thinking costs more than it writes", loc="left",
+                 fontsize=10.5)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    T.style(ax)
+    last = rows[-1]
+    save(fig, "ch33-thinking", d,
+         alt=("Two curves against how many thinking tokens precede the "
+              "answer, on log axes, both as multiples of the same answer "
+              "with no thinking. The dashed line is how many more tokens "
+              "were written; the solid line is what it cost. The cost "
+              f"curve is above the token curve everywhere: at "
+              f"{last['thinking_tokens']:,} thinking tokens the reply is "
+              f"{last['output_tokens'] / th['visible_tokens']:.0f} times as "
+              "long and "
+              f"{last['usd_per_answer'] / th['baseline_usd']:,.0f} times as "
+              "expensive, because the reply's own cache grows as it is "
+              "written and fewer sequences fit beside it."))
+
+
+def fig_mixture(d: dict) -> None:
+    """The batch fills the mixture up."""
+    m = d["mixture"]
+    rows = m["rows"]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.4, 3.9), dpi=200)
+    x = [r["batch"] for r in rows]
+
+    ax1.plot(x, [r["experts_touched"] for r in rows], marker="o",
+             markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE)
+    ax1.axhline(m["model"]["routed"], color=T.INK, linewidth=0.9, alpha=0.5)
+    ax1.annotate(f"all {m['model']['routed']}", xy=(x[0], m["model"]["routed"]),
+                 xytext=(2, -4), textcoords="offset points", ha="left",
+                 va="top", fontsize=7.2, color=T.INK)
+    ax1.set_xscale("log", base=2)
+    ax1.set_xticks(x, [str(v) for v in x], fontsize=7.2)
+    from matplotlib.ticker import NullFormatter
+    ax1.xaxis.set_minor_formatter(NullFormatter())
+    ax1.set_xlabel("sequences decoding together")
+    ax1.set_ylabel("experts a step has to read")
+    ax1.set_title("The batch fills it up", loc="left", fontsize=9.5)
+    T.style(ax1)
+
+    ax2.plot(x, [r["itl_ms"] for r in rows], marker="s",
+             markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+             linestyle="--", color=T.AMBER, label="on one accelerator")
+    ax2.plot(x, [r["parallel_itl_ms"] for r in rows], marker="o",
+             markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE,
+             label=f"spread over {m['machines']}")
+    ax2.set_xscale("log", base=2)
+    ax2.set_yscale("log")
+    ax2.set_xticks(x, [str(v) for v in x], fontsize=7.2)
+    ax2.xaxis.set_minor_formatter(NullFormatter())
+    ax2.set_xlabel("sequences decoding together")
+    ax2.set_ylabel("wait between tokens (ms, log scale)")
+    ax2.set_title("and the fleet empties it again", loc="left", fontsize=9.5)
+    ax2.legend(frameon=False, fontsize=7.4, loc="upper left")
+    T.style(ax2)
+
+    big = rows[-2]
+    save(fig, "ch33-mixture", d,
+         alt=("Two panels against the batch size, log x. On the left, how "
+              "many of the model's routed experts one decode step has to "
+              f"read: {rows[0]['experts_touched']:.0f} at batch 1 and "
+              f"{big['experts_touched']:.0f} of {m['model']['routed']} at "
+              f"batch {big['batch']}, because every sequence routes "
+              "independently and the union fills up. On the right, what "
+              "that does to the wait between tokens on one accelerator and "
+              f"on the {m['machines']} the weights need anyway. The "
+              "parallelism that looks like a way round a memory problem is "
+              "what makes the batch affordable."))
+
+
 # --- Chapter 28: whether the model got worse ---------------------------
 
 
@@ -3914,6 +4073,7 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch42": [fig_price_spread, fig_duty, fig_own_or_rent],
             "ch31": [fig_states, fig_validity, fig_distortion],
             "ch28": [fig_pairing, fig_signoff, fig_power],
+            "ch33": [fig_context, fig_thinking, fig_mixture],
             "ch30": [fig_heads, fig_drafting, fig_trees, fig_batch],
             "ch32": [fig_concentration, fig_keys, fig_similarity,
                      fig_ttl]}

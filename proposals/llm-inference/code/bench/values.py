@@ -1592,6 +1592,80 @@ def ch31(d: dict) -> dict[str, str]:
     }
 
 
+def ch33(d: dict) -> dict[str, str]:
+    a, lc, th, mo = (d["assumptions"], d["long_context"], d["thinking"],
+                     d["mixture"])
+    short, long_ = lc["rows"][0], lc["rows"][-1]
+    mid = next(r for r in lc["rows"] if r["context"] == 8_192)
+    no_think, deep = th["rows"][0], th["rows"][-1]
+    some = next(r for r in th["rows"] if r["thinking_tokens"] == 4_096)
+    mm = mo["model"]
+    one = mo["rows"][0]
+    many = next(r for r in mo["rows"] if r["batch"] == 128)
+    biggest = mo["rows"][-1]
+    return {
+        # a long prompt
+        "short_context": f"{short['context'] // 1024}K",
+        "short_fits": f"{short['sequences_that_fit']:,}",
+        "long_context": f"{long_['context'] // 1024}K",
+        "long_kv_gb": f"{long_['kv_gb']:.1f} GB",
+        "long_fits": str(long_["sequences_that_fit"]),
+        "long_prefill_s": f"{long_['prefill_s']:.1f} s",
+        "long_attention_share": f"{long_['attention_share_of_prefill'] * 100:.0f}%",
+        "mid_context": f"{mid['context'] // 1024}K",
+        "mid_prefill_ms": f"{mid['prefill_s'] * 1e3:.0f} ms",
+        "mid_attention_share": f"{mid['attention_share_of_prefill'] * 100:.0f}%",
+        "cache_outweighs_at": f"{lc['cache_outweighs_model_at']:,.0f}",
+        "attention_overtakes_at": f"{lc['attention_overtakes_at']:,.0f}",
+        "pool_gb": f"{lc['pool_bytes'] / 1e9:.0f} GB",
+        "weights_gb": f"{lc['weight_bytes'] / 1e9:.1f} GB",
+        "short_itl": f"{short['itl_ms']:.1f} ms",
+        "long_itl": f"{long_['itl_ms']:.1f} ms",
+        # a long reply
+        "visible_tokens": str(th["visible_tokens"]),
+        "no_think_s": f"{no_think['seconds_to_answer']:.1f} s",
+        "no_think_cost": f"${no_think['usd_per_answer'] * 1000:.3f}",
+        "some_thinking": f"{some['thinking_tokens']:,}",
+        "some_cost_over": f"{some['usd_per_answer'] / th['baseline_usd']:.0f}x",
+        "some_tokens_over": f"{some['output_tokens'] / th['visible_tokens']:.0f}x",
+        "deep_thinking": f"{deep['thinking_tokens']:,}",
+        "deep_visible": f"{deep['visible_share'] * 100:.1f}%",
+        "deep_s": f"{deep['seconds_to_answer']:,.0f} s",
+        "deep_cost": f"${deep['usd_per_answer'] * 1000:,.2f}",
+        "deep_cost_over": f"{deep['usd_per_answer'] / th['baseline_usd']:,.0f}x",
+        "deep_tokens_over": f"{deep['output_tokens'] / th['visible_tokens']:.0f}x",
+        "deep_fits": str(deep["sequences_that_fit"]),
+        "no_think_fits": str(no_think["sequences_that_fit"]),
+        "thinking_minimum": f"{th['thinking_minimum']:,}",
+        "batch_advice": f"{th['batch_advice_above']:,}",
+        # a mixture of experts
+        "moe_name": mm["name"],
+        "moe_total": f"{mm['total'] / 1e9:.0f}B",
+        "moe_active": f"{mm['active'] / 1e9:.0f}B",
+        "moe_routed": str(mm["routed"]),
+        "moe_per_token": str(mm["per_token"]),
+        "moe_expert": f"{mm['expert_params'] / 1e9:.2f}B",
+        "moe_always": f"{mm['always_read'] / 1e9:.1f}B",
+        "moe_weights_gb": f"{mo['weights_gb_bf16']:,.0f} GB",
+        "moe_machines": str(mo["machines"]),
+        "moe_touched_one": f"{one['experts_touched']:.0f}",
+        "moe_touched_many": f"{many['experts_touched']:.0f}",
+        "moe_read_one": f"{one['params_read'] / 1e9:.0f}B",
+        "moe_read_many": f"{many['params_read'] / 1e9:.0f}B",
+        "moe_per_token_one": f"{one['params_per_token'] / 1e9:.1f}B",
+        "moe_per_token_many": f"{many['params_per_token'] / 1e9:.2f}B",
+        "moe_itl_one_machine": f"{many['itl_ms']:.0f} ms",
+        "moe_itl_parallel": f"{many['parallel_itl_ms']:.1f} ms",
+        "moe_itl_batch_one": f"{one['parallel_itl_ms']:.1f} ms",
+        "moe_batch_many": str(many["batch"]),
+        "moe_network_share": f"{many['network_ms'] / many['parallel_itl_ms'] * 100:.0f}%",
+        "moe_biggest_batch": str(biggest["batch"]),
+        "moe_biggest_itl": f"{biggest['parallel_itl_ms']:.1f} ms",
+        "moe_slow_link": f"{many['all_to_all_seconds']['100 GbE'] * 1e3:,.0f} ms",
+        "itl_budget": f"{a['itl_budget_ms']} ms",
+    }
+
+
 def ch28(d: dict) -> dict[str, str]:
     a = d["assumptions"]
     by_name = {r["benchmark"]: r for r in d["benchmarks"]}
@@ -2028,6 +2102,7 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch18": ch18, "ch19": ch19,
             "ch20": ch20, "ch22": ch22,
             "ch24": ch24, "ch28": ch28, "ch29": ch29, "ch30": ch30,
+            "ch33": ch33,
             "ch31": ch31,
             "ch32": ch32,
             "ch41": ch41, "ch42": ch42, "ddr1": ddr1}[chapter](d)

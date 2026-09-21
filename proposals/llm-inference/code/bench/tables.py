@@ -1231,6 +1231,89 @@ def ch29_reference(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch33_context(d: dict) -> str:
+    """What a long prompt does."""
+    lc = d["long_context"]
+    out = ["| Context | Cache, one sequence | Sequences that fit | "
+           "Cache share of the step | Between tokens | Prefill | "
+           "Attention's share of it |", "|---|---|---|---|---|---|---|"]
+    for r in lc["rows"]:
+        out.append(f"| {r['context']:,} | {r['kv_gb']:.2f} GB "
+                   f"| {r['sequences_that_fit']:,} "
+                   f"| {r['cache_share'] * 100:.0f}% "
+                   f"| {r['itl_ms']:.1f} ms "
+                   f"| {r['prefill_s'] * 1e3:,.0f} ms "
+                   f"| {r['attention_share_of_prefill'] * 100:.0f}% |")
+    out += ["", f"Arithmetic over the reference model on one accelerator: "
+                f"{lc['weight_bytes'] / 1e9:.1f} GB of weights leave "
+                f"{lc['pool_bytes'] / 1e9:.0f} GB for caches, at "
+                f"{lc['kv_bytes_per_token']:,} bytes a token. The batch in "
+                f"the fourth and fifth columns is whatever fits, up to 64. "
+                f"Two crossings worth remembering: one sequence's cache "
+                f"outweighs the entire model at "
+                f"{lc['cache_outweighs_model_at']:,.0f} tokens, and "
+                f"attention overtakes everything else in a prefill at "
+                f"{lc['attention_overtakes_at']:,.0f}."]
+    return "\n".join(out)
+
+
+def ch33_thinking(d: dict) -> str:
+    """What a long reply does, which is not the same."""
+    th = d["thinking"]
+    out = ["| Thinking tokens | Output | Visible | Sequences that fit | "
+           "Seconds an answer | Dollars a thousand answers | Against no "
+           "thinking |", "|---|---|---|---|---|---|---|"]
+    for r in th["rows"]:
+        out.append(f"| {r['thinking_tokens']:,} | {r['output_tokens']:,} "
+                   f"| {r['visible_share'] * 100:.1f}% "
+                   f"| {r['sequences_that_fit']:,} "
+                   f"| {r['seconds_to_answer']:,.1f} "
+                   f"| ${r['usd_per_answer'] * 1000:,.3f} "
+                   f"| {r['usd_per_answer'] / th['baseline_usd']:,.0f}x |")
+    out += ["", f"The same {th['prompt_tokens']:,}-token prompt and the "
+                f"same {th['visible_tokens']}-token visible answer, with "
+                f"thinking in front of it. Costs rise faster than the token "
+                f"count because the reply's own cache grows as it is "
+                f"written, so fewer sequences fit and each one has less of "
+                f"the machine to share. Anthropic's documentation puts the "
+                f"floor on a thinking budget at "
+                f"{th['thinking_minimum']:,} tokens and advises batch "
+                f"processing above {th['batch_advice_above']:,}, where "
+                f"requests \"can hit system timeouts and open-connection "
+                f"limits\" -- which the last row's "
+                f"{th['rows'][-1]['seconds_to_answer']:,.0f} seconds "
+                f"explains."]
+    return "\n".join(out)
+
+
+def ch33_mixture(d: dict) -> str:
+    """What a batch does to a mixture of experts."""
+    m = d["mixture"]
+    mm = m["model"]
+    out = ["| Batch | Experts touched | The step reads | Per token | "
+           "Between tokens, one machine | Over " f"{m['machines']}" " | "
+           "Network share |", "|---|---|---|---|---|---|---|"]
+    for r in m["rows"]:
+        out.append(f"| {r['batch']} | {r['experts_touched']:.0f} of "
+                   f"{mm['routed']} | {r['params_read'] / 1e9:.0f}B "
+                   f"| {r['params_per_token'] / 1e9:.2f}B "
+                   f"| {r['itl_ms']:,.0f} ms "
+                   f"| **{r['parallel_itl_ms']:.1f} ms** "
+                   f"| {r['network_ms'] / r['parallel_itl_ms'] * 100:.0f}% |")
+    out += ["", f"{mm['name']}: {mm['total'] / 1e9:.0f}B total parameters, "
+                f"{mm['active'] / 1e9:.0f}B activated for each token, "
+                f"{mm['routed']} routed experts with {mm['per_token']} "
+                f"chosen per token (FACTS.md). Each sequence routes "
+                f"independently, so a step reads the union of what the "
+                f"batch chose, and the union fills up. The fifth column is "
+                f"one accelerator, which is hypothetical -- the weights "
+                f"alone are {m['weights_gb_bf16']:,.0f} GB and need "
+                f"{m['machines']} of them. The sixth is the same step with "
+                f"the experts spread across those {m['machines']}, which is "
+                f"how it is actually served, over NVLink."]
+    return "\n".join(out)
+
+
 def ch28_benchmarks(d: dict) -> str:
     """What each benchmark can find."""
     a = d["assumptions"]
@@ -1767,6 +1850,9 @@ def main() -> None:
                  ("ch42-own-or-rent", ch42_own_or_rent)),
         "ch31": (("ch31-validity", ch31_validity),
                  ("ch31-states", ch31_states), ("ch31-cost", ch31_cost)),
+        "ch33": (("ch33-context", ch33_context),
+                 ("ch33-thinking", ch33_thinking),
+                 ("ch33-mixture", ch33_mixture)),
         "ch28": (("ch28-benchmarks", ch28_benchmarks),
                  ("ch28-perplexity", ch28_perplexity),
                  ("ch28-ch24", ch28_ch24)),

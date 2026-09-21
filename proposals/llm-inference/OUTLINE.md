@@ -656,6 +656,15 @@ had it been read as a pass-or-fail experiment, which is why that
 chapter measured a number per position instead. Chapters **25**,
 **26** and **27** still want a GPU and a real model, so they wait.
 
+**30, Self-Speculation and Draft Heads** and **33, Long Context,
+Reasoning, and MoE** close Part VI's chapters. 33 is the one that
+needed no code at all beyond arithmetic: a 128K cache outweighs the
+whole model, a reply that thinks for 32K tokens costs 888 times what
+the same visible answer costs without, and a mixture of experts reads
+8 of its 256 experts for one token and 252 of them for a batch of
+128. All three are the same question -- which term of the decode step
+is currently the largest -- asked in three costumes.
+
 Next: **21** and **23** when a GPU is free; meanwhile the remaining
 Tier 0 chapters of Parts VI and VIII.
 

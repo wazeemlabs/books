@@ -1,5 +1,5 @@
 {
- "figures": 71,
+ "figures": 74,
  "problems": [
   "ch03-timeline: text 'decode - 300 tokens, one at a time, 4.84 ms each' sits on a plotted line",
   "ch05-tradeoff: text 'the curve stops here because memory runs out, not latency' sits on a plotted line",

@@ -300,3 +300,16 @@ figures above and sweeps the price, rather than relying on either.
 | GSM8K, the paper | Karl Cobbe et al., "Training Verifiers to Solve Math Word Problems", arXiv:2110.14168 -- "a dataset of 8.5K high quality linguistically diverse grade school math word problems" | arXiv abstract | 2026-09-21 |
 | GSM8K split sizes | train 7,473; test 1,319 (config `main`) | datasets-server.huggingface.co/size?dataset=openai/gsm8k | 2026-09-21 |
 | HumanEval size | test 164 | datasets-server.huggingface.co/size?dataset=openai/openai_humaneval | 2026-09-21 |
+
+## Long context, reasoning and MoE (Chapter 33)
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| DeepSeek-V3, the report | DeepSeek-AI, "DeepSeek-V3 Technical Report", arXiv:2412.19437 (Dec 2024) | arXiv abstract | 2026-09-21 |
+| Its headline pair | "a strong Mixture-of-Experts (MoE) language model with 671B total parameters with 37B activated for each token"; "adopts Multi-head Latent Attention (MLA) and DeepSeekMoE architectures" | arXiv:2412.19437, abstract | 2026-09-21 |
+| Its MoE configuration | 61 layers, hidden 7,168; each MoE layer has 1 shared and 256 routed experts of intermediate dimension 2,048, with 8 routed experts activated per token; all FFNs except the first three layers are MoE | DeepSeek-V3 technical report, section on architecture; HuggingFace `deepseek_v3` model doc (`n_routed_experts` 256, `n_group` 8, `topk_group` 4) | 2026-09-21 |
+| Thinking tokens are billed as output | `usage.output_tokens_details.thinking_tokens` "reports how many of the billed output tokens were internal reasoning" | platform.claude.com, Extended thinking | 2026-09-21 |
+| Thinking budget floor | "Minimum of 1,024 tokens. The API rejects smaller values." Thinking tokens "count toward the `max_tokens` limit for the turn" | same | 2026-09-21 |
+| Long thinking is a different regime | "For thinking budgets above 32k, use batch processing to avoid networking issues. Pushing the model to think beyond 32k tokens produces long-running requests that can hit system timeouts and open-connection limits." | same | 2026-09-21 |
+| Rotary position embedding | Jianlin Su, Yu Lu, Shengfeng Pan, Ahmed Murtadha, Bo Wen, Yunfeng Liu, "RoFormer: Enhanced Transformer with Rotary Position Embedding", arXiv:2104.09864 (2021) | arXiv abstract | 2026-09-21 |
+| Ring attention | Hao Liu, Matei Zaharia, Pieter Abbeel, "Ring Attention with Blockwise Transformers for Near-Infinite Context", arXiv:2310.01889 (2023) | arXiv abstract | 2026-09-21 |

@@ -141,3 +141,6 @@ explanation.
 | statistical power | 28 | How often an experiment finds a difference that is really there. The number nobody reports, and the one that decides whether "no significant change" means anything. |
 | minimum detectable difference | 28 | The smallest true difference an experiment finds most of the time. A property of the benchmark's size and the test used, not of the models. |
 | paired test | 28 | A test for an experiment where both things were measured on the same items. It looks only at the items they disagree on, which is why it sees what comparing two averages cannot. |
+| mixture of experts | 33 | A model whose feed-forward layers are many networks instead of one, with each token sent to a few. Announced with two parameter counts, of which the smaller describes one token and the larger describes what you must buy. |
+| routed expert | 33 | One of the feed-forward networks a mixture chooses between. A token reaches a handful; a batch, between them, reaches nearly all. |
+| expert parallelism | 33 | Giving each machine a share of the routed experts, so a step reads its own slice rather than all of them. The thing that makes a mixture's batch affordable, and the reason it needs a fast interconnect. |
