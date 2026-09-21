@@ -1237,24 +1237,32 @@ def ch41_load(d: dict) -> str:
     theory = {r["rate"]: r for r in d["theory"]["rows"]}
     out = ["| Requests a second | Of capacity | In the system | "
            "End to end, mean | p99 | TTFT p99 | Between tokens, p99 | "
-           "Tokens/s |", "|---|---|---|---|---|---|---|---|"]
+           "Tokens/s | Moves by |", "|---|---|---|---|---|---|---|---|---|"]
     for r in d["sweep"]:
         t = theory[r["rate"]]
-        meets = (r["ttft_p99_ms"] <= a["ttft_budget_ms"]
-                 and r["itl_p99_ms"] <= a["itl_budget_ms"]
-                 and r["drained_over_span"] < 1.10)
-        rate = f"**{r['rate']}**" if meets else f"{r['rate']} *"
+        meets = (r["settled"]
+                 and r["ttft_p99_ms"] <= a["ttft_budget_ms"]
+                 and r["itl_p99_ms"] <= a["itl_budget_ms"])
+        rate = (f"**{r['rate']}**" if meets
+                else f"{r['rate']} *" if r["settled"] else f"{r['rate']} +")
         out.append(f"| {rate} | {t['utilization'] * 100:.0f}% "
                    f"| {r['in_system']:.0f} | {r['mean_time_s']:.2f} s "
                    f"| {r['p99_s']:.2f} s | {r['ttft_p99_ms']:,.0f} ms "
                    f"| {r['itl_p99_ms']:.1f} ms "
-                   f"| {r['tokens_per_s']:,.0f} |")
-    out += ["", f"One machine, {a['n_requests']:,} requests at each rate, "
-                f"seed {a['seed']}. Bold rows keep both of the case study's "
-                f"promises -- {a['ttft_budget_ms']:,} ms to a first token "
-                f"and {a['itl_budget_ms']} ms between tokens, at the 99th "
-                f"percentile -- and finish soon after the traffic stops. "
-                f"Rows marked * break at least one. Capacity is "
+                   f"| {r['tokens_per_s']:,.0f} "
+                   f"| {r['worst_drift'] * 100:.0f}% |")
+    out += ["", f"One machine, seed {a['seed']}. Every rate was run twice, "
+                f"at {a['n_requests']:,} requests and at "
+                f"{a['n_requests_long']:,}; the columns are the longer run "
+                f"and \"moves by\" is how far the furthest of the mean, "
+                f"the p99 and the throughput shifted between the two. "
+                f"Bold rows keep both of the case study's promises -- "
+                f"{a['ttft_budget_ms']:,} ms to a first token and "
+                f"{a['itl_budget_ms']} ms between tokens, at the 99th "
+                f"percentile. Rows marked * break at least one. Rows marked "
+                f"+ never settled: their latencies grew with the length of "
+                f"the run, so they are numbers about the benchmark and not "
+                f"about the machine. Capacity is "
                 f"{cap['tokens_per_s']:,.0f} tokens a second, which at "
                 f"{cap['output_mean']} tokens a reply is "
                 f"{cap['requests_per_s']:.1f} requests a second, and "

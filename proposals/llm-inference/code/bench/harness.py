@@ -3,6 +3,8 @@
 Rules it enforces, from the book's standards:
   * warm up before timing, and never report a cold run;
   * repeat, and report the median, with the spread when it exceeds 5%;
+  * for anything measured off a queue, check the answer against a
+    longer run before believing it -- see `steady_state`;
   * report percentiles, not averages, for latency;
   * fix every seed;
   * record provenance -- hardware, software, model, commit -- next to
@@ -107,6 +109,46 @@ def repeat(fn: Callable[[], float], warmup: int = 1, runs: int = 3) -> Repeated:
     for _ in range(warmup):
         fn()
     return Repeated([fn() for _ in range(runs)])
+
+
+def steady_state(run: Callable[[int], dict[str, Any]], n: int,
+                 keys: Sequence[str], tolerance: float = 0.10
+                 ) -> dict[str, Any]:
+    """Run a simulation at `n` arrivals and at `2n`, and compare.
+
+    A tail latency measured off a queue is only a property of the
+    server if the queue has settled. Under-run it and the number is
+    too small, because the backlog has not finished building; run it
+    past the server's capacity and there is no settled value at all,
+    because the backlog never stops building -- the number you get is
+    a number about how long you ran, and it will double when the run
+    does.
+
+    Neither case announces itself. Both look like a clean measurement.
+    The only cheap test is to run it again for longer and see whether
+    the answer moves, which is what this does: it returns both sets of
+    numbers, how far each statistic drifted, and whether every one of
+    them held still. A chapter that reports an unsettled number should
+    say so rather than quote it.
+    """
+    short, long = run(n), run(2 * n)
+    drift = {}
+    for k in keys:
+        a, b = float(short[k]), float(long[k])
+        drift[k] = abs(b - a) / abs(a) if a else (0.0 if b == 0 else float("inf"))
+    return {"n": n, "n_long": 2 * n, "short": short, "long": long,
+            "drift": drift, "worst_drift": max(drift.values()),
+            "tolerance": tolerance,
+            "settled": all(v <= tolerance for v in drift.values())}
+
+
+def test_an_unsettled_statistic_is_caught() -> None:
+    """A statistic that grows with the length of the run must not pass."""
+    settled = steady_state(lambda n: {"x": 5.0 + 1.0 / n}, 100, ["x"])
+    assert settled["settled"], settled["drift"]
+    growing = steady_state(lambda n: {"x": 0.01 * n}, 100, ["x"])
+    assert not growing["settled"], growing["drift"]
+    assert abs(growing["drift"]["x"] - 1.0) < 1e-9, growing["drift"]
 
 
 def write(path: str | Path, payload: dict[str, Any],

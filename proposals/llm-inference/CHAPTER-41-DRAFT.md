@@ -30,7 +30,7 @@ chapter was in service of.
 
 The naive method is a division: demand over capacity. The case study
 wants 200 requests a second, one machine manages
-31.1, so buy 7. That answer is
+30.5, so buy 7. That answer is
 wrong, and the interesting part is *why* it is wrong and by how much —
 because the standard correction for it is also wrong, in the opposite
 direction and by more.
@@ -47,33 +47,63 @@ First, capacity, measured rather than assumed. Offer a machine more
 and more traffic and watch what comes out.
 
 <!-- include: tables/ch41-load.md -->
-| Requests a second | Of capacity | In the system | End to end, mean | p99 | TTFT p99 | Between tokens, p99 | Tokens/s |
-|---|---|---|---|---|---|---|---|
-| **2** | 6% | 3 | 1.54 s | 5.19 s | 60 ms | 7.9 ms | 615 |
-| **4** | 13% | 7 | 1.61 s | 5.46 s | 63 ms | 8.0 ms | 1,230 |
-| **8** | 26% | 15 | 1.78 s | 6.06 s | 68 ms | 8.3 ms | 2,464 |
-| **12** | 39% | 24 | 1.96 s | 6.67 s | 76 ms | 8.3 ms | 3,698 |
-| **16** | 51% | 35 | 2.14 s | 7.27 s | 88 ms | 8.4 ms | 4,939 |
-| **20** | 64% | 48 | 2.31 s | 7.86 s | 105 ms | 8.5 ms | 6,163 |
-| **24** | 77% | 62 | 2.50 s | 8.50 s | 134 ms | 9.1 ms | 7,374 |
-| **26** | 84% | 70 | 2.64 s | 8.94 s | 177 ms | 9.4 ms | 7,949 |
-| **28** | 90% | 80 | 2.82 s | 9.49 s | 281 ms | 9.8 ms | 8,527 |
-| 30 * | 97% | 93 | 3.08 s | 10.11 s | 532 ms | 10.2 ms | 9,057 |
-| 32 * | 103% | 120 | 3.89 s | 11.05 s | 1,882 ms | 10.6 ms | 9,260 |
-| 36 * | 116% | 178 | 5.72 s | 13.58 s | 5,218 ms | 10.6 ms | 9,323 |
-| 40 * | 129% | 240 | 7.70 s | 16.38 s | 8,420 ms | 10.6 ms | 9,309 |
+| Requests a second | Of capacity | In the system | End to end, mean | p99 | TTFT p99 | Between tokens, p99 | Tokens/s | Moves by |
+|---|---|---|---|---|---|---|---|---|
+| **2** | 7% | 3 | 1.53 s | 5.24 s | 68 ms | 7.9 ms | 607 | 3% |
+| **4** | 13% | 7 | 1.60 s | 5.50 s | 74 ms | 8.1 ms | 1,213 | 3% |
+| **8** | 26% | 15 | 1.77 s | 6.10 s | 83 ms | 8.3 ms | 2,428 | 3% |
+| **12** | 39% | 24 | 1.94 s | 6.70 s | 95 ms | 8.3 ms | 3,643 | 3% |
+| **16** | 52% | 35 | 2.12 s | 7.31 s | 112 ms | 8.4 ms | 4,856 | 3% |
+| **20** | 65% | 47 | 2.30 s | 7.90 s | 141 ms | 8.7 ms | 6,069 | 3% |
+| **24** | 79% | 62 | 2.51 s | 8.60 s | 256 ms | 9.6 ms | 7,279 | 3% |
+| **26** | 85% | 71 | 2.66 s | 9.06 s | 469 ms | 10.0 ms | 7,880 | 3% |
+| 28 * | 92% | 84 | 2.92 s | 9.72 s | 1,368 ms | 10.3 ms | 8,480 | 4% |
+| 30 + | 98% | 131 | 4.31 s | 11.83 s | 3,441 ms | 10.6 ms | 9,049 | 32% |
+| 32 + | 105% | 378 | 12.29 s | 23.21 s | 16,239 ms | 10.6 ms | 9,114 | 91% |
+| 36 + | 118% | 1105 | 35.81 s | 56.94 s | 51,868 ms | 10.6 ms | 9,146 | 101% |
+| 40 + | 131% | 1705 | 55.21 s | 85.59 s | 81,021 ms | 10.6 ms | 9,164 | 102% |
 
-One machine, 1,500 requests at each rate, seed 0. Bold rows keep both of the case study's promises -- 1,000 ms to a first token and 50 ms between tokens, at the 99th percentile -- and finish soon after the traffic stops. Rows marked * break at least one. Capacity is 9,323 tokens a second, which at 300 tokens a reply is 31.1 requests a second, and "of capacity" is measured against that.
+One machine, seed 0. Every rate was run twice, at 6,000 requests and at 12,000; the columns are the longer run and "moves by" is how far the furthest of mean_time_s, p99_s, tokens_per_s shifted between the two. Bold rows keep both of the case study's promises -- 1,000 ms to a first token and 50 ms between tokens, at the 99th percentile. Rows marked * break at least one. Rows marked + never settled: their latencies grew with the length of the run, so they are numbers about the benchmark and not about the machine. Capacity is 9,164 tokens a second, which at 300 tokens a reply is 30.5 requests a second, and "of capacity" is measured against that.
 
-Throughput rises with offered load and then stops: **9,323
+Throughput rises with offered load and then stops: **9,164
 tokens a second**, which at 300 tokens a reply is
-31.1 requests a second. Past that the machine
+30.5 requests a second. Past that the machine
 produces no more, and the extra arrivals simply accumulate.
 
-Notice what *does not* happen at the top of that table. There is no
-cliff. The end-to-end p99 rises smoothly through the whole sweep, and
-even past capacity it degrades rather than collapsing. Hold that
-thought; it is the chapter's finding.
+Notice what *does not* happen in the bold rows. There is no cliff:
+from 2 requests a second to 26 — 85% of
+capacity — the end-to-end p99 goes from 5.24 s to 9.06 s,
+and what lies between them is a slope, not a step. Hold that thought;
+it is the chapter's finding.
+
+### A number that does not exist
+
+Before the finding, the last column, because it is the reason the rest
+of the table can be believed.
+
+Every rate was run twice: once over 6,000 requests and once
+over 12,000. The column is how far the furthest of the
+mean, the p99 and the throughput moved between the two runs. Up to
+28 requests a second it moves by 4% or
+less. From 30 it does not: at 40 a second
+the p99 is 42 s over the shorter run and
+86 s over the longer one. It doubled because the run
+doubled.
+
+That is not noise and it is not a bug in the scheduler. Past capacity
+the backlog grows for as long as traffic keeps arriving, so there is
+no steady-state latency for a benchmark to find; whatever number it
+prints is a statement about how long it ran. The same trap works the
+other way below capacity, where a run too short for the queue to fill
+reports a tail that is too *good* — which is the more dangerous of the
+two, because the number it gives you is the one you will sell.
+
+Neither case announces itself. Both produce a clean-looking
+percentile. The only cheap test is the one in that column: run it
+again for longer and see whether the answer moves.
+`harness.steady_state` does that for every load in this chapter, and a
+load whose numbers are still moving is reported as unsettled rather
+than quoted — including in Figure 41.2, where it is drawn hollow.
 
 ## Little's law
 
@@ -100,25 +130,25 @@ rate and mean time — and compared:
 **Figure 41.1** — Both sides of Little's law, measured separately.
 *Provenance in `code/figures/ch41-little.caption.txt`.*
 
-It holds to **3.0%** at every load where the server is in
-a steady state, and stops holding — by 28% — from
-30 requests a second, which is exactly where the
-server stops finishing its work inside the arrival window. The law did
+It holds to **3.5%** at every load where the server is in
+a steady state, and stops holding — by 30% — from
+30 requests a second, which is exactly the load at
+which the sweep says nothing settles any more. The law did
 not fail; the one thing it asks for, stationarity, did. That makes it a useful alarm as well
 as a useful tool: **if L and λW disagree, your system is not in a
 steady state, whatever your dashboard says.**
 
 The practical use is that it turns one unknown into another. Measure
 any two of arrivals, in-flight requests and latency, and you have the
-third. A fleet holding 80 requests at 28 a
+third. A fleet holding 71 requests at 26 a
 second is, by the law alone, giving each of them a **mean** of
-2.85 s; measured directly it is 2.82 s. If those two
+2.72 s; measured directly it is 2.66 s. If those two
 disagree, one of them is measuring something other than you think.
 
 Note the word *mean*. Little's law says nothing whatever about the
 distribution, and the tail is what
 Chapter 5 showed a promise is made of: at
-the same load the p99 is 9.49 s, which is not a number any
+the same load the p99 is 9.06 s, which is not a number any
 amount of algebra will give you. The law tells you where the average
 is; only measurement tells you where the tail is.
 
@@ -141,19 +171,19 @@ It is wrong for this one, and not by a little:
 <!-- include: tables/ch41-theory.md -->
 | Of capacity | What this server does | What a classical queue would do | Over-predicted by |
 |---|---|---|---|
-| 6% | 1.05x | 1.07x | **1.0x** |
-| 13% | 1.10x | 1.15x | **1.0x** |
-| 26% | 1.21x | 1.35x | **1.1x** |
-| 39% | 1.33x | 1.63x | **1.2x** |
-| 51% | 1.45x | 2.06x | **1.4x** |
-| 64% | 1.58x | 2.81x | **1.8x** |
-| 77% | 1.70x | 4.39x | **2.6x** |
-| 84% | 1.80x | 6.12x | **3.4x** |
-| 90% | 1.92x | 10.11x | **5.3x** |
-| 97% | 2.10x | 28.91x | **13.8x** |
-| 103% | 2.65x | over capacity | -- |
-| 116% | 3.89x | over capacity | -- |
-| 129% | 5.24x | over capacity | -- |
+| 7% | 1.04x | 1.07x | **1.0x** |
+| 13% | 1.09x | 1.15x | **1.1x** |
+| 26% | 1.20x | 1.35x | **1.1x** |
+| 39% | 1.32x | 1.65x | **1.2x** |
+| 52% | 1.45x | 2.10x | **1.5x** |
+| 65% | 1.57x | 2.90x | **1.8x** |
+| 79% | 1.71x | 4.67x | **2.7x** |
+| 85% | 1.81x | 6.72x | **3.7x** |
+| 92% | 1.99x | 12.00x | **6.0x** |
+| 98% | 2.94x | 56.04x | **19.1x** |
+| 105% | 8.36x | over capacity | -- |
+| 118% | 24.36x | over capacity | -- |
+| 131% | 37.57x | over capacity | -- |
 
 Slowdown is time in the system divided by 1.47 s, which is what one request takes with the machine to itself. The classical column is 1 / (1 - utilization), the standard result for a single-server queue and the arithmetic behind every rule of thumb about not running servers hot. It does not describe this server, and the last column is how much hardware believing it would buy.
 
@@ -163,11 +193,11 @@ Slowdown is time in the system divided by 1.47 s, which is what one request take
 does.
 *Provenance in `code/figures/ch41-utilization.caption.txt`.*
 
-At 90% of capacity the classical model predicts
-10.1x the service time. The server delivers
-**1.92x** — an over-prediction of 5.3x. At
-97% it predicts 29x and the server delivers
-2.10x: over by 13.8x.
+At 92% of capacity the classical model predicts
+12.0x the service time. The server delivers
+**1.99x** — an over-prediction of 6.0x. At
+92% it predicts 12x and the server delivers
+1.99x: over by 6.0x.
 
 ### Because it does not queue
 
@@ -222,11 +252,11 @@ So: how many machines for 200 requests a second?
 <!-- include: tables/ch41-sizing.md -->
 | How it was sized | Load a machine | Machines | Cost an hour |
 |---|---|---|---|
-| Throughput alone, ignoring the promise | 31.1 req/s | 7 | $22.75 |
-| The 70% rule from classical queueing | 21.8 req/s | 10 | $32.50 |
-| **The load at which the promise still holds** | **28.0 req/s** | **8** | **$26.00** |
+| Throughput alone, ignoring the promise | 30.5 req/s | 7 | $22.75 |
+| The 70% rule from classical queueing | 21.4 req/s | 10 | $32.50 |
+| **The load at which the promise still holds** | **26.0 req/s** | **8** | **$26.00** |
 
-For 200 requests a second. The promise holds up to 28 requests a machine, which is 90% of what the machine can do -- far past where the classical rule would stop. Sizing on throughput alone meets no promise at all; sizing on the rule of thumb buys machines the measurement says are not needed.
+For 200 requests a second. The promise holds up to 26 requests a machine, which is 85% of what the machine can do -- far past where the classical rule would stop. Sizing on throughput alone meets no promise at all; sizing on the rule of thumb buys machines the measurement says are not needed.
 
 ![Three ways to size the same fleet](code/figures/ch41-sizing.svg)
 
@@ -239,9 +269,9 @@ For 200 requests a second. The promise holds up to 28 requests a machine, which 
 - **The 70% rule** gives 10. It is safe, and it is
   2 machines more than the measurement calls for.
 - **The promise itself** gives 8. Both promises
-  hold up to 28 requests a machine — 90% of
-  capacity — with a first token at 281 ms and
-  9.8 ms between tokens, at the 99th percentile.
+  hold up to 26 requests a machine — 85% of
+  capacity — with a first token at 469 ms and
+  10.0 ms between tokens, at the 99th percentile.
 
 $6.50 an hour is not the point. The point is that the rule of
 thumb and the measurement disagree, and only one of them was derived
@@ -307,15 +337,15 @@ morning, and Chapter 42 is about what to do with that.
 
 ## Numbers to remember
 
-- **L = λW** — Little's law. Holds to 3.0% on this
+- **L = λW** — Little's law. Holds to 3.5% on this
   server, assumes only a steady state, and its failure is a useful
   alarm.
-- **31.1 requests a second** — one machine's capacity
-  for the case study's traffic, 9,323 tokens a second.
-- **5.3x** — how much the classical 1 / (1 − ρ) over-predicts
-  the slowdown at 90% of capacity. It predicts
-  10.1x; the server does 1.92x.
-- **90%** — the utilization at which this server still keeps
+- **30.5 requests a second** — one machine's capacity
+  for the case study's traffic, 9,164 tokens a second.
+- **6.0x** — how much the classical 1 / (1 − ρ) over-predicts
+  the slowdown at 92% of capacity. It predicts
+  12.0x; the server does 1.99x.
+- **85%** — the utilization at which this server still keeps
   both promises. A batching server can be run hot.
 - **8 machines** for 200 requests a second,
   $26.00 an hour, against 10 if you believe

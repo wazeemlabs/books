@@ -1392,9 +1392,12 @@ def ch41(d: dict) -> dict[str, str]:
     a, cap, t, s_ = (d["assumptions"], d["capacity"], d["theory"], d["sizing"])
     sweep = {r["rate"]: r for r in d["sweep"]}
     rows = {r["rate"]: r for r in t["rows"]}
-    at = lambda u: min(t["rows"], key=lambda r: abs(r["utilization"] - u))
+    # Only loads whose numbers settled. A slowdown read off a queue
+    # that never stopped growing is a slowdown about the benchmark.
+    settled = [r for r in t["rows"] if r["steady"]]
+    at = lambda u: min(settled, key=lambda r: abs(r["utilization"] - u))
     best = at(0.90)
-    worst = max((r for r in t["rows"] if r["classical_slowdown"]),
+    worst = max((r for r in settled if r["classical_slowdown"]),
                 key=lambda r: r["over_prediction"])
     hot = s_["highest_rate_meeting_both_promises"]
     return {
@@ -1403,7 +1406,18 @@ def ch41(d: dict) -> dict[str, str]:
         "capacity_requests": f"{cap['requests_per_s']:.1f}",
         "output_mean": str(cap["output_mean"]),
         "requests": f"{a['n_requests']:,}",
+        "requests_long": f"{a['n_requests_long']:,}",
         "rates": str(len(a["rates"])),
+        # settling: which loads have a latency at all
+        "settled_to": f"{max(r['rate'] for r in d['sweep'] if r['settled'])}",
+        "unsettled_from": f"{min(r['rate'] for r in d['sweep'] if not r['settled'])}",
+        "drift_settled": f"{max(r['worst_drift'] for r in d['sweep'] if r['settled']) * 100:.0f}%",
+        "drift_unsettled": f"{max(r['worst_drift'] for r in d['sweep']) * 100:.0f}%",
+        "p99_unsettled_short": f"{max(d['sweep'], key=lambda r: r['rate'])['short_run']['p99_s']:.0f} s",
+        "p99_unsettled_long": f"{max(d['sweep'], key=lambda r: r['rate'])['p99_s']:.0f} s",
+        "top_rate": f"{max(r['rate'] for r in d['sweep'])}",
+        "idle_p99": f"{min(d['sweep'], key=lambda r: r['rate'])['p99_s']:.2f} s",
+        "idle_rate": f"{min(r['rate'] for r in d['sweep'])}",
         # Little's law
         "little_steady": f"{t['largest_little_gap_while_steady'] * 100:.1f}%",
         "little_broken": f"{t['largest_little_gap_overall'] * 100:.0f}%",

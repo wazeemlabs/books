@@ -3023,15 +3023,28 @@ def fig_little(d: dict) -> None:
 def fig_utilization(d: dict) -> None:
     """What a batching server does with load, against what theory says."""
     rows = [r for r in d["theory"]["rows"] if r["classical_slowdown"]]
+    settled = [r for r in rows if r["steady"]]
+    drifting = [r for r in rows if not r["steady"]]
 
     fig, ax = plt.subplots(figsize=(6.9, 4.3), dpi=200)
     u = [r["utilization"] * 100 for r in rows]
     ax.plot(u, [r["classical_slowdown"] for r in rows], marker="s",
             markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.AMBER,
             linestyle="--", label="what a classical queue would do")
-    ax.plot(u, [r["measured_slowdown"] for r in rows], marker="o",
+    ax.plot([r["utilization"] * 100 for r in settled],
+            [r["measured_slowdown"] for r in settled], marker="o",
             markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH, color=T.BLUE,
             label="what this server does")
+    # A load whose numbers were still moving when the run ended is not a
+    # point on a curve. Drawn, because leaving it out would hide where
+    # the measurement stops being possible, but drawn hollow.
+    if drifting:
+        ax.plot([r["utilization"] * 100 for r in drifting],
+                [r["measured_slowdown"] for r in drifting], marker="o",
+                markersize=T.MARKER_SIZE, linestyle="none",
+                markerfacecolor="#FFFFFF", markeredgecolor=T.BLUE,
+                markeredgewidth=1.4,
+                label="still growing when the run ended")
     ax.set_yscale("log")
     ax.set_xlabel("how full the machine is (% of its capacity)")
     ax.set_ylabel("times slower than a request with the machine to itself")
@@ -3045,7 +3058,7 @@ def fig_utilization(d: dict) -> None:
     # beside either line to write.
     ax.legend(frameon=False, fontsize=8, loc="upper left")
 
-    at90 = min(rows, key=lambda r: abs(r["utilization"] - 0.90))
+    at90 = max(settled, key=lambda r: r["utilization"])
     save(fig, "ch41-utilization", d,
          alt=("Slowdown against how full the machine is, on a log y axis. "
               "The dashed line is the textbook single-server queue, where "
@@ -3058,7 +3071,9 @@ def fig_utilization(d: dict) -> None:
               f"{at90['over_prediction']:.1f} times. Requests do not wait in "
               "a line for this server; they join the batch and everyone "
               "slows down together, which degrades far more gently than "
-              "waiting does."))
+              "waiting does. The hollow marker is a load whose latency was "
+              "still rising when the run ended, so it has no settled value "
+              "to plot."))
 
 
 def fig_sizing(d: dict) -> None:

@@ -26,12 +26,20 @@ from tinyserve.reference import (GPU_BYTES, GPU_USD_PER_HOUR, KV_BYTES_PER_TOKEN
 from tinyserve.scheduler import serve_chunked
 from tinyserve.serving import decode_step, prefill_step
 
-from .harness import pct, write
+from .harness import pct, steady_state, write
 from .run_ch18 import (ITL_BUDGET_MS, MAX_BATCH, OUTPUT_MEAN, PROMPT_MEAN,
                        TTFT_BUDGET_MS, make_requests)
 
 SEED = 0
-N_REQUESTS = 1500
+# Long enough that the queue settles at the loads that matter. What
+# "long enough" means is not guessed: every rate is run again at twice
+# this and the answers are compared, and a rate whose numbers move is
+# reported as unsettled rather than quoted. See `harness.steady_state`.
+N_REQUESTS = 6000
+# The statistics the settling test is applied to. Means and the median
+# converge; a 99th percentile of a few thousand samples is too noisy to
+# gate on, so it is reported from the longer run and not tested.
+SETTLING_KEYS = ["mean_time_s", "p99_s", "tokens_per_s"]
 RATES = [2, 4, 8, 12, 16, 20, 24, 26, 28, 30, 32, 36, 40]
 # The window the steady state is measured in, as fractions of the
 # arrival span: past the ramp, before the drain.
@@ -69,9 +77,9 @@ def alone_seconds() -> float:
             + OUTPUT_MEAN * decode_step(1, PROMPT_MEAN + OUTPUT_MEAN).seconds)
 
 
-def measure(rate: float) -> dict:
+def measure(rate: float, n: int = N_REQUESTS) -> dict:
     """One offered load, driven through the scheduler."""
-    reqs = make_requests(N_REQUESTS, rate, np.random.default_rng(SEED))
+    reqs = make_requests(n, rate, np.random.default_rng(SEED))
     trace = serve_chunked(reqs, max_batch=MAX_BATCH, blocks=blocks(),
                           token_budget=token_budget())
     done = [r for r in trace.requests if r.finish_s is not None]
@@ -93,6 +101,7 @@ def measure(rate: float) -> dict:
     gaps = trace.gaps_ms
     return {
         "rate": rate,
+        "n_requests": n,
         "requests_in_window": len(inside),
         "in_system": population,
         "mean_time_s": float(np.mean(times)),
@@ -109,7 +118,25 @@ def measure(rate: float) -> dict:
 
 
 def sweep() -> list[dict]:
-    return [measure(r) for r in RATES]
+    """Every offered load, each measured twice at different lengths.
+
+    The longer run is the one reported. The shorter one is there to
+    answer a question a single run cannot: has this settled? Past the
+    server's capacity nothing settles -- the backlog grows for as long
+    as the benchmark runs -- and a latency quoted from there is a
+    number about the benchmark, not about the machine.
+    """
+    rows = []
+    for rate in RATES:
+        check = steady_state(lambda n, r=rate: measure(r, n),
+                             N_REQUESTS, SETTLING_KEYS)
+        row = dict(check["long"])
+        row["settled"] = check["settled"]
+        row["drift"] = check["drift"]
+        row["worst_drift"] = check["worst_drift"]
+        row["short_run"] = {k: check["short"][k] for k in SETTLING_KEYS}
+        rows.append(row)
+    return rows
 
 
 def capacity(rows: list[dict]) -> dict:
@@ -153,7 +180,8 @@ def against_theory(rows: list[dict], cap: dict) -> dict:
                                 if classical else None),
             "p99_s": r["p99_s"],
             "little_gap": r["lambda_times_w"] / r["in_system"] - 1,
-            "steady": r["drained_over_span"] < 1.10,
+            "steady": r["settled"],
+            "worst_drift": r["worst_drift"],
         })
     steady = [x for x in out if x["steady"]]
     return {
@@ -181,9 +209,12 @@ def sizing(rows: list[dict], cap: dict) -> dict:
     demand = REQUESTS_PER_S
     per_machine_at_capacity = cap["requests_per_s"]
     # Which offered loads still keep both promises.
+    # A load whose numbers did not settle is not a load the machine can
+    # be said to sustain, whatever its latency looked like on the run.
     ok = [r for r in rows
-          if r["ttft_p99_ms"] <= TTFT_BUDGET_MS and r["itl_p99_ms"] <= ITL_BUDGET_MS
-          and r["drained_over_span"] < 1.10]
+          if r["settled"]
+          and r["ttft_p99_ms"] <= TTFT_BUDGET_MS
+          and r["itl_p99_ms"] <= ITL_BUDGET_MS]
     highest_ok = max(r["rate"] for r in ok) if ok else 0
     classical_rule = per_machine_at_capacity * 0.70    # the 70% rule
     answers = {
@@ -213,7 +244,9 @@ def main() -> None:
     payload = {
         "sweep": rows, "capacity": cap, "theory": theory, "sizing": plan,
         "assumptions": {
-            "seed": SEED, "n_requests": N_REQUESTS, "rates": RATES,
+            "seed": SEED, "n_requests": N_REQUESTS,
+            "n_requests_long": 2 * N_REQUESTS,
+            "settling_keys": SETTLING_KEYS, "rates": RATES,
             "window": list(WINDOW), "samples": SAMPLES,
             "prompt_mean": PROMPT_MEAN, "output_mean": OUTPUT_MEAN,
             "max_batch": MAX_BATCH, "token_budget": token_budget(),

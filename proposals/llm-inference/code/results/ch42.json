@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "measured_utc": "2026-09-20T19:58:32Z",
+    "measured_utc": "2026-09-21T08:09:44Z",
     "hardware": {
       "cpu": "Apple M4 Max",
       "cores_available": 16,
@@ -12,13 +12,13 @@
       "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
       "blas": "accelerate"
     },
-    "commit": "017a876"
+    "commit": "207559b"
   },
   "fleet": {
     "machines": 8,
     "demand_requests_per_s": 200,
-    "per_machine_requests_per_s": 28,
-    "capacity_requests_per_s": 31.07503545433103,
+    "per_machine_requests_per_s": 26,
+    "capacity_requests_per_s": 30.545079613942544,
     "output_tokens": 300,
     "prompt_tokens": 1200,
     "peak_tokens_per_s": 60000,
