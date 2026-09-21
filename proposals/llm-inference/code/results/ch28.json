@@ -1,0 +1,598 @@
+{
+  "provenance": {
+    "measured_utc": "2026-09-21T13:31:05Z",
+    "hardware": {
+      "cpu": "Apple M4 Max",
+      "cores_available": 16,
+      "gpu": null
+    },
+    "software": {
+      "python": "3.14.7",
+      "numpy": "2.5.3",
+      "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+      "blas": "accelerate"
+    },
+    "commit": "98aa021"
+  },
+  "benchmarks": [
+    {
+      "benchmark": "MMLU (test)",
+      "n": 14042,
+      "accuracy": 0.65,
+      "discordance": 0.05,
+      "paired_mdd": 0.005373191833496094,
+      "unpaired_mdd": 0.01269683837890625,
+      "ratio": 2.362997408682688,
+      "paired_items": 75.45035972595214
+    },
+    {
+      "benchmark": "GSM8K (test)",
+      "n": 1319,
+      "accuracy": 0.55,
+      "discordance": 0.05,
+      "paired_mdd": 0.01787223815917969,
+      "unpaired_mdd": 0.042786026000976564,
+      "ratio": 2.393993724787091,
+      "paired_items": 23.57348213195801
+    },
+    {
+      "benchmark": "HumanEval",
+      "n": 164,
+      "accuracy": 0.6,
+      "discordance": 0.05,
+      "paired_mdd": 0.0487640380859375,
+      "unpaired_mdd": NaN,
+      "ratio": null,
+      "paired_items": 7.99730224609375
+    },
+    {
+      "benchmark": "an internal eval",
+      "n": 200,
+      "accuracy": 0.8,
+      "discordance": 0.05,
+      "paired_mdd": 0.04406661987304687,
+      "unpaired_mdd": NaN,
+      "ratio": null,
+      "paired_items": 8.813323974609375
+    }
+  ],
+  "pairing": [
+    {
+      "benchmark": "MMLU (test)",
+      "n": 14042,
+      "discordance": 0.02,
+      "paired_mdd": 0.0034278106689453122,
+      "unpaired_mdd": 0.012122573852539063,
+      "ratio": 3.536535422555588
+    },
+    {
+      "benchmark": "GSM8K (test)",
+      "n": 1319,
+      "discordance": 0.02,
+      "paired_mdd": 0.011274337768554686,
+      "unpaired_mdd": NaN,
+      "ratio": null
+    },
+    {
+      "benchmark": "MMLU (test)",
+      "n": 14042,
+      "discordance": 0.05,
+      "paired_mdd": 0.005356025695800781,
+      "unpaired_mdd": 0.012676811218261717,
+      "ratio": 2.3668316655389763
+    },
+    {
+      "benchmark": "GSM8K (test)",
+      "n": 1319,
+      "discordance": 0.05,
+      "paired_mdd": 0.01774578094482422,
+      "unpaired_mdd": 0.042722892761230466,
+      "ratio": 2.4074957813390077
+    },
+    {
+      "benchmark": "MMLU (test)",
+      "n": 14042,
+      "discordance": 0.1,
+      "paired_mdd": 0.007568740844726562,
+      "unpaired_mdd": 0.01328086853027344,
+      "ratio": 1.7546998639181497
+    },
+    {
+      "benchmark": "GSM8K (test)",
+      "n": 1319,
+      "discordance": 0.1,
+      "paired_mdd": 0.024951171875,
+      "unpaired_mdd": 0.044964981079101574,
+      "ratio": 1.8021190068493154
+    },
+    {
+      "benchmark": "MMLU (test)",
+      "n": 14042,
+      "discordance": 0.2,
+      "paired_mdd": 0.010564422607421877,
+      "unpaired_mdd": 0.014223480224609376,
+      "ratio": 1.3463566115404058
+    },
+    {
+      "benchmark": "GSM8K (test)",
+      "n": 1319,
+      "discordance": 0.2,
+      "paired_mdd": 0.03523864746093751,
+      "unpaired_mdd": 0.04785919189453125,
+      "ratio": 1.3581449727201866
+    },
+    {
+      "benchmark": "MMLU (test)",
+      "n": 14042,
+      "discordance": 0.4,
+      "paired_mdd": 0.015035247802734372,
+      "unpaired_mdd": 0.015567398071289058,
+      "ratio": 1.0353935149946718
+    },
+    {
+      "benchmark": "GSM8K (test)",
+      "n": 1319,
+      "discordance": 0.4,
+      "paired_mdd": 0.04916687011718751,
+      "unpaired_mdd": 0.051562500000000004,
+      "ratio": 1.0487244739618893
+    }
+  ],
+  "sign_off": [
+    {
+      "budget": 0.005,
+      "test": "paired",
+      "items": 16384
+    },
+    {
+      "budget": 0.005,
+      "test": "unpaired",
+      "items": 92681
+    },
+    {
+      "budget": 0.01,
+      "test": "paired",
+      "items": 4096
+    },
+    {
+      "budget": 0.01,
+      "test": "unpaired",
+      "items": 23170
+    },
+    {
+      "budget": 0.02,
+      "test": "paired",
+      "items": 1069
+    },
+    {
+      "budget": 0.02,
+      "test": "unpaired",
+      "items": 5792
+    },
+    {
+      "budget": 0.05,
+      "test": "paired",
+      "items": 165
+    },
+    {
+      "budget": 0.05,
+      "test": "unpaired",
+      "items": 898
+    }
+  ],
+  "multiple": [
+    {
+      "benchmarks": 1,
+      "any_false_positive": 0.050000000000000044,
+      "alpha": 0.05
+    },
+    {
+      "benchmarks": 2,
+      "any_false_positive": 0.09750000000000003,
+      "alpha": 0.05
+    },
+    {
+      "benchmarks": 3,
+      "any_false_positive": 0.1426250000000001,
+      "alpha": 0.05
+    },
+    {
+      "benchmarks": 5,
+      "any_false_positive": 0.22621906250000023,
+      "alpha": 0.05
+    },
+    {
+      "benchmarks": 10,
+      "any_false_positive": 0.4012630607616213,
+      "alpha": 0.05
+    },
+    {
+      "benchmarks": 20,
+      "any_false_positive": 0.6415140775914581,
+      "alpha": 0.05
+    }
+  ],
+  "perplexity": {
+    "rows": [
+      {
+        "fraction": 0.001,
+        "worse_by": 0.5,
+        "mean_loss_shift": 0.0005,
+        "perplexity_ratio": 1.0005001250208359,
+        "perplexity_pct": 0.0500125020835851,
+        "replies_touched": 0.25929296784390077
+      },
+      {
+        "fraction": 0.001,
+        "worse_by": 1.0,
+        "mean_loss_shift": 0.001,
+        "perplexity_ratio": 1.0010005001667084,
+        "perplexity_pct": 0.10005001667083846,
+        "replies_touched": 0.25929296784390077
+      },
+      {
+        "fraction": 0.001,
+        "worse_by": 2.0,
+        "mean_loss_shift": 0.002,
+        "perplexity_ratio": 1.0020020013340003,
+        "perplexity_pct": 0.2002001334000303,
+        "replies_touched": 0.25929296784390077
+      },
+      {
+        "fraction": 0.001,
+        "worse_by": 4.0,
+        "mean_loss_shift": 0.004,
+        "perplexity_ratio": 1.004008010677342,
+        "perplexity_pct": 0.4008010677341911,
+        "replies_touched": 0.25929296784390077
+      },
+      {
+        "fraction": 0.01,
+        "worse_by": 0.5,
+        "mean_loss_shift": 0.005,
+        "perplexity_ratio": 1.005012520859401,
+        "perplexity_pct": 0.501252085940096,
+        "replies_touched": 0.9509591059287142
+      },
+      {
+        "fraction": 0.01,
+        "worse_by": 1.0,
+        "mean_loss_shift": 0.01,
+        "perplexity_ratio": 1.010050167084168,
+        "perplexity_pct": 1.005016708416795,
+        "replies_touched": 0.9509591059287142
+      },
+      {
+        "fraction": 0.01,
+        "worse_by": 2.0,
+        "mean_loss_shift": 0.02,
+        "perplexity_ratio": 1.0202013400267558,
+        "perplexity_pct": 2.0201340026755776,
+        "replies_touched": 0.9509591059287142
+      },
+      {
+        "fraction": 0.01,
+        "worse_by": 4.0,
+        "mean_loss_shift": 0.04,
+        "perplexity_ratio": 1.0408107741923882,
+        "perplexity_pct": 4.081077419238821,
+        "replies_touched": 0.9509591059287142
+      },
+      {
+        "fraction": 0.05,
+        "worse_by": 0.5,
+        "mean_loss_shift": 0.025,
+        "perplexity_ratio": 1.0253151205244289,
+        "perplexity_pct": 2.531512052442886,
+        "replies_touched": 0.9999997924696652
+      },
+      {
+        "fraction": 0.05,
+        "worse_by": 1.0,
+        "mean_loss_shift": 0.05,
+        "perplexity_ratio": 1.0512710963760241,
+        "perplexity_pct": 5.127109637602412,
+        "replies_touched": 0.9999997924696652
+      },
+      {
+        "fraction": 0.05,
+        "worse_by": 2.0,
+        "mean_loss_shift": 0.1,
+        "perplexity_ratio": 1.1051709180756477,
+        "perplexity_pct": 10.517091807564771,
+        "replies_touched": 0.9999997924696652
+      },
+      {
+        "fraction": 0.05,
+        "worse_by": 4.0,
+        "mean_loss_shift": 0.2,
+        "perplexity_ratio": 1.2214027581601699,
+        "perplexity_pct": 22.140275816016985,
+        "replies_touched": 0.9999997924696652
+      }
+    ],
+    "fractions": [
+      0.001,
+      0.01,
+      0.05
+    ],
+    "worse_by": [
+      0.5,
+      1.0,
+      2.0,
+      4.0
+    ],
+    "reply_tokens": 300
+  },
+  "chapter_24": {
+    "positions": 48,
+    "rows": [
+      {
+        "scheme": "int8, symmetric, per tensor",
+        "changed": 0.041666666666666664,
+        "changed_items": 2.0,
+        "best_case_difference": 0.041666666666666664,
+        "paired_power": 0.0135,
+        "unpaired_power": 0.0,
+        "shift_over_margin": 0.28241676092147827
+      },
+      {
+        "scheme": "int8, asymmetric, per tensor",
+        "changed": 0.020833333333333332,
+        "changed_items": 1.0,
+        "best_case_difference": 0.020833333333333332,
+        "paired_power": 0.00075,
+        "unpaired_power": 0.0,
+        "shift_over_margin": 0.2322389930486679
+      },
+      {
+        "scheme": "int8, symmetric, per channel",
+        "changed": 0.041666666666666664,
+        "changed_items": 2.0,
+        "best_case_difference": 0.041666666666666664,
+        "paired_power": 0.017,
+        "unpaired_power": 0.0,
+        "shift_over_margin": 0.1627105176448822
+      },
+      {
+        "scheme": "int4, symmetric, per tensor",
+        "changed": 0.4375,
+        "changed_items": 21.0,
+        "best_case_difference": 0.36250000000000004,
+        "paired_power": 0.98725,
+        "unpaired_power": 0.998,
+        "shift_over_margin": 3.846224069595337
+      },
+      {
+        "scheme": "int4, asymmetric, per tensor",
+        "changed": 0.6041666666666666,
+        "changed_items": 29.0,
+        "best_case_difference": 0.19583333333333341,
+        "paired_power": 0.35,
+        "unpaired_power": 0.573,
+        "shift_over_margin": 4.260595798492432
+      },
+      {
+        "scheme": "int4, symmetric, per channel",
+        "changed": 0.5,
+        "changed_items": 24.0,
+        "best_case_difference": 0.30000000000000004,
+        "paired_power": 0.817,
+        "unpaired_power": 0.91775,
+        "shift_over_margin": 3.083582639694214
+      },
+      {
+        "scheme": "int4, symmetric, per group of 64",
+        "changed": 0.4166666666666667,
+        "changed_items": 20.0,
+        "best_case_difference": 0.38333333333333336,
+        "paired_power": 0.99775,
+        "unpaired_power": 0.99925,
+        "shift_over_margin": 2.896834135055542
+      },
+      {
+        "scheme": "int4, symmetric, per group of 32",
+        "changed": 0.2708333333333333,
+        "changed_items": 13.0,
+        "best_case_difference": 0.2708333333333333,
+        "paired_power": 0.99525,
+        "unpaired_power": 0.94975,
+        "shift_over_margin": 2.6561119556427
+      },
+      {
+        "scheme": "int4, asymmetric, per group of 32",
+        "changed": 0.3333333333333333,
+        "changed_items": 16.0,
+        "best_case_difference": 0.3333333333333333,
+        "paired_power": 1.0,
+        "unpaired_power": 0.999,
+        "shift_over_margin": 2.1676573753356934
+      }
+    ],
+    "continuous": [
+      {
+        "shift": 0.1,
+        "power": 0.12375
+      },
+      {
+        "shift": 0.2,
+        "power": 0.28725
+      },
+      {
+        "shift": 0.3,
+        "power": 0.53675
+      },
+      {
+        "shift": 0.4,
+        "power": 0.7845
+      },
+      {
+        "shift": 0.6,
+        "power": 0.98675
+      },
+      {
+        "shift": 0.8,
+        "power": 0.99975
+      }
+    ],
+    "note": "the shift column is what that chapter measured instead"
+  },
+  "frontier": {
+    "rows": [
+      {
+        "scheme": "int8, symmetric, per tensor",
+        "bytes_per_weight": 1.0000000004998622,
+        "weights_gb": 8.002207748000002,
+        "read_ms": 2.3887187307462687,
+        "faster_by": 1.9999999990002757,
+        "cost_saved": 0.4999999997500689,
+        "free_for_cache_gb": 71.997792252
+      },
+      {
+        "scheme": "int8, asymmetric, per tensor",
+        "bytes_per_weight": 1.000000000999724,
+        "weights_gb": 8.002207752,
+        "read_ms": 2.3887187319402985,
+        "faster_by": 1.9999999980005518,
+        "cost_saved": 0.49999999950013796,
+        "free_for_cache_gb": 71.997792248
+      },
+      {
+        "scheme": "int8, symmetric, per channel",
+        "bytes_per_weight": 1.0009765625,
+        "weights_gb": 8.0100224,
+        "read_ms": 2.391051462686567,
+        "faster_by": 1.9980487804878049,
+        "cost_saved": 0.49951171875,
+        "free_for_cache_gb": 71.9899776
+      },
+      {
+        "scheme": "int4, symmetric, per tensor",
+        "bytes_per_weight": 0.500000000499862,
+        "weights_gb": 4.001103876,
+        "read_ms": 1.1943593659701492,
+        "faster_by": 3.9999999960011037,
+        "cost_saved": 0.749999999750069,
+        "free_for_cache_gb": 75.998896124
+      },
+      {
+        "scheme": "int4, asymmetric, per tensor",
+        "bytes_per_weight": 0.5000000009997241,
+        "weights_gb": 4.00110388,
+        "read_ms": 1.1943593671641792,
+        "faster_by": 3.9999999920022073,
+        "cost_saved": 0.749999999500138,
+        "free_for_cache_gb": 75.99889612
+      },
+      {
+        "scheme": "int4, symmetric, per channel",
+        "bytes_per_weight": 0.5009765625,
+        "weights_gb": 4.008918528,
+        "read_ms": 1.1966920979104478,
+        "faster_by": 3.992202729044834,
+        "cost_saved": 0.74951171875,
+        "free_for_cache_gb": 75.991081472
+      },
+      {
+        "scheme": "int4, symmetric, per group of 64",
+        "bytes_per_weight": 0.5625,
+        "weights_gb": 4.501241856,
+        "read_ms": 1.3436542853731344,
+        "faster_by": 3.5555555555555554,
+        "cost_saved": 0.71875,
+        "free_for_cache_gb": 75.498758144
+      },
+      {
+        "scheme": "int4, symmetric, per group of 32",
+        "bytes_per_weight": 0.625,
+        "weights_gb": 5.00137984,
+        "read_ms": 1.4929492059701492,
+        "faster_by": 3.2,
+        "cost_saved": 0.6875,
+        "free_for_cache_gb": 74.99862016
+      },
+      {
+        "scheme": "int4, asymmetric, per group of 32",
+        "bytes_per_weight": 0.75,
+        "weights_gb": 6.001655808,
+        "read_ms": 1.791539047164179,
+        "faster_by": 2.6666666666666665,
+        "cost_saved": 0.625,
+        "free_for_cache_gb": 73.998344192
+      }
+    ],
+    "bf16_read_ms": 4.777437459104477,
+    "gpu_usd_per_hour": 3.25
+  },
+  "assumptions": {
+    "seed": 0,
+    "trials": 4000,
+    "alpha": 0.05,
+    "power": 0.8,
+    "benchmarks": [
+      {
+        "name": "MMLU (test)",
+        "n": 14042,
+        "accuracy": 0.65
+      },
+      {
+        "name": "GSM8K (test)",
+        "n": 1319,
+        "accuracy": 0.55
+      },
+      {
+        "name": "HumanEval",
+        "n": 164,
+        "accuracy": 0.6
+      },
+      {
+        "name": "an internal eval",
+        "n": 200,
+        "accuracy": 0.8
+      }
+    ],
+    "discordances": [
+      0.02,
+      0.05,
+      0.1,
+      0.2,
+      0.4
+    ],
+    "operating_discordance": 0.05,
+    "budgets": [
+      0.005,
+      0.01,
+      0.02,
+      0.05
+    ],
+    "n_benchmarks": [
+      1,
+      2,
+      3,
+      5,
+      10,
+      20
+    ],
+    "broken_fractions": [
+      0.001,
+      0.01,
+      0.05
+    ],
+    "worse_by": [
+      0.5,
+      1.0,
+      2.0,
+      4.0
+    ],
+    "shifts": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.6,
+      0.8
+    ],
+    "model_not_measurement": true
+  },
+  "model_not_measurement": true
+}

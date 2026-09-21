@@ -2,14 +2,14 @@
 #   make ch12   - rerun Chapter 12's experiment, figures and tables
 #   make ddr1   - re-derive a Part's design decision record from its chapters
 #   make lock   - refresh environment.lock
-.PHONY: all venv ddr1 ch30 ch32 ch22 ch24 ch29 ch31 ch41 ch42 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch31 ch41 ch42 figures tables manuscript check xref audit terms tests lock clean
+.PHONY: all venv ddr1 ch28 ch30 ch32 ch22 ch24 ch29 ch31 ch41 ch42 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch31 ch41 ch42 figures tables manuscript check xref audit terms tests lock clean
 
 export OMP_NUM_THREADS ?= 4
 export OPENBLAS_NUM_THREADS ?= 4
 export MKL_NUM_THREADS ?= 4
 export PYTHONHASHSEED ?= 0
 
-all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch29 ch30 ch31 ch32 ch41 ch42 ddr1
+all: ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 ch14 ch15 ch16 ch17 ch18 ch19 ch20 ch22 ch24 ch28 ch29 ch30 ch31 ch32 ch41 ch42 ddr1
 
 ch01:
 	python3 -m bench.run_ch01
@@ -109,6 +109,10 @@ ch41:
 
 ch42:
 	python3 -m bench.run_ch42
+	$(MAKE) figures tables manuscript
+
+ch28:
+	python3 -m bench.run_ch28
 	$(MAKE) figures tables manuscript
 
 ch30:
@@ -213,7 +217,16 @@ from tinyserve.drafting import test_breadth_beats_depth_when_the_draft_is_poor a
 from tinyserve.drafting import test_the_index_proposes_what_followed_before as bj; bj(); \
 from tinyserve.drafting import test_extending_the_index_matches_rebuilding_it as bk; bk(); \
 from tinyserve.drafting import test_a_drafter_with_nothing_to_copy_proposes_nothing as bl; bl(); \
-print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats, quantization, speculation, grammars, steady state, caching above the model, drafting')"
+from tinyserve.evaluate import test_the_exact_test_agrees_with_the_obvious_cases as bm; bm(); \
+from tinyserve.evaluate import test_the_paired_test_rejects_at_the_rate_it_claims as bn; bn(); \
+from tinyserve.evaluate import test_pairing_finds_what_the_naive_test_cannot as bo; bo(); \
+from tinyserve.evaluate import test_the_smallest_detectable_difference_shrinks_with_the_benchmark as bp; bp(); \
+from tinyserve.evaluate import test_forty_eight_items_can_only_see_a_large_difference as bq; bq(); \
+from tinyserve.evaluate import test_a_continuous_metric_gains_power_with_the_sample as br; br(); \
+from tinyserve.evaluate import test_a_fraction_too_small_to_see_is_not_small_per_reply as bs; bs(); \
+from tinyserve.evaluate import test_the_largest_difference_is_the_largest_feasible_one as bt; bt(); \
+from tinyserve.evaluate import test_impossible_tables_are_refused as bu; bu(); \
+print('tests: palette ramp, reference model is 8B, listings extract, prefix sharing, batched decode, scheduling, chunked prefill, fleets, attention kernels, the accelerator guard, number formats, quantization, speculation, grammars, steady state, caching above the model, drafting, evaluation')"
 
 # One environment per machine the book measures on. The venv is never
 # committed; requirements.txt says what to install and the lock records

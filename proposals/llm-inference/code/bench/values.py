@@ -1592,6 +1592,70 @@ def ch31(d: dict) -> dict[str, str]:
     }
 
 
+def ch28(d: dict) -> dict[str, str]:
+    a = d["assumptions"]
+    by_name = {r["benchmark"]: r for r in d["benchmarks"]}
+    mmlu, gsm = by_name["MMLU (test)"], by_name["GSM8K (test)"]
+    internal = by_name["an internal eval"]
+    pairs = d["pairing"]
+    tight = min(pairs, key=lambda r: r["discordance"])
+    loose = max((r for r in pairs if r["ratio"]), key=lambda r: r["discordance"])
+    sign = {(r["budget"], r["test"]): r for r in d["sign_off"]}
+    ppl = {(r["fraction"], r["worse_by"]): r for r in d["perplexity"]["rows"]}
+    tiny = ppl[(min(a["broken_fractions"]), max(a["worse_by"]))]
+    c24 = d["chapter_24"]
+    int8 = [r for r in c24["rows"] if r["scheme"].startswith("int8")]
+    best_int8 = max(int8, key=lambda r: r["paired_power"])
+    found = next(x for x in c24["continuous"] if x["power"] > 0.75)
+    many = max(r["benchmarks"] for r in d["multiple"])
+    pt = lambda x: "--" if x is None or x != x else f"{x * 100:.2f} points"
+    items = lambda b, t: ("more than two million" if sign[(b, t)]["items"] is None
+                          else f"{sign[(b, t)]['items']:,}")
+    return {
+        "alpha": f"{a['alpha']:.0%}", "power": f"{a['power']:.0%}",
+        "trials": f"{a['trials']:,}",
+        "discordance": f"{a['operating_discordance']:.0%}",
+        # what each benchmark can find
+        "mmlu_n": f"{mmlu['n']:,}", "gsm_n": f"{gsm['n']:,}",
+        "internal_n": f"{internal['n']:,}",
+        "mmlu_paired": pt(mmlu["paired_mdd"]),
+        "mmlu_unpaired": pt(mmlu["unpaired_mdd"]),
+        "mmlu_ratio": f"{mmlu['ratio']:.1f}x",
+        "gsm_paired": pt(gsm["paired_mdd"]),
+        "gsm_unpaired": pt(gsm["unpaired_mdd"]),
+        "internal_paired": pt(internal["paired_mdd"]),
+        "mmlu_items": f"{mmlu['paired_items']:,.0f}",
+        # pairing against agreement
+        "tight_discordance": f"{tight['discordance']:.0%}",
+        "tight_ratio": f"{tight['ratio']:.1f}x",
+        "loose_discordance": f"{loose['discordance']:.0%}",
+        "loose_ratio": f"{loose['ratio']:.1f}x",
+        # signing off
+        "one_point_paired": items(0.01, "paired"),
+        "one_point_unpaired": items(0.01, "unpaired"),
+        "half_point_paired": items(0.005, "paired"),
+        "half_point_unpaired": items(0.005, "unpaired"),
+        "five_point_paired": items(0.05, "paired"),
+        # several benchmarks
+        "benchmarks_many": str(many),
+        "false_positive_many": f"{[r for r in d['multiple'] if r['benchmarks'] == many][0]['any_false_positive'] * 100:.0f}%",
+        "false_positive_three": f"{[r for r in d['multiple'] if r['benchmarks'] == 3][0]['any_false_positive'] * 100:.0f}%",
+        # perplexity
+        "tiny_fraction": f"{tiny['fraction'] * 100:.1f}%",
+        "tiny_worse": f"{tiny['worse_by']:.0f}",
+        "tiny_perplexity": f"{tiny['perplexity_pct']:.2f}%",
+        "tiny_replies": f"{tiny['replies_touched'] * 100:.0f}%",
+        "reply_tokens": str(d["perplexity"]["reply_tokens"]),
+        # Chapter 24, turned on itself
+        "c24_positions": str(c24["positions"]),
+        "c24_int8_changed": f"{best_int8['changed_items']:.0f}",
+        "c24_int8_power": f"{best_int8['paired_power'] * 100:.0f}%",
+        "c24_int8_scheme": best_int8["scheme"],
+        "c24_shift": f"{found['shift']:.1f}",
+        "c24_shift_power": f"{found['power'] * 100:.0f}%",
+    }
+
+
 def ch30(d: dict) -> dict[str, str]:
     a = d["assumptions"]
     heads_, draft, trees_ = d["heads"], d["drafting"], d["trees"]
@@ -1963,7 +2027,8 @@ def load(chapter: str = "ch12") -> dict[str, str]:
             "ch15": ch15, "ch16": ch16, "ch17": ch17,
             "ch18": ch18, "ch19": ch19,
             "ch20": ch20, "ch22": ch22,
-            "ch24": ch24, "ch29": ch29, "ch30": ch30, "ch31": ch31,
+            "ch24": ch24, "ch28": ch28, "ch29": ch29, "ch30": ch30,
+            "ch31": ch31,
             "ch32": ch32,
             "ch41": ch41, "ch42": ch42, "ddr1": ddr1}[chapter](d)
 

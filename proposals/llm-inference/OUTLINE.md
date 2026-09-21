@@ -647,6 +647,15 @@ disaggregated split by three per cent on the short run and by nothing
 at all on the long one. The fleet is still 8 machines, so 42 and
 Design decision record I are unchanged.
 
+**28, Measuring What You Lost** was written next, out of Part V's
+order, because it is the chapter the rest of that Part is judged by
+and it needs no model at all: what it measures is the experiment.
+Turned on this book's own Chapter 24, it finds that chapter's int8
+comparison would have had a 2% chance of detecting a real difference
+had it been read as a pass-or-fail experiment, which is why that
+chapter measured a number per position instead. Chapters **25**,
+**26** and **27** still want a GPU and a real model, so they wait.
+
 Next: **21** and **23** when a GPU is free; meanwhile the remaining
 Tier 0 chapters of Parts VI and VIII.
 

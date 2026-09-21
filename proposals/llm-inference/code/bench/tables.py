@@ -1231,6 +1231,85 @@ def ch29_reference(d: dict) -> str:
     return "\n".join(out)
 
 
+def ch28_benchmarks(d: dict) -> str:
+    """What each benchmark can find."""
+    a = d["assumptions"]
+    pt = lambda x: "--" if x is None or x != x else f"{x * 100:.2f} points"
+    out = ["| Benchmark | Items | Smallest difference it can find, paired | "
+           "Unpaired | Pairing is worth |", "|---|---|---|---|---|"]
+    for r in d["benchmarks"]:
+        ratio = f"{r['ratio']:.1f}x" if r["ratio"] else "--"
+        out.append(f"| {r['benchmark']} | {r['n']:,} "
+                   f"| **{pt(r['paired_mdd'])}** | {pt(r['unpaired_mdd'])} "
+                   f"| {ratio} |")
+    out += ["", f"Simulated, {a['trials']:,} runs per point, seed "
+                f"{a['seed']}: the smallest true difference each benchmark "
+                f"finds {a['power']:.0%} of the time at the "
+                f"{a['alpha']:.0%} level, when the two models disagree on "
+                f"{a['operating_discordance']:.0%} of items. \"Paired\" is "
+                f"McNemar's test, which looks only at the items the two "
+                f"models answer differently. \"Unpaired\" is the two "
+                f"accuracy rates compared as though they came from "
+                f"different samples, which is what gets run. A dash "
+                f"means no difference the stated disagreement allows is "
+                f"ever found {a['power']:.0%} of the time -- at those "
+                f"sizes the unpaired test cannot settle the question at "
+                f"all. Test-set sizes are each dataset's own published "
+                f"split (FACTS.md)."]
+    return "\n".join(out)
+
+
+def ch28_perplexity(d: dict) -> str:
+    """What a mean over tokens cannot show you."""
+    ppl = d["perplexity"]
+    out = ["| Tokens made worse | By how much | Mean loss moves | "
+           "Perplexity moves | Replies with at least one |",
+           "|---|---|---|---|---|"]
+    for r in ppl["rows"]:
+        out.append(f"| {r['fraction'] * 100:.1f}% | {r['worse_by']:.1f} nats "
+                   f"| {r['mean_loss_shift']:.4f} "
+                   f"| +{r['perplexity_pct']:.2f}% "
+                   f"| **{r['replies_touched'] * 100:.0f}%** |")
+    out += ["", f"Exact arithmetic. Perplexity is the exponential of a mean "
+                f"log-loss over tokens, so a change confined to a small "
+                f"share of tokens moves it by the product and no more. The "
+                f"last column is the same change seen the way a user sees "
+                f"it: the chance that a reply of {ppl['reply_tokens']} "
+                f"tokens contains at least one of them. One token in a "
+                f"thousand is invisible in the first measure and in a "
+                f"quarter of replies in the second."]
+    return "\n".join(out)
+
+
+def ch28_ch24(d: dict) -> str:
+    """Chapter 24's evaluation, held to this chapter's standard."""
+    c = d["chapter_24"]
+    out = ["| Scheme | Answers changed | Best case, if all one way | "
+           "Chance the test finds it | Unpaired |",
+           "|---|---|---|---|---|"]
+    for r in c["rows"]:
+        out.append(f"| {r['scheme']} | {r['changed_items']:.0f} of "
+                   f"{c['positions']} "
+                   f"| {r['best_case_difference'] * 100:.1f} points "
+                   f"| {r['paired_power'] * 100:.0f}% "
+                   f"| {r['unpaired_power'] * 100:.0f}% |")
+    out += ["", f"Chapter 24 compared nine quantization schemes over "
+                f"{c['positions']} positions. Read as a pass-or-fail "
+                f"experiment, the int8 rows are not an experiment at all: "
+                f"one or two answers changed, and even if every one of them "
+                f"went the same way the test would find it under two per "
+                f"cent of the time. Which is why that chapter did not run "
+                f"this test. It measured a number per position -- how far "
+                f"the logits shifted against the margin between the top two "
+                f"answers -- and at the same {c['positions']} positions a "
+                f"paired test on a number finds a shift of "
+                f"{[x['shift'] for x in c['continuous'] if x['power'] > 0.75][0]:.1f} "
+                f"standard deviations "
+                f"{[x['power'] for x in c['continuous'] if x['power'] > 0.75][0]:.0%} "
+                f"of the time."]
+    return "\n".join(out)
+
+
 def ch30_heads(d: dict) -> str:
     """What each way of drafting weighs."""
     h = d["heads"]
@@ -1688,6 +1767,9 @@ def main() -> None:
                  ("ch42-own-or-rent", ch42_own_or_rent)),
         "ch31": (("ch31-validity", ch31_validity),
                  ("ch31-states", ch31_states), ("ch31-cost", ch31_cost)),
+        "ch28": (("ch28-benchmarks", ch28_benchmarks),
+                 ("ch28-perplexity", ch28_perplexity),
+                 ("ch28-ch24", ch28_ch24)),
         "ch30": (("ch30-heads", ch30_heads),
                  ("ch30-drafting", ch30_drafting),
                  ("ch30-batch", ch30_batch)),

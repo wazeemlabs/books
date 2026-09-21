@@ -114,6 +114,17 @@ def caption(d: dict) -> str:
                 f"is {a['sram_bytes_per_sm'] / 1024:.0f} KB per "
                 f"multiprocessor, both from FACTS.md - commit {p['commit']}, "
                 f"{p['measured_utc']}")
+    if "sign_off" in d and "pairing" in d:  # Chapter 28: what you lost
+        a = d["assumptions"]
+        return (f"SIMULATED EXPERIMENTS, not model evaluations: every "
+                f"power figure is {a['trials']:,} simulated benchmark runs "
+                f"per point at the {a['alpha']:.0%} level and "
+                f"{a['power']:.0%} power, seed {a['seed']} - no model was "
+                f"evaluated and none needed to be, because what is being "
+                f"measured is the experiment rather than the model - "
+                f"test-set sizes are each dataset's own published split, "
+                f"recorded in FACTS.md - the perplexity rows are exact "
+                f"arithmetic - commit {p['commit']}, {p['measured_utc']}")
     if "drafting" in d and "best_budget" in d:  # Chapter 30: self-speculation
         a = d["assumptions"]
         return (f"MEASURED ON TEXT plus arithmetic over the reference "
@@ -3294,6 +3305,136 @@ def fig_own_or_rent(d: dict) -> None:
 
 # --- Chapter 31: deciding what the model may say ----------------------
 
+# --- Chapter 28: whether the model got worse ---------------------------
+
+
+def fig_pairing(d: dict) -> None:
+    """What pairing is worth, against how much the models disagree."""
+    names = []
+    for r in d["pairing"]:
+        if r["benchmark"] not in names:
+            names.append(r["benchmark"])
+    fig, axes = plt.subplots(1, len(names), figsize=(7.4, 3.8), dpi=200,
+                             sharex=True)
+    for ax, name in zip(axes, names):
+        rows = sorted((r for r in d["pairing"] if r["benchmark"] == name),
+                      key=lambda r: r["discordance"])
+        x = [r["discordance"] * 100 for r in rows]
+        # A point the unpaired test can never reach is not a point on a
+        # curve; matplotlib skips the NaN, and the gap is the finding.
+        ax.plot(x, [r["unpaired_mdd"] * 100 for r in rows], marker="s",
+                markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+                linestyle="--", color=T.AMBER, label="unpaired")
+        ax.plot(x, [r["paired_mdd"] * 100 for r in rows], marker="o",
+                markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+                color=T.BLUE, label="paired")
+        ax.set_xlabel("items answered differently (%)")
+        ax.set_title(f"{name}, {rows[0]['n']:,} items", loc="left",
+                     fontsize=9.5)
+        top = max(v for r in rows
+                  for v in (r["unpaired_mdd"], r["paired_mdd"]) if v == v)
+        ax.set_ylim(0, top * 130)
+        T.style(ax)
+    axes[0].set_ylabel("smallest difference it can find (points)")
+    axes[0].legend(frameon=False, fontsize=7.6, loc="lower right")
+    tight = min(d["pairing"], key=lambda r: r["discordance"])
+    save(fig, "ch28-pairing", d,
+         alt=("The smallest true difference each benchmark can find, "
+              "against how much the two models disagree, for the paired "
+              "test and the unpaired one. Both lines rise as the models "
+              "disagree more, and they converge: the paired test's "
+              "advantage is largest at the left, where the models agree "
+              f"most. At {tight['discordance'] * 100:.0f}% disagreement it "
+              f"is {tight['ratio']:.1f} times better on "
+              f"{tight['benchmark']}. A compression change alters few "
+              "answers, so it lives at that left-hand edge, which is "
+              "exactly where running the wrong test costs most."))
+
+
+def fig_signoff(d: dict) -> None:
+    """How many items it takes to sign off a quality budget."""
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    for test, colour, style, marker in (("paired", T.BLUE, "-", "o"),
+                                        ("unpaired", T.AMBER, "--", "s")):
+        rows = sorted((r for r in d["sign_off"] if r["test"] == test),
+                      key=lambda r: r["budget"])
+        xs = [r["budget"] * 100 for r in rows if r["items"]]
+        ys = [r["items"] for r in rows if r["items"]]
+        ax.plot(xs, ys, marker=marker, markersize=T.MARKER_SIZE,
+                linewidth=T.LINE_WIDTH, linestyle=style, color=colour,
+                label=test)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("quality drop you want to rule out (points)")
+    ax.set_ylabel("items the benchmark needs")
+    ax.set_title("What it costs to be sure", loc="left", fontsize=10.5)
+    ticks = sorted({r["budget"] * 100 for r in d["sign_off"]})
+    ax.set_xticks(ticks, [f"{v:g}" for v in ticks], fontsize=7.6)
+    from matplotlib.ticker import NullFormatter
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    for name, n, _ in [(b["name"], b["n"], b["accuracy"])
+                       for b in d["assumptions"]["benchmarks"]][:2]:
+        ax.axhline(n, color=T.MUTED, linewidth=0.8, linestyle=":")
+        # In the margin past the last budget, where both curves have
+        # already ended: the one strip of this panel nothing crosses.
+        ax.annotate(f"{name}: {n:,}", xy=(max(ticks) * 1.12, n),
+                    xytext=(0, 3), textcoords="offset points", ha="left",
+                    va="bottom", fontsize=7.0, color=T.MUTED)
+    ax.set_xlim(min(ticks) * 0.85, max(ticks) * 2.6)
+    ax.legend(frameon=False, fontsize=8, loc="lower left", title="the test",
+              title_fontsize=8)
+    T.style(ax)
+    one = next(r for r in d["sign_off"]
+               if r["test"] == "paired" and abs(r["budget"] - 0.01) < 1e-9)
+    one_un = next(r for r in d["sign_off"]
+                  if r["test"] == "unpaired" and abs(r["budget"] - 0.01) < 1e-9)
+    save(fig, "ch28-signoff", d,
+         alt=("How many benchmark items it takes to rule out a quality drop "
+              "of a given size, on log axes, for the paired and unpaired "
+              "tests, with two benchmark sizes drawn as dotted lines. To "
+              f"show a drop is under one point takes {one['items']:,} items "
+              f"paired and {one_un['items']:,} unpaired. MMLU is large "
+              "enough for the first and not the second, which is the whole "
+              "of the practical advice in this chapter."))
+
+
+def fig_power(d: dict) -> None:
+    """A number per item against a verdict per item, at the same size."""
+    c = d["chapter_24"]
+    fig, ax = plt.subplots(figsize=(6.9, 4.2), dpi=200)
+    cont = c["continuous"]
+    ax.plot([r["shift"] for r in cont], [r["power"] * 100 for r in cont],
+            marker="o", markersize=T.MARKER_SIZE, linewidth=T.LINE_WIDTH,
+            color=T.BLUE, label="a number per item")
+    ax.axhline(80, color=T.INK, linewidth=0.9, alpha=0.5)
+    ax.annotate("the power you should ask for", xy=(cont[0]["shift"], 80),
+                xytext=(2, 4), textcoords="offset points", fontsize=7.2,
+                color=T.INK)
+    int8 = [r for r in c["rows"] if r["scheme"].startswith("int8")]
+    worst = max(int8, key=lambda r: r["paired_power"])
+    ax.axhline(worst["paired_power"] * 100, color=T.AMBER, linewidth=1.4,
+               linestyle="--")
+    ax.annotate(f"a verdict per item, int8: {worst['paired_power'] * 100:.0f}%",
+                xy=(cont[-1]["shift"], worst["paired_power"] * 100),
+                xytext=(-2, 5), textcoords="offset points", ha="right",
+                fontsize=7.2, color=T.AMBER)
+    ax.set_xlabel("size of the true shift (standard deviations per item)")
+    ax.set_ylabel("chance the experiment finds it (%)")
+    ax.set_ylim(0, 104)
+    ax.set_title(f"The same {c['positions']} items, measured two ways",
+                 loc="left", fontsize=10.5)
+    T.style(ax)
+    save(fig, "ch28-power", d,
+         alt=(f"The chance of detecting a difference over {c['positions']} "
+              "items, against how big the difference is, when each item "
+              "yields a number rather than a pass or a fail. A shift of "
+              "0.4 standard deviations is found most of the time. The "
+              "dashed line is what the same items give when each yields "
+              "only a verdict, for the int8 schemes of Chapter 24: "
+              f"{worst['paired_power'] * 100:.0f}%, which is no experiment "
+              "at all. If a metric can be a number, make it one."))
+
+
 # --- Chapter 30: drafting without a second model ----------------------
 
 
@@ -3772,6 +3913,7 @@ CHAPTERS = {"ch01": [fig_cost], "ch02": [fig_pipeline, fig_attention, fig_scores
             "ch41": [fig_little, fig_utilization, fig_sizing],
             "ch42": [fig_price_spread, fig_duty, fig_own_or_rent],
             "ch31": [fig_states, fig_validity, fig_distortion],
+            "ch28": [fig_pairing, fig_signoff, fig_power],
             "ch30": [fig_heads, fig_drafting, fig_trees, fig_batch],
             "ch32": [fig_concentration, fig_keys, fig_similarity,
                      fig_ttl]}

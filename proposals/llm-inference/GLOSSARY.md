@@ -138,3 +138,6 @@ explanation.
 | draft head | 30 | An extra output layer on the model you already serve, trained to predict the token after next rather than the next one. Removes the second model speculative decoding needs, and adds its weight to every decode step instead. |
 | prompt lookup | 30 | Drafting by finding where the last few words appeared earlier in the context and proposing whatever followed them then. No parameters and no training; nothing at all to propose when the reply does not quote the prompt. |
 | tree attention | 30 | Verifying several alternative continuations in one forward pass, with an attention mask that stops the branches from seeing each other. Worth exactly as much as the draft's ranking of its own second and third guesses. |
+| statistical power | 28 | How often an experiment finds a difference that is really there. The number nobody reports, and the one that decides whether "no significant change" means anything. |
+| minimum detectable difference | 28 | The smallest true difference an experiment finds most of the time. A property of the benchmark's size and the test used, not of the models. |
+| paired test | 28 | A test for an experiment where both things were measured on the same items. It looks only at the items they disagree on, which is why it sees what comparing two averages cannot. |

@@ -289,3 +289,14 @@ figures above and sweeps the price, rather than relying on either.
 | Its stated limits | roleplay "showed the worst gains" because "there isn't many ngrams to copy, since each generation is sort of unique"; multi-turn chat shows "a much smaller gain on turn 0" since the prompt is small; hyperparameters "were chosen on very little testing"; sampling untested, and lookup "can affect hallucination rates" | same README | 2026-09-21 |
 | In vLLM | configured as `"method": "ngram"` in `speculative_config`, with `num_speculative_tokens` and `prompt_lookup_max` | docs.vllm.ai, features/speculative_decoding/n_gram | 2026-09-21 |
 | Vocabulary growth, Llama 2 to 3 | Llama 3 uses "a new tokenizer that expands the vocabulary size to 128,256 (from 32K tokens in the previous version)" -- 4.01x, and the blog notes "the larger embedding matrices account for much of the parameter increase from 7B to 8B" | Hugging Face, "Welcome Llama 3"; Llama 3 paper, arXiv:2407.21783 | 2026-09-21 |
+
+## Evaluating a compressed model (Chapter 28)
+
+| Fact | Value | Source | Checked |
+|---|---|---|---|
+| McNemar's test | Quinn McNemar, "Note on the sampling error of the difference between correlated proportions or percentages", *Psychometrika* 12(2), 1947, pp. 153-157, doi:10.1007/BF02295996. Summary: "two formulas are presented for judging the significance of the difference between correlated proportions" | Springer Nature Link; PubMed 20254758 | 2026-09-21 |
+| MMLU, the paper | Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, Jacob Steinhardt, "Measuring Massive Multitask Language Understanding", arXiv:2009.03300, ICLR 2021. Covers "57 tasks including elementary mathematics, US history, computer science, law, and more" | arXiv abstract | 2026-09-21 |
+| MMLU split sizes | test 14,042; validation 1,531; dev 285; auxiliary_train 99,842 | datasets-server.huggingface.co/size?dataset=cais/mmlu, config `all` | 2026-09-21 |
+| GSM8K, the paper | Karl Cobbe et al., "Training Verifiers to Solve Math Word Problems", arXiv:2110.14168 -- "a dataset of 8.5K high quality linguistically diverse grade school math word problems" | arXiv abstract | 2026-09-21 |
+| GSM8K split sizes | train 7,473; test 1,319 (config `main`) | datasets-server.huggingface.co/size?dataset=openai/gsm8k | 2026-09-21 |
+| HumanEval size | test 164 | datasets-server.huggingface.co/size?dataset=openai/openai_humaneval | 2026-09-21 |
