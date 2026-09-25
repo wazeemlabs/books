@@ -60,44 +60,57 @@ including how many checksum bits a given model needs, is in
 [`docs/theory.md`](docs/theory.md) §5. It is the same rate split as between
 a list decoder and its CRC.
 
-## Key results so far
+## Key results (3 seeds, `RESULTS.md`)
 
 Hard synthetic world: 10,000 people, 4 attributes, answers are 2-token
 strings from 1,024 values. Popularity is Zipfian: 14,444 facts seen, 61% of
-them only once. Tiny GPTs trained on CPU. Pilot, seed 0 (3-seed numbers in
-`RESULTS.md`):
+them only once. About 10% of test questions are about facts never seen.
+Tiny GPTs trained on CPU. The ceiling (every seen fact answered correctly)
+is 89.9%.
 
-| Weights | Weights alone, greedy | Weights alone, best at ≤1% halluc. | + checksum, N=1 | + prefix checksum, N=20 to 50 | CARE |
-|---|---|---|---|---|---|
-| 37k params | 63.5% acc, **36.5% halluc.** | 62.4% | 63.5% acc, **0.00%** | 83.5% acc, 0.31% | 84.8%, 0.01% |
-| 123k params | 78.4% acc, **21.6% halluc.** | 73.2% | 78.4% acc, **0.01%** | 84.3% acc, 0.03% | 84.8%, 0.00% |
-
-The ceiling (every seen fact answered correctly) is 84.8%.
+| Weights | Weights alone, greedy acc / halluc. | Weights alone, best acc at ≤1% halluc. | + IDK training, ≤1% | **+ checksum, N=1** | **+ prefix checksum, N=50** | **CARE** (store holds) |
+|---|---|---|---|---|---|---|
+| 12k params | 50.7% / **49.3%** | 49.7% | 54.6% | 50.7% / 0.06% | 86.0% / 0.73% | 89.9% / 0.00% (94%) |
+| 37k | 65.8% / **34.2%** | 64.4% | 68.8% | 65.8% / 0.01% | 88.2% / 0.43% | 89.9% / 0.00% (80%) |
+| 123k | 82.8% / **17.2%** | 78.9% | 79.3% | 82.8% / 0.00% | 89.8% / 0.04% | 89.9% / 0.00% (23%) |
+| 258k | 89.3% / **10.7%** | 85.0% | 85.1% | 89.3% / 0.00% | 89.9% / 0.00% | 89.9% / 0.00% (1%) |
 
 1. **The knowledge is already in the weights; knowing THAT is what's
-   missing.** On the easier world, a 133k-param model memorised 98.5% of
-   even its seen-once facts. Alone, it reaches only 69% accuracy at ≤1%
-   hallucination. With the checksum it reaches **84.7% at 0.00%**, the
-   ceiling.
-2. **Weights are a poor membership test for rare facts.** Confidence
-   separates "seen once" from "never seen" with AUROC 0.45 to 0.81 in
-   capacity-limited models (0.5 = coin flip). "I don't know" training
-   barely helps, and IDK-trained models still answered about 14 to 44% of
-   questions about people who don't exist.
-3. **A better model needs a smaller checksum.** Checking all 1,024 values
-   without a model needs ~28 bits per fact for 0.03% hallucination. With
-   the 123k model, 14 bits and N=1 give 0.01%.
-4. **Two memories that must agree are robust to noisy extraction.** With 5
-   to 20% of mentions filed under the wrong person, a plain fact store
-   hallucinates 1.3 to 5.6%. Checksum recall with N=1 hallucinates 0.24 to
-   1.2% (easier world).
-5. **CARE keeps the store small.** With the 123k model only 21% of facts
-   need the overflow store, and CARE matches the store's 84.8% / 0.00%
-   with 22% fewer bits outside the weights.
+   missing.** The 258k model knows almost every fact it read (89.3% vs the
+   89.9% ceiling). It still makes up an answer to every never-seen
+   question: 10.7% hallucination, and 100% of questions about people who
+   don't exist. "I don't know" training only gets it to 85.1% at ≤1%
+   hallucination, and it still answers 37% of the ghost-people questions.
+   A 14-bit-per-fact checksum gives **89.3% at 0.00%**, with no retraining.
+2. **The theory predicts the numbers.** The list-decoding formula
+   (`docs/theory.md` §5) matched measured accuracy exactly and measured
+   hallucination to within a few hundredths of a percent, across all sizes
+   and list lengths (`RESULTS.md` §3).
+3. **Weights and checksum split the bits like a decoder and its CRC.**
+   Without weights, checking all 1,024 values needs a 28-bit checksum
+   (89.8%, 0.03%). With the 123k weights, a 14-bit checksum at N=1 gives
+   0.00%. In prefix search, even the 12k-param weights add 10 points of
+   accuracy and cut hallucination 2.7x compared with searching in random
+   order.
+4. **Graded "I don't know" comes for free.** "Never heard of this person"
+   (4.6% of questions), "know them, never read this" (5.5%), "tip of the
+   tongue" (0.04%).
+5. **Two memories that must agree are robust to noisy extraction.** With 5
+   or 10% of mentions filed under the wrong person, a plain store
+   hallucinates 1.1 or 2.1%. CAR with N=1 hallucinates 0.08 or 0.34%
+   (lower accuracy, though). Strict CARE halves the store's error.
+6. **CARE shrinks the store as the weights get better**: from 94% of facts
+   (12k params) to 23% (123k) to 1% (258k), always at the ceiling with
+   0.00% hallucination.
+7. **Continual learning.** New facts are written to the filters and
+   overflow store instantly, with no gradients. During sleep, the model
+   rehearses its own memories, but only the ones the checksum verifies:
+   0.9% of those are wrong, against 46% for unverified self-replay
+   (`results/continual_seed0.json`).
 
 What failed is written up honestly in [`docs/ideas.md`](docs/ideas.md):
-two list-decoding training losses, a count-min-only checksum, and my own
-"confidence tracks fame" hypothesis.
+two list-decoding losses, a count-min-only checksum, my "confidence tracks
+fame" hypothesis, and (so far) the extraction-free familiarity sense.
 
 ## Is it new?
 
@@ -120,6 +133,10 @@ Closest neighbours:
 - **KG-verification pipelines** (these store full graphs).
 - **LMLM** (stores fact values in a database).
 - **Prefix-constrained generative retrieval** (keeps item IDs valid).
+
+"Isn't this just RAG?" is answered honestly in
+[`docs/vs_rag.md`](docs/vs_rag.md): partly, and here is exactly where it
+differs and where RAG is still better.
 
 The full map is in [`docs/literature.md`](docs/literature.md). Web search is
 not proof of novelty; read the listed neighbours in full first.

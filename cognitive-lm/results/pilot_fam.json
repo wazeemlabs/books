@@ -1,0 +1,361 @@
+{
+ "world": {
+  "seen_facts": 52839,
+  "singleton_rate": 0.05619,
+  "test_unseen": 0.0316
+ },
+ "systems": {
+  "lm": {
+   "greedy": {
+    "accuracy": 0.5503,
+    "hallucination": 0.4497
+   },
+   "acc_at_hal_1pct": 0.5452,
+   "acc_at_hal_0.1pct": 0.5279,
+   "frontier": [
+    [
+     0.0,
+     0.5503,
+     0.4497
+    ],
+    [
+     0.1,
+     0.5464,
+     0.0115
+    ],
+    [
+     0.2,
+     0.5452,
+     0.0057
+    ],
+    [
+     0.3,
+     0.5434,
+     0.0031
+    ],
+    [
+     0.5,
+     0.5363,
+     0.0011
+    ],
+    [
+     0.7,
+     0.5279,
+     0.0002
+    ],
+    [
+     0.8,
+     0.517,
+     0.0002
+    ],
+    [
+     0.9,
+     0.5008,
+     0.0001
+    ],
+    [
+     0.95,
+     0.4695,
+     0.0001
+    ],
+    [
+     0.99,
+     0.3567,
+     0.0001
+    ]
+   ],
+   "auroc_seen1_vs_unseen": 0.5257206514452463,
+   "auroc_seen_vs_unseen": 0.8164922957873878,
+   "ghost_mean_conf": 0.00910593569278717,
+   "para_seen_phrasing_acc": 0.0015,
+   "para_seen_phrasing_conf": 0.008675478398799896,
+   "para_new_phrasing_acc": 0.00175,
+   "para_new_phrasing_conf": 0.008723598904907703
+  },
+  "lm_idk": {
+   "greedy": {
+    "accuracy": 0.5869,
+    "hallucination": 0.0339
+   },
+   "acc_at_hal_1pct": 0.5815,
+   "acc_at_hal_0.1pct": 0.5696,
+   "frontier": [
+    [
+     0.0,
+     0.5869,
+     0.0339
+    ],
+    [
+     0.1,
+     0.585,
+     0.0152
+    ],
+    [
+     0.2,
+     0.5815,
+     0.0064
+    ],
+    [
+     0.3,
+     0.5787,
+     0.0029
+    ],
+    [
+     0.5,
+     0.5696,
+     0.0006
+    ],
+    [
+     0.7,
+     0.5537,
+     0.0
+    ],
+    [
+     0.8,
+     0.5405,
+     0.0
+    ],
+    [
+     0.9,
+     0.5163,
+     0.0
+    ],
+    [
+     0.95,
+     0.4837,
+     0.0
+    ],
+    [
+     0.99,
+     0.3707,
+     0.0
+    ]
+   ],
+   "auroc_seen1_vs_unseen": 0.5320793406680074,
+   "auroc_seen_vs_unseen": 0.8929099414929493,
+   "ghost_mean_conf": 0.0019545245449990034,
+   "para_seen_phrasing_acc": 0.00125,
+   "para_seen_phrasing_conf": 0.0020452861208468676,
+   "para_new_phrasing_acc": 0.00125,
+   "para_new_phrasing_conf": 0.0020166009198874235
+  },
+  "fam": {
+   "greedy": {
+    "accuracy": 0.8856,
+    "hallucination": 0.1144
+   },
+   "acc_at_hal_1pct": 0.8853,
+   "acc_at_hal_0.1pct": 0.8853,
+   "frontier": [
+    [
+     0.0,
+     0.8856,
+     0.1144
+    ],
+    [
+     0.1,
+     0.8853,
+     0.0
+    ],
+    [
+     0.2,
+     0.8853,
+     0.0
+    ],
+    [
+     0.3,
+     0.8852,
+     0.0
+    ],
+    [
+     0.5,
+     0.8851,
+     0.0
+    ],
+    [
+     0.7,
+     0.8838,
+     0.0
+    ],
+    [
+     0.8,
+     0.8818,
+     0.0
+    ],
+    [
+     0.9,
+     0.8562,
+     0.0
+    ],
+    [
+     0.95,
+     0.7999,
+     0.0
+    ],
+    [
+     0.99,
+     0.4844,
+     0.0
+    ]
+   ],
+   "auroc_seen1_vs_unseen": 0.6872362869198312,
+   "auroc_seen_vs_unseen": 0.9582127507725127,
+   "ghost_mean_conf": 0.00464480509981513,
+   "para_seen_phrasing_acc": 1.0,
+   "para_seen_phrasing_conf": 0.921953558921814,
+   "para_new_phrasing_acc": 0.0015,
+   "para_new_phrasing_conf": 0.00482099549844861,
+   "ingest_same_phrasing_acc": 1.0,
+   "ingest_same_phrasing_conf": 0.9162212610244751,
+   "ingest_other_phrasing_acc": 0.0005,
+   "ingest_other_phrasing_conf": 0.005061888601630926
+  },
+  "fam_ctx": {
+   "greedy": {
+    "accuracy": 0.6113,
+    "hallucination": 0.3887
+   },
+   "acc_at_hal_1pct": 0.5978,
+   "acc_at_hal_0.1pct": 0.5789,
+   "frontier": [
+    [
+     0.0,
+     0.6113,
+     0.3887
+    ],
+    [
+     0.1,
+     0.5978,
+     0.0069
+    ],
+    [
+     0.2,
+     0.5927,
+     0.0027
+    ],
+    [
+     0.3,
+     0.5888,
+     0.0016
+    ],
+    [
+     0.5,
+     0.5789,
+     0.0003
+    ],
+    [
+     0.7,
+     0.5664,
+     0.0002
+    ],
+    [
+     0.8,
+     0.5546,
+     0.0
+    ],
+    [
+     0.9,
+     0.5321,
+     0.0
+    ],
+    [
+     0.95,
+     0.5,
+     0.0
+    ],
+    [
+     0.99,
+     0.3999,
+     0.0
+    ]
+   ],
+   "auroc_seen1_vs_unseen": 0.5206337000670374,
+   "auroc_seen_vs_unseen": 0.8921828515259412,
+   "ghost_mean_conf": 0.0018634923035278916,
+   "para_seen_phrasing_acc": 0.0015,
+   "para_seen_phrasing_conf": 0.0018922417657449841,
+   "para_new_phrasing_acc": 0.00075,
+   "para_new_phrasing_conf": 0.0018560454482212663,
+   "ingest_same_phrasing_acc": 0.001,
+   "ingest_same_phrasing_conf": 0.0018517770804464817,
+   "ingest_other_phrasing_acc": 0.0005,
+   "ingest_other_phrasing_conf": 0.0018292892491444945
+  },
+  "fam_oracle": {
+   "greedy": {
+    "accuracy": 0.8854,
+    "hallucination": 0.1146
+   },
+   "acc_at_hal_1pct": 0.8853,
+   "acc_at_hal_0.1pct": 0.8853,
+   "frontier": [
+    [
+     0.0,
+     0.8854,
+     0.1146
+    ],
+    [
+     0.1,
+     0.8853,
+     0.003
+    ],
+    [
+     0.2,
+     0.8853,
+     0.0009
+    ],
+    [
+     0.3,
+     0.8853,
+     0.0005
+    ],
+    [
+     0.5,
+     0.885,
+     0.0
+    ],
+    [
+     0.7,
+     0.8847,
+     0.0
+    ],
+    [
+     0.8,
+     0.8844,
+     0.0
+    ],
+    [
+     0.9,
+     0.8824,
+     0.0
+    ],
+    [
+     0.95,
+     0.8676,
+     0.0
+    ],
+    [
+     0.99,
+     0.6126,
+     0.0
+    ]
+   ],
+   "auroc_seen1_vs_unseen": 0.6520909736188335,
+   "auroc_seen_vs_unseen": 0.9559043626705148,
+   "ghost_mean_conf": 0.06471484899520874,
+   "para_seen_phrasing_acc": 0.99975,
+   "para_seen_phrasing_conf": 0.9708387851715088,
+   "para_new_phrasing_acc": 0.00125,
+   "para_new_phrasing_conf": 0.049860138446092606,
+   "ingest_same_phrasing_acc": 0.9995,
+   "ingest_same_phrasing_conf": 0.9687494039535522,
+   "ingest_other_phrasing_acc": 0.0005,
+   "ingest_other_phrasing_conf": 0.049920015037059784
+  },
+  "ngram": {
+   "accuracy": 0.8401,
+   "hallucination": 0.0269,
+   "para_new_phrasing_acc": 0.0
+  }
+ }
+}

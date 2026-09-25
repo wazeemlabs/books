@@ -1,0 +1,53 @@
+{
+ "wake_only": {
+  "old_weights_greedy_acc": 0.8756,
+  "old_CARE_acc": 1.0,
+  "old_CARE_halluc": 0.0,
+  "new_weights_greedy_acc": 0.002,
+  "new_CARE_acc": 1.0,
+  "new_CARE_halluc": 0.0,
+  "overflow_store": 7347
+ },
+ "replay_sizes": {
+  "self": 14444,
+  "verified": 11133,
+  "self_replay_wrong_share": 0.4563140404320133,
+  "verified_wrong_share": 0.008982304859426929
+ },
+ "fine-tune": {
+  "old_weights_greedy_acc": 0.0093,
+  "old_CARE_acc": 1.0,
+  "old_CARE_halluc": 0.0,
+  "new_weights_greedy_acc": 0.988,
+  "new_CARE_acc": 1.0,
+  "new_CARE_halluc": 0.0,
+  "overflow_store": 13555
+ },
+ "+ self-replay": {
+  "old_weights_greedy_acc": 0.5549,
+  "old_CARE_acc": 1.0,
+  "old_CARE_halluc": 0.0,
+  "new_weights_greedy_acc": 0.7685,
+  "new_CARE_acc": 1.0,
+  "new_CARE_halluc": 0.0,
+  "overflow_store": 7856
+ },
+ "+ verified replay": {
+  "old_weights_greedy_acc": 0.6796,
+  "old_CARE_acc": 1.0,
+  "old_CARE_halluc": 0.0,
+  "new_weights_greedy_acc": 0.70525,
+  "new_CARE_acc": 1.0,
+  "new_CARE_halluc": 0.0,
+  "overflow_store": 5926
+ },
+ "+ true replay": {
+  "old_weights_greedy_acc": 0.76,
+  "old_CARE_acc": 1.0,
+  "old_CARE_halluc": 0.0,
+  "new_weights_greedy_acc": 0.88425,
+  "new_CARE_acc": 1.0,
+  "new_CARE_halluc": 0.0,
+  "overflow_store": 8545
+ }
+}

@@ -53,10 +53,11 @@ Good-Turing.
 | Count-min only as a tie-breaker between verified candidates | Under 5 to 20% entity mislinks it cuts hallucination (e.g. N = 5: 1.04% to 0.59% at 5% mislinks). | yes, for noisy data |
 | CAR vs a plain fact store under mislinks | Store: 1.3%, 2.7%, 5.6% hallucination at 5, 10, 20% mislinks. CAR N = 1: 0.24%, 0.51%, 1.2%. Two independent memories must agree. The cost is lower accuracy (70% vs 84%). | yes |
 | List-decoding hinge loss (train for top-N, not top-1) | **Worse at every N** (top-5 recall 0.64 vs 0.90 for plain CE). | dropped |
-| Rank-gated CE (skip the push once the answer is in the top N) | see `results/pilot_mt.json` | pending |
-| Weights trained only on facts seen ≥ 2 times, then CAR | N = 1: 75.5% vs 71.5% for all-facts training (V = 48, d = 32) | pending on the hard world |
-| Prefix checksum (Bloom over (key, first sub-token)) for multi-token values | Prunes wrong branches before the full check, so much longer lists are affordable | pending |
-| CARE: CAR plus an episodic overflow for facts CAR can't recall after sleep | Store accuracy and ~0 hallucination, with a store that shrinks as the weights get better | pending |
+| Rank-gated CE (skip the push once the answer is in the top N) | Worse: top-1 on seen facts 0.614 vs 0.748 for plain CE (hard world) | dropped |
+| Weights trained only on facts seen ≥ 2 times, then CAR | Hard world, 3 seeds: greedy 68.4% vs 65.8%, CAR N=5 71.0% vs 67.8%. No gain once the prefix checksum is used (88.0% vs 88.2%). | optional |
+| Prefix checksum (Bloom over (key, first sub-token)) for multi-token values | 12k-param weights: 50.7% (N=1) to 86.0% at 0.73% halluc. (N=50). Weights add +10 pts and 2.7x lower hallucination vs random-order search with the same filter. | yes |
+| CARE: CAR plus an episodic overflow for facts CAR can't recall after sleep | Ceiling accuracy, 0.00% hallucination at every size. The store holds 94% / 80% / 23% / 1% of facts as the weights grow from 12k to 258k params. | yes |
+| CARE strict (don't assert overflow facts read once) | Under 5 / 10% mislinks, hallucination 1.09 → 0.49% and 2.11 → 1.03%, costing ~8 points of accuracy | option |
 
 ## Ideas considered but not run
 
@@ -71,3 +72,19 @@ Good-Turing.
   instead of extracted triples). This is the path to paraphrases and
   free-form text. It is the most important next step, and also the
   riskiest.
+
+## Round 3: extraction-free and lifelong variants
+
+| Variation | Result | Verdict |
+|---|---|---|
+| **FamLM**: an Engram-style hashed counter table (context counts + (context, next-token) counts), fed into the transformer and trained prequentially (counts as they were before each batch), in a world with 3 phrasings per relation | One pass over 400k mentions: **88.5% accuracy at ≤ 0.1% hallucination**, vs 57.0% for IDK training and 52.8% for the plain LM. Facts added to the counters after training are recalled at 100% with no gradients. **Paraphrase: 0%** (a fact read only in other phrasings is never recalled). The non-prequential ablation scores the same 88.5%, so the "learned familiarity from first exposures" story is **not** what drives it; exact n-gram recall is. The pure n-gram lookup gets 84.0% at 2.7% hallucination, so the learned gating adds calibration. | a useful learned n-gram memory, but not the breakthrough; the paraphrase problem is unsolved |
+| FamLM with the familiarity embedding only (no recognition bias) | 61.1% greedy, no better than the plain LM | the recognition bias is what matters |
+| Continual learning: fine-tune on 4,000 new facts | Weights forget old facts (87.6% → 0.9%) | as expected |
+| + self-replay (the model rehearses its own greedy answers) | 46% of rehearsed "memories" are wrong; old facts 55.5% | rehearsing its own hallucinations |
+| **+ checksum-verified self-replay** | only 0.9% of rehearsed memories wrong; old facts 68.0%; the **smallest overflow store of all (5,926 vs 8,545 with the original data replayed)**; CARE stays at 100% / 0% | yes |
+
+Open problem: **keys without an extractor.** Exact n-grams don't survive
+paraphrase. The two candidates are (a) LMLM-style canonical key emission
+by the model itself, which is already shown to work at 382M params, and (b)
+learned, phrasing-invariant keys from the model's own representation of
+the question. (b) is the riskiest and most valuable next step.
