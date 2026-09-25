@@ -102,15 +102,36 @@ is 89.9%.
 6. **CARE shrinks the store as the weights get better**: from 94% of facts
    (12k params) to 23% (123k) to 1% (258k), always at the ceiling with
    0.00% hallucination.
-7. **Continual learning.** New facts are written to the filters and
-   overflow store instantly, with no gradients. During sleep, the model
-   rehearses its own memories, but only the ones the checksum verifies:
-   0.9% of those are wrong, against 46% for unverified self-replay
-   (`results/continual_seed0.json`).
+7. **Lifelong learning without forgetting or hallucinating**
+   (`figures/lifecycle.png`, `results/lifecycle_seed0.json`). Over five
+   "days", 500 new people arrive each day. Awake, facts go into the filters
+   and overflow store instantly (no gradients). Asleep, the weights
+   consolidate the overflow, rehearse their own memories, and the store
+   evicts what they now recall. Two new mechanisms make this work:
+   - **Checksum-verified self-replay.** Only rehearse memories the
+     checksum verifies. 0.9% of them are wrong, against 46% for plain
+     self-replay, which rehearses its own hallucinations.
+   - **Audited sleep (two-phase commit).** Keep yesterday's weights until
+     the new ones pass a checksum audit, and write back anything they
+     forgot. Result: every fact kept (99.2 to 100% on every day's facts,
+     99.8% on the originals), 0.00 to 0.05% hallucination on never-seen facts, and
+     the store grows 62% slower than never sleeping (+490 vs +1,280 facts a
+     day). Without the audit, plain sleep drops the originals to 69% and
+     day-1 facts to 18%.
+8. **A cheaper checksum still works.** Store (person, value) pairs seen in
+   the same sentence instead of full triples. That needs only entity
+   recognition, not relation extraction. Accuracy is unchanged, and
+   hallucination at N=1 is 0.3 to 1.0%, vs 0.00 to 0.02% for triples and
+   10 to 34% for the weights alone (`results/assoc_seed0.json`). This is a
+   worst case: every relation here shares one value pool.
 
 What failed is written up honestly in [`docs/ideas.md`](docs/ideas.md):
-two list-decoding losses, a count-min-only checksum, my "confidence tracks
-fame" hypothesis, and (so far) the extraction-free familiarity sense.
+- two list-decoding losses;
+- a count-min-only checksum;
+- my "confidence tracks fame" hypothesis;
+- FamLM, an extraction-free "familiarity sense" from hashed n-gram counters.
+  It gets 88.5% at ≤0.1% hallucination on exact phrasing, but 0% on
+  paraphrase, and the ablation showed it is really a learned n-gram memory.
 
 ## Is it new?
 
@@ -165,6 +186,10 @@ cogllm/system.py               round-1 complementary-memory model (kept for comp
 experiments/run_care.py        final experiment (3 seeds) -> RESULTS.md via report_care.py
 experiments/pilot_car.py       pilots on the 48-value world
 experiments/pilot_mt.py        pilots on the 1,024-value world, CARE
+experiments/lifecycle.py       five days of wake/sleep: verified replay, audited sleep
+experiments/continual.py       one-shot continual learning, replay variants
+experiments/assoc.py           relation-free (entity, value) pair checksum
+experiments/pilot_fam.py       FamLM, the hashed-counter familiarity sense (cogllm/famlm.py)
 experiments/run.py, report.py  round 1 (docs/round1/)
 docs/                          theory, literature, ideas log, scaling + PhD roadmap
 ```

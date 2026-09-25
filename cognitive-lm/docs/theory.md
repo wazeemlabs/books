@@ -175,3 +175,21 @@ agree on it. The cost is that CAR recovers fewer facts than a store. CARE's
 overflow store brings that accuracy back, and with it some of the store's
 exposure to noise. "Strict" CARE refuses to assert overflow facts read only
 once, which is where mislinks concentrate.
+
+## 7. The audited-sleep invariant
+
+With CARE, a fact's value lives either in the overflow store or only in the
+weights (the checksum stores no values). Evicting a fact from the store is
+therefore safe only as long as the weights keep recalling it. Audited sleep
+enforces that as an invariant. For every key k read so far:
+
+    k ∈ store   or   CAR(weights_t, k) = v_k   (verified by the checksum)
+
+It is checked like a two-phase commit. Before a sleep, record v_old(k) =
+CAR(weights_{t−1}, k) for every consolidated key. After training, compute
+v_new(k). Every key with v_old(k) verified and v_new(k) ≠ v_old(k) is
+written back to the store before the new weights go live. Errors can then
+only enter through checksum false positives (ε_t per check). The cost is
+one CAR pass over the consolidated keys per sleep. At scale that can be
+done by sampling, prioritised by query frequency, which is where losses
+would hurt most.

@@ -1,0 +1,74 @@
+{
+ "d32_N1_triple": {
+  "accuracy": 0.6752,
+  "hallucination": 0.0002
+ },
+ "d32_N1_pair": {
+  "accuracy": 0.6752,
+  "hallucination": 0.01015
+ },
+ "d32_N5_triple": {
+  "accuracy": 0.6925,
+  "hallucination": 0.0011
+ },
+ "d32_N5_pair": {
+  "accuracy": 0.68975,
+  "hallucination": 0.0271
+ },
+ "d32_N20_triple": {
+  "accuracy": 0.7159,
+  "hallucination": 0.00545
+ },
+ "d32_N20_pair": {
+  "accuracy": 0.70835,
+  "hallucination": 0.05465
+ },
+ "d64_N1_triple": {
+  "accuracy": 0.82465,
+  "hallucination": 0.0
+ },
+ "d64_N1_pair": {
+  "accuracy": 0.82465,
+  "hallucination": 0.00635
+ },
+ "d64_N5_triple": {
+  "accuracy": 0.8422,
+  "hallucination": 0.0002
+ },
+ "d64_N5_pair": {
+  "accuracy": 0.8406,
+  "hallucination": 0.0186
+ },
+ "d64_N20_triple": {
+  "accuracy": 0.86025,
+  "hallucination": 0.0008
+ },
+ "d64_N20_pair": {
+  "accuracy": 0.85455,
+  "hallucination": 0.03505
+ },
+ "d96_N1_triple": {
+  "accuracy": 0.89255,
+  "hallucination": 0.0
+ },
+ "d96_N1_pair": {
+  "accuracy": 0.89255,
+  "hallucination": 0.00265
+ },
+ "d96_N5_triple": {
+  "accuracy": 0.89315,
+  "hallucination": 0.0
+ },
+ "d96_N5_pair": {
+  "accuracy": 0.8931,
+  "hallucination": 0.007
+ },
+ "d96_N20_triple": {
+  "accuracy": 0.8936,
+  "hallucination": 0.0
+ },
+ "d96_N20_pair": {
+  "accuracy": 0.89345,
+  "hallucination": 0.0169
+ }
+}

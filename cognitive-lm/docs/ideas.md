@@ -83,6 +83,9 @@ Good-Turing.
 | + self-replay (the model rehearses its own greedy answers) | 46% of rehearsed "memories" are wrong; old facts 55.5% | rehearsing its own hallucinations |
 | **+ checksum-verified self-replay** | only 0.9% of rehearsed memories wrong; old facts 68.0%; the **smallest overflow store of all (5,926 vs 8,545 with the original data replayed)**; CARE stays at 100% / 0% | yes |
 
+| Relation-free pair checksum (entity, value) that needs only entity recognition | Same accuracy. Hallucination at N=1: 1.0 / 0.6 / 0.3% (37k / 123k / 258k params) vs 0.02 / 0.00 / 0.00% for triples. N=20: 1.7 to 5.5%. Errors are the model offering the person's value from a *different* relation. | a cheaper production tier; use value types in practice |
+| **Lifecycle, 5 days** (500 new people/day; wake = write filters + store; sleep = train on the overflow + replay, then evict what is recalled) | never sleep: store +1,280/day, 100%. Sleep without replay: store tiny, but originals fall to 69% and day-1 facts to 18%, because evicted facts get overwritten. + self-replay: 84% / 44%. + verified replay: 91% / 64%. **+ verified replay + audit (two-phase commit): 99.8% / 99.2%, store +490/day, 0.00 to 0.05% hallucination on never-seen facts.** | yes; audited sleep is the lifelong-learning mechanism |
+
 Open problem: **keys without an extractor.** Exact n-grams don't survive
 paraphrase. The two candidates are (a) LMLM-style canonical key emission
 by the model itself, which is already shown to work at 382M params, and (b)
