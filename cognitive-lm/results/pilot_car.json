@@ -1,0 +1,946 @@
+{
+ "generators": {
+  "ce_d32": {
+   "params": 42112,
+   "top1": {
+    "1": 0.12034883720930233,
+    "2-3": 0.43465405085748077,
+    "4-7": 0.8763906056860321,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.842685370741483
+   },
+   "top2": {
+    "1": 0.18488372093023256,
+    "2-3": 0.537551744529864,
+    "4-7": 0.9196538936959209,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.8636095720853472
+   },
+   "top5": {
+    "1": 0.33430232558139533,
+    "2-3": 0.6782968657599053,
+    "4-7": 0.9660074165636588,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.8972061770600024
+   },
+   "top10": {
+    "1": 0.5063953488372093,
+    "2-3": 0.8113542282672974,
+    "4-7": 0.9864029666254636,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9298597194388778
+   },
+   "top20": {
+    "1": 0.7145348837209302,
+    "2-3": 0.9314015375517445,
+    "4-7": 0.9950556242274413,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9637510314747141
+   },
+   "weights_only_acc_at_hal_1pct": 0.6497
+  },
+  "ce_d64": {
+   "params": 133376,
+   "top1": {
+    "1": 0.9854651162790697,
+    "2-3": 1.0,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9985264646940941
+   },
+   "top2": {
+    "1": 0.9918604651162791,
+    "2-3": 1.0,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9991748202286926
+   },
+   "top5": {
+    "1": 0.997093023255814,
+    "2-3": 1.0,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9997052929388188
+   },
+   "top10": {
+    "1": 0.9988372093023256,
+    "2-3": 1.0,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9998821171755276
+   },
+   "top20": {
+    "1": 1.0,
+    "2-3": 1.0,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 1.0
+   },
+   "weights_only_acc_at_hal_1pct": 0.69065
+  },
+  "ce_k2_d32": {
+   "params": 42112,
+   "top1": {
+    "1": 0.021511627906976746,
+    "2-3": 0.8976936723832052,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.8906047388895438
+   },
+   "top2": {
+    "1": 0.04883720930232558,
+    "2-3": 0.9361324659964518,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.8972061770600024
+   },
+   "top5": {
+    "1": 0.1127906976744186,
+    "2-3": 0.9745712596096984,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9075209242013439
+   },
+   "top10": {
+    "1": 0.19883720930232557,
+    "2-3": 0.989946777054997,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9177767299304491
+   },
+   "top20": {
+    "1": 0.4197674418604651,
+    "2-3": 0.9982259018332348,
+    "4-7": 1.0,
+    "8-15": 1.0,
+    "16+": 1.0,
+    "all_seen": 0.9409996463515266
+   },
+   "weights_only_acc_at_hal_1pct": 0.53945
+  },
+  "list5_d32": {
+   "params": 42112,
+   "top1": {
+    "1": 0.03953488372093023,
+    "2-3": 0.0449438202247191,
+    "4-7": 0.03955500618046971,
+    "8-15": 0.04739010989010989,
+    "16+": 0.8232993035015743,
+    "all_seen": 0.5249322173759283
+   },
+   "top2": {
+    "1": 0.07441860465116279,
+    "2-3": 0.07983441750443525,
+    "4-7": 0.05995055624227441,
+    "8-15": 0.08035714285714286,
+    "16+": 0.8258753935693159,
+    "all_seen": 0.5383119179535542
+   },
+   "top5": {
+    "1": 0.13197674418604652,
+    "2-3": 0.13719692489651095,
+    "4-7": 0.13597033374536466,
+    "8-15": 0.24587912087912087,
+    "16+": 0.9383646598607003,
+    "all_seen": 0.6408110338323706
+   },
+   "top10": {
+    "1": 0.2575581395348837,
+    "2-3": 0.257244234180958,
+    "4-7": 0.33868974042027195,
+    "8-15": 0.47046703296703296,
+    "16+": 0.9628852208758706,
+    "all_seen": 0.7192620535188023
+   },
+   "top20": {
+    "1": 0.475,
+    "2-3": 0.4997043169722058,
+    "4-7": 0.592707045735476,
+    "8-15": 0.676510989010989,
+    "16+": 0.9819673695258087,
+    "all_seen": 0.8191677472592244
+   },
+   "weights_only_acc_at_hal_1pct": 0.4312
+  }
+ },
+ "car": {
+  "ce_d32 N=1 b=10": {
+   "n": 20000,
+   "accuracy": 0.71485,
+   "hallucination": 0.0011,
+   "abstain": 0.28405,
+   "coverage": 0.71595,
+   "halluc_given_answered": 0.0015364201410713039,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.1334
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=2 b=10": {
+   "n": 20000,
+   "accuracy": 0.73235,
+   "hallucination": 0.00215,
+   "abstain": 0.2655,
+   "coverage": 0.7345,
+   "halluc_given_answered": 0.00292716133424098,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.11485
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=3 b=10": {
+   "n": 20000,
+   "accuracy": 0.7437,
+   "hallucination": 0.0027,
+   "abstain": 0.2536,
+   "coverage": 0.7464,
+   "halluc_given_answered": 0.003617363344051447,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.10295
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=5 b=10": {
+   "n": 20000,
+   "accuracy": 0.76025,
+   "hallucination": 0.00435,
+   "abstain": 0.2354,
+   "coverage": 0.7646,
+   "halluc_given_answered": 0.005689249280669631,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.08475
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=10 b=10": {
+   "n": 20000,
+   "accuracy": 0.7868,
+   "hallucination": 0.00645,
+   "abstain": 0.20675,
+   "coverage": 0.79325,
+   "halluc_given_answered": 0.008131106208635362,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0561
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=20 b=10": {
+   "n": 20000,
+   "accuracy": 0.81205,
+   "hallucination": 0.0095,
+   "abstain": 0.17845,
+   "coverage": 0.82155,
+   "halluc_given_answered": 0.01156350800316475,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0278
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=48 b=10": {
+   "n": 20000,
+   "accuracy": 0.8365,
+   "hallucination": 0.0121,
+   "abstain": 0.1514,
+   "coverage": 0.8486,
+   "halluc_given_answered": 0.014258779165684658,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.00075
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=5 b=4": {
+   "n": 20000,
+   "accuracy": 0.7495,
+   "hallucination": 0.0583,
+   "abstain": 0.1922,
+   "coverage": 0.8078,
+   "halluc_given_answered": 0.0721713295370141,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 57776,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 948668,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.04155
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=48 b=4 (full scan)": {
+   "n": 20000,
+   "accuracy": 0.76415,
+   "hallucination": 0.0852,
+   "abstain": 0.15065,
+   "coverage": 0.84935,
+   "halluc_given_answered": 0.1003120032966386,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 57776,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 948668,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=5 b=6": {
+   "n": 20000,
+   "accuracy": 0.75625,
+   "hallucination": 0.025,
+   "abstain": 0.21875,
+   "coverage": 0.78125,
+   "halluc_given_answered": 0.032,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 86664,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 977556,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0681
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=48 b=6 (full scan)": {
+   "n": 20000,
+   "accuracy": 0.7958,
+   "hallucination": 0.0535,
+   "abstain": 0.1507,
+   "coverage": 0.8493,
+   "halluc_given_answered": 0.06299305310255504,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 86664,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 977556,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 5e-05
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=5 b=8": {
+   "n": 20000,
+   "accuracy": 0.75885,
+   "hallucination": 0.01055,
+   "abstain": 0.2306,
+   "coverage": 0.7694,
+   "halluc_given_answered": 0.013711983363659995,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 115552,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1006444,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.07995
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=48 b=8 (full scan)": {
+   "n": 20000,
+   "accuracy": 0.8197,
+   "hallucination": 0.0294,
+   "abstain": 0.1509,
+   "coverage": 0.8491,
+   "halluc_given_answered": 0.03462489694971146,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 115552,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1006444,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.00025
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=5 b=14": {
+   "n": 20000,
+   "accuracy": 0.76095,
+   "hallucination": 0.0007,
+   "abstain": 0.23835,
+   "coverage": 0.76165,
+   "halluc_given_answered": 0.0009190573097879604,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 202216,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1093108,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0877
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=48 b=14 (full scan)": {
+   "n": 20000,
+   "accuracy": 0.8465,
+   "hallucination": 0.0018,
+   "abstain": 0.1517,
+   "coverage": 0.8483,
+   "halluc_given_answered": 0.0021218908405045383,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 202216,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1093108,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.00105
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=5 b=20": {
+   "n": 20000,
+   "accuracy": 0.7611,
+   "hallucination": 5e-05,
+   "abstain": 0.23885,
+   "coverage": 0.76115,
+   "halluc_given_answered": 6.569007422978388e-05,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 288880,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1179772,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0882
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=48 b=20 (full scan)": {
+   "n": 20000,
+   "accuracy": 0.8482,
+   "hallucination": 0.0001,
+   "abstain": 0.1517,
+   "coverage": 0.8483,
+   "halluc_given_answered": 0.00011788282447247436,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 288880,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1179772,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.00105
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=5 b=6 no-key-filter": {
+   "n": 20000,
+   "accuracy": 0.75625,
+   "hallucination": 0.0501,
+   "abstain": 0.19365,
+   "coverage": 0.80635,
+   "halluc_given_answered": 0.062131828610404914,
+   "ghost_hallucination": 0.00225,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 86664,
+    "weights": 673792
+   },
+   "total_bits": 833116,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.0,
+    "tip_of_tongue": 0.14855
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=48 b=6 no-key-filter": {
+   "n": 20000,
+   "accuracy": 0.7958,
+   "hallucination": 0.15235,
+   "abstain": 0.05185,
+   "coverage": 0.94815,
+   "halluc_given_answered": 0.1606813267942836,
+   "ghost_hallucination": 0.007,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 86664,
+    "weights": 673792
+   },
+   "total_bits": 833116,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.0,
+    "tip_of_tongue": 0.00675
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=5 b=10 no-key-filter": {
+   "n": 20000,
+   "accuracy": 0.76025,
+   "hallucination": 0.00775,
+   "abstain": 0.232,
+   "coverage": 0.768,
+   "halluc_given_answered": 0.010091145833333334,
+   "ghost_hallucination": 0.0005,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "weights": 673792
+   },
+   "total_bits": 890892,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.0,
+    "tip_of_tongue": 0.1869
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d32 N=48 b=10 no-key-filter": {
+   "n": 20000,
+   "accuracy": 0.8365,
+   "hallucination": 0.04645,
+   "abstain": 0.11705,
+   "coverage": 0.88295,
+   "halluc_given_answered": 0.05260773543235744,
+   "ghost_hallucination": 0.003,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "weights": 673792
+   },
+   "total_bits": 890892,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.0,
+    "tip_of_tongue": 0.07195
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d64 N=1 b=10": {
+   "n": 20000,
+   "accuracy": 0.84705,
+   "hallucination": 0.0,
+   "abstain": 0.15295,
+   "coverage": 0.84705,
+   "halluc_given_answered": 0.0,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 2134016
+   },
+   "total_bits": 2495556,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0023
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d64 N=5 b=10": {
+   "n": 20000,
+   "accuracy": 0.84805,
+   "hallucination": 0.0,
+   "abstain": 0.15195,
+   "coverage": 0.84805,
+   "halluc_given_answered": 0.0,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 2134016
+   },
+   "total_bits": 2495556,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0013
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_d64 N=10 b=10": {
+   "n": 20000,
+   "accuracy": 0.8482,
+   "hallucination": 0.0,
+   "abstain": 0.1518,
+   "coverage": 0.8482,
+   "halluc_given_answered": 0.0,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 2134016
+   },
+   "total_bits": 2495556,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.00115
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_k2_d32 N=1 b=10": {
+   "n": 20000,
+   "accuracy": 0.7555,
+   "hallucination": 0.00085,
+   "abstain": 0.24365,
+   "coverage": 0.75635,
+   "halluc_given_answered": 0.0011238183380709989,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.093
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_k2_d32 N=5 b=10": {
+   "n": 20000,
+   "accuracy": 0.7697,
+   "hallucination": 0.00295,
+   "abstain": 0.22735,
+   "coverage": 0.77265,
+   "halluc_given_answered": 0.0038180288617097003,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0767
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "ce_k2_d32 N=10 b=10": {
+   "n": 20000,
+   "accuracy": 0.778,
+   "hallucination": 0.00585,
+   "abstain": 0.21615,
+   "coverage": 0.78385,
+   "halluc_given_answered": 0.007463162594884225,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.0655
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "list5_d32 N=1 b=10": {
+   "n": 20000,
+   "accuracy": 0.4453,
+   "hallucination": 0.00285,
+   "abstain": 0.55185,
+   "coverage": 0.44815,
+   "halluc_given_answered": 0.0063594778533973,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.4012
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "list5_d32 N=5 b=10": {
+   "n": 20000,
+   "accuracy": 0.5422,
+   "hallucination": 0.0135,
+   "abstain": 0.4443,
+   "coverage": 0.5557,
+   "halluc_given_answered": 0.024293683642253015,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.29365
+   },
+   "ghost_unknown_entity": 0.9925
+  },
+  "list5_d32 N=10 b=10": {
+   "n": 20000,
+   "accuracy": 0.60565,
+   "hallucination": 0.02365,
+   "abstain": 0.3707,
+   "coverage": 0.6293,
+   "halluc_given_answered": 0.03758143969489909,
+   "ghost_hallucination": 0.0,
+   "bits": {
+    "entity_filter": 72660,
+    "triple_checksum": 144440,
+    "key_filter": 144440,
+    "weights": 673792
+   },
+   "total_bits": 1035332,
+   "levels": {
+    "unknown_entity": 0.0451,
+    "unknown_fact": 0.10555,
+    "tip_of_tongue": 0.22005
+   },
+   "ghost_unknown_entity": 0.9925
+  }
+ },
+ "noise": [
+  {
+   "mislink": 0.05,
+   "weights_only_default": 0.2966,
+   "car_bloom_N1": {
+    "accuracy": 0.70325,
+    "hallucination": 0.0031
+   },
+   "car_bloom_N5": {
+    "accuracy": 0.74685,
+    "hallucination": 0.0104
+   },
+   "car_bloom_N48": {
+    "accuracy": 0.82605,
+    "hallucination": 0.02785
+   },
+   "car_count_N1": {
+    "accuracy": 0.70325,
+    "hallucination": 0.0024
+   },
+   "car_count_N5": {
+    "accuracy": 0.7477,
+    "hallucination": 0.00585
+   },
+   "car_count_N48": {
+    "accuracy": 0.83965,
+    "hallucination": 0.014
+   },
+   "store_only": {
+    "accuracy": 0.8404,
+    "hallucination": 0.0132
+   }
+  },
+  {
+   "mislink": 0.1,
+   "weights_only_default": 0.3096,
+   "car_bloom_N1": {
+    "accuracy": 0.69025,
+    "hallucination": 0.0064
+   },
+   "car_bloom_N5": {
+    "accuracy": 0.7335,
+    "hallucination": 0.02015
+   },
+   "car_bloom_N48": {
+    "accuracy": 0.8138,
+    "hallucination": 0.0454
+   },
+   "car_count_N1": {
+    "accuracy": 0.69025,
+    "hallucination": 0.0051
+   },
+   "car_count_N5": {
+    "accuracy": 0.7351,
+    "hallucination": 0.0143
+   },
+   "car_count_N48": {
+    "accuracy": 0.8265,
+    "hallucination": 0.0325
+   },
+   "store_only": {
+    "accuracy": 0.8316,
+    "hallucination": 0.0274
+   }
+  },
+  {
+   "mislink": 0.2,
+   "weights_only_default": 0.33205,
+   "car_bloom_N1": {
+    "accuracy": 0.6676,
+    "hallucination": 0.01315
+   },
+   "car_bloom_N5": {
+    "accuracy": 0.7109,
+    "hallucination": 0.0373
+   },
+   "car_bloom_N48": {
+    "accuracy": 0.7897,
+    "hallucination": 0.08115
+   },
+   "car_count_N1": {
+    "accuracy": 0.6676,
+    "hallucination": 0.0119
+   },
+   "car_count_N5": {
+    "accuracy": 0.7131,
+    "hallucination": 0.0299
+   },
+   "car_count_N48": {
+    "accuracy": 0.8106,
+    "hallucination": 0.06
+   },
+   "store_only": {
+    "accuracy": 0.81445,
+    "hallucination": 0.056
+   }
+  }
+ ],
+ "store_only": {
+  "accuracy": 0.8483,
+  "hallucination": 0.0,
+  "bits": {
+   "core": 0,
+   "store": 389988,
+   "bloom": 217100
+  },
+  "total_bits": 607088
+ }
+}

@@ -1,0 +1,151 @@
+{
+ "d": 64,
+ "plain": {
+  "by_fame": {
+   "never mentioned": {
+    "unseen": {
+     "n": 10936,
+     "mean_conf": 0.6146084666252136,
+     "answer_rate": 1.0
+    }
+   },
+   "1-2": {
+    "unseen": {
+     "n": 5902,
+     "mean_conf": 0.6127161383628845,
+     "answer_rate": 1.0
+    },
+    "seen1": {
+     "n": 5191,
+     "mean_conf": 0.8622279167175293,
+     "answer_rate": 1.0
+    },
+    "seen2+": {
+     "n": 398,
+     "mean_conf": 0.9545429348945618,
+     "answer_rate": 1.0
+    },
+    "auroc_seen1_vs_unseen_same_fame": 0.8160012203432406
+   },
+   "3-7": {
+    "unseen": {
+     "n": 1344,
+     "mean_conf": 0.6140627264976501,
+     "answer_rate": 1.0
+    },
+    "seen1": {
+     "n": 3240,
+     "mean_conf": 0.862316906452179,
+     "answer_rate": 1.0
+    },
+    "seen2+": {
+     "n": 2182,
+     "mean_conf": 0.9593870639801025,
+     "answer_rate": 1.0
+    },
+    "auroc_seen1_vs_unseen_same_fame": 0.8134252369929453
+   },
+   "8-31": {
+    "unseen": {
+     "n": 64,
+     "mean_conf": 0.6528938412666321,
+     "answer_rate": 1.0
+    },
+    "seen1": {
+     "n": 359,
+     "mean_conf": 0.8574803471565247,
+     "answer_rate": 1.0
+    },
+    "seen2+": {
+     "n": 2262,
+     "mean_conf": 0.9764547944068909,
+     "answer_rate": 1.0
+    },
+    "auroc_seen1_vs_unseen_same_fame": 0.7782468662952646
+   },
+   "32+": {
+    "seen2+": {
+     "n": 812,
+     "mean_conf": 0.9960671663284302,
+     "answer_rate": 1.0
+    }
+   }
+  },
+  "auroc_seen1_vs_unseen_overall": 0.8119828654451606,
+  "auroc_fame_predicts_conf_on_unseen": 0.5479394316934894
+ },
+ "idk": {
+  "by_fame": {
+   "never mentioned": {
+    "unseen": {
+     "n": 10936,
+     "mean_conf": 0.2966468632221222,
+     "answer_rate": 0.43105340160936356
+    }
+   },
+   "1-2": {
+    "unseen": {
+     "n": 5902,
+     "mean_conf": 0.3197726905345917,
+     "answer_rate": 0.48085394781430024
+    },
+    "seen1": {
+     "n": 5191,
+     "mean_conf": 0.5839099884033203,
+     "answer_rate": 0.8312463879791948
+    },
+    "seen2+": {
+     "n": 398,
+     "mean_conf": 0.8529224991798401,
+     "answer_rate": 0.9849246231155779
+    },
+    "auroc_seen1_vs_unseen_same_fame": 0.7435922840674966
+   },
+   "3-7": {
+    "unseen": {
+     "n": 1344,
+     "mean_conf": 0.4181772470474243,
+     "answer_rate": 0.65625
+    },
+    "seen1": {
+     "n": 3240,
+     "mean_conf": 0.6354435086250305,
+     "answer_rate": 0.907716049382716
+    },
+    "seen2+": {
+     "n": 2182,
+     "mean_conf": 0.8931285738945007,
+     "answer_rate": 0.9926672777268561
+    },
+    "auroc_seen1_vs_unseen_same_fame": 0.7040527630805409
+   },
+   "8-31": {
+    "unseen": {
+     "n": 64,
+     "mean_conf": 0.5170878171920776,
+     "answer_rate": 0.828125
+    },
+    "seen1": {
+     "n": 359,
+     "mean_conf": 0.7438388466835022,
+     "answer_rate": 0.9832869080779945
+    },
+    "seen2+": {
+     "n": 2262,
+     "mean_conf": 0.9553041458129883,
+     "answer_rate": 1.0
+    },
+    "auroc_seen1_vs_unseen_same_fame": 0.7485637186629527
+   },
+   "32+": {
+    "seen2+": {
+     "n": 812,
+     "mean_conf": 0.99314945936203,
+     "answer_rate": 1.0
+    }
+   }
+  },
+  "auroc_seen1_vs_unseen_overall": 0.7665604953762366,
+  "auroc_fame_predicts_conf_on_unseen": 0.7177512916057059
+ }
+}
