@@ -11,7 +11,7 @@ from collections import Counter
 
 import numpy as np
 
-from experiments.real_popqa import candidates, passes_fp
+from realworld.bench import candidates, passes_fp
 from realworld import popqa
 from realworld.corpus import Corpus, clean, pair_query
 
@@ -122,3 +122,31 @@ class CorpusCache(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Passages(unittest.TestCase):
+    def test_matched_span_gets_its_spaces_back(self):
+        from realworld.passages import _text
+        spans = [["As", None], ["Rudolf Hilferding", "0"], ["pointed out", None]]
+        self.assertEqual(_text(spans), "As Rudolf Hilferding pointed out")
+        self.assertEqual(_text([["By ", None], ["Rudolf Hilferding", "0"], ["'s view", None]]), "By Rudolf Hilferding's view")
+
+    def test_near_measures_words_between_subject_and_value(self):
+        from realworld.passages import near
+        p = "Rudolf Hilferding was an Austrian economist. " + "filler " * 30 + "He liked Vienna."
+        self.assertTrue(near(p, "Rudolf Hilferding", "economist", 10))
+        self.assertFalse(near(p, "Rudolf Hilferding", "Vienna", 10))
+        self.assertTrue(near(p, "Rudolf Hilferding", "Vienna"))
+        self.assertFalse(near(p, "Rudolf Hilferding", "Berlin"))
+
+    def test_near_needs_the_subject_mentioned_for_a_window(self):
+        from realworld.passages import near
+        self.assertFalse(near("An economist from Vienna.", "Rudolf Hilferding", "economist", 10))
+
+
+class ExtractedMatch(unittest.TestCase):
+    def test_either_side_may_name_the_other(self):
+        from experiments.real_extract import matches
+        self.assertTrue(matches("Austrian economist", "economist"))
+        self.assertTrue(matches("economist", "Marxist economist"))
+        self.assertFalse(matches("politician", "economist"))

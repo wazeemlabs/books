@@ -72,14 +72,19 @@ class Generator:
         return out
 
 
-def generate_cached(gen, items, path, prefix, batch=8, **kw):
-    """items: (id, question). Returns {id: result}, generating only what is not cached."""
+def load_cached(path):
     done = {}
     if os.path.exists(path):
         with open(path) as f:
             for line in f:
                 r = json.loads(line)
                 done[r["id"]] = r
+    return done
+
+
+def generate_cached(gen, items, path, prefix, batch=8, **kw):
+    """items: (id, question). Returns {id: result}, generating only what is not cached."""
+    done = load_cached(path)
     todo = [(i, q) for i, q in items if i not in done]
     for s in range(0, len(todo), batch):
         chunk = todo[s:s + batch]

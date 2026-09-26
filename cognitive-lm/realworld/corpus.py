@@ -48,10 +48,16 @@ class Corpus:
     def _key(self, query):
         return json.dumps([self.index, query, self.max_diff, MAX_CLAUSE_FREQ])
 
-    def _request(self, query):
+    def _count_payload(self, query):
         payload = {"index": self.index, "query_type": "count", "query": query}
         if " AND " in query:
             payload.update(max_diff_tokens=self.max_diff, max_clause_freq=MAX_CLAUSE_FREQ)
+        return payload
+
+    def _request(self, query):
+        return self._post(self._count_payload(query), query)
+
+    def _post(self, payload, label):
         body = json.dumps(payload).encode()
         for attempt in range(self.retries):
             self._wait_for_slot()
@@ -60,12 +66,12 @@ class Corpus:
                 with urllib.request.urlopen(req, timeout=60) as r:
                     resp = json.loads(r.read())
                 if "error" in resp:
-                    raise RuntimeError(f"infini-gram error for {query!r}: {resp['error']}")
+                    raise RuntimeError(f"infini-gram error for {label!r}: {resp['error']}")
                 return resp
             except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
                 # the API documents transient failures and asks clients to retry
                 if attempt == self.retries - 1:
-                    raise RuntimeError(f"infini-gram unreachable for {query!r} after {self.retries} tries") from e
+                    raise RuntimeError(f"infini-gram unreachable for {label!r} after {self.retries} tries") from e
                 limited = isinstance(e, urllib.error.HTTPError) and e.code in RATE_LIMIT_STATUS
                 pause = min(300, 30 * 2 ** attempt) if limited else 2 ** attempt
                 print(f"infini-gram {'rate limit' if limited else 'error'} ({e}); retrying in {pause}s", flush=True)
@@ -94,6 +100,27 @@ class Corpus:
             with open(self.cache_path, "a") as f:
                 f.write(json.dumps({"key": key, "response": resp}) + "\n")
         return resp["count"]
+
+    def query(self, payload, keep=None):
+        """Any API call, cached. keep: response fields to store (documents carry
+        kilobytes of crawl metadata that nothing here reads)."""
+        payload = {"index": self.index, **payload}
+        key = "Q" + json.dumps(payload, sort_keys=True)
+        with self.lock:
+            if key in self.cache:
+                return self.cache[key]
+        resp = self._post(payload, payload.get("query"))
+        if keep is not None:
+            resp = {k: resp[k] for k in keep if k in resp}
+        with self.lock:
+            self.cache[key] = resp
+            with open(self.cache_path, "a") as f:
+                f.write(json.dumps({"key": key, "response": resp}) + "\n")
+        return resp
+
+    def queries(self, payloads, keep=None):
+        with ThreadPoolExecutor(self.workers) as ex:
+            return list(ex.map(lambda p: self.query(p, keep), payloads))
 
     def counts(self, queries):
         """Counts for many queries, fetched in parallel, in input order."""
