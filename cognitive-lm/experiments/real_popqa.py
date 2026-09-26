@@ -69,6 +69,7 @@ def main():
     ap.add_argument("--beams", type=int, default=10)
     ap.add_argument("--bits", type=float, default=14.0)
     ap.add_argument("--batch", type=int, default=8)
+    ap.add_argument("--model", default="allenai/OLMo-2-0425-1B", help="hub id or local directory")
     ap.add_argument("--cache", default="data/cache")
     ap.add_argument("--out", default="results/real_popqa.json")
     a = ap.parse_args()
@@ -89,7 +90,7 @@ def main():
     log(f"{len(qs)} questions, {len(ghosts)} ghosts")
 
     from realworld.generate import Generator, generate_cached  # heavy import only when generating
-    gen = Generator()
+    gen = Generator(a.model)
     items = [(q.id, q.question) for q in qs] + [(g["id"], g["question"]) for g in ghosts]
     G = generate_cached(gen, items, f"{a.cache}/generations_seed{a.seed}_b{a.beams}.jsonl", prefix,
                         batch=a.batch, n_beams=a.beams)

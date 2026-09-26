@@ -42,13 +42,15 @@ def sample(questions, n, seed=0, bins=5):
     """n questions, equal numbers from each popularity quantile (the long tail
     is where hallucination lives, and uniform sampling would under-weight it)."""
     rng = np.random.default_rng(seed)
+    # one fixed order per bin, so a smaller sample is a subset of a larger one
+    # and a pilot's cached corpus counts carry over to the full run
     pop = np.log10(np.array([q.s_pop for q in questions]) + 1)
     edges = np.quantile(pop, np.linspace(0, 1, bins + 1))
     bin_of = np.clip(np.searchsorted(edges, pop, side="right") - 1, 0, bins - 1)
     picked = []
     for b in range(bins):
         idx = np.where(bin_of == b)[0]
-        picked += list(rng.choice(idx, min(len(idx), n // bins), replace=False))
+        picked += list(rng.permutation(idx)[:n // bins])
     return [questions[i] for i in sorted(picked)], edges
 
 

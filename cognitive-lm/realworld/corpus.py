@@ -26,11 +26,16 @@ INDEX = "v4_olmo-mix-1124_llama"
 # above this many matches a clause is subsampled and a conjunction can come back
 # as a false zero; 500,000 is the API's maximum
 MAX_CLAUSE_FREQ = 500_000
+# The public API answers 403 when hit too fast (seen at 4 parallel clients), so
+# every request waits for a shared slot, and a refusal backs off for minutes
+MIN_INTERVAL_S = 0.5
+RATE_LIMIT_STATUS = (403, 429)
 
 
 class Corpus:
-    def __init__(self, cache_path, index=INDEX, max_diff_tokens=100, workers=4, retries=5):
+    def __init__(self, cache_path, index=INDEX, max_diff_tokens=100, workers=2, retries=8):
         self.index, self.max_diff, self.workers, self.retries = index, max_diff_tokens, workers, retries
+        self.slot_lock, self.next_slot = threading.Lock(), 0.0
         self.cache_path = cache_path
         self.cache = {}
         self.lock = threading.Lock()
@@ -49,6 +54,7 @@ class Corpus:
             payload.update(max_diff_tokens=self.max_diff, max_clause_freq=MAX_CLAUSE_FREQ)
         body = json.dumps(payload).encode()
         for attempt in range(self.retries):
+            self._wait_for_slot()
             try:
                 req = urllib.request.Request(API, data=body, headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(req, timeout=60) as r:
@@ -60,7 +66,22 @@ class Corpus:
                 # the API documents transient failures and asks clients to retry
                 if attempt == self.retries - 1:
                     raise RuntimeError(f"infini-gram unreachable for {query!r} after {self.retries} tries") from e
-                time.sleep(2 ** attempt)
+                limited = isinstance(e, urllib.error.HTTPError) and e.code in RATE_LIMIT_STATUS
+                pause = min(300, 30 * 2 ** attempt) if limited else 2 ** attempt
+                print(f"infini-gram {'rate limit' if limited else 'error'} ({e}); retrying in {pause}s", flush=True)
+                self._hold(pause)
+
+    def _wait_for_slot(self):
+        with self.slot_lock:
+            now = time.monotonic()
+            start = max(now, self.next_slot)
+            self.next_slot = start + MIN_INTERVAL_S
+        time.sleep(start - now)
+
+    def _hold(self, seconds):
+        # a refusal pauses every worker, not just the one that saw it
+        with self.slot_lock:
+            self.next_slot = max(self.next_slot, time.monotonic() + seconds)
 
     def count(self, query):
         key = self._key(query)

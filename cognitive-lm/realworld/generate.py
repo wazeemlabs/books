@@ -25,7 +25,9 @@ class Generator:
         self.tok.padding_side = "left"
         if self.tok.pad_token is None:
             self.tok.pad_token = self.tok.eos_token
-        self.model = AutoModelForCausalLM.from_pretrained(model, torch_dtype=dtype).to(self.device).eval()
+        # SDPA attention on MPS returns NaN logits for every left-padded prompt in a
+        # batch (torch 2.8, transformers 4.57, any dtype); eager attention is correct
+        self.model = AutoModelForCausalLM.from_pretrained(model, dtype=dtype, attn_implementation="eager").to(self.device).eval()
         # an answer ends at the end of its line; every token containing a newline
         # stops generation, so beams are ranked on the answer alone
         self.stop_ids = sorted({self.tok.eos_token_id} | {i for t, i in self.tok.get_vocab().items()
@@ -43,6 +45,8 @@ class Generator:
                                 output_scores=True, return_dict_in_generate=True)
         # per-token log-probabilities of the greedy answer (0 after it stopped)
         lp = torch.stack([torch.log_softmax(s.float(), -1) for s in g.scores], 1)
+        if torch.isnan(lp).any():
+            raise RuntimeError("NaN logits in generation; the attention kernel is mishandling padding")
         new = g.sequences[:, L:]
         tok_lp = lp.gather(2, new[:, :lp.shape[1], None]).squeeze(2)
         alive = torch.ones_like(new, dtype=torch.bool)

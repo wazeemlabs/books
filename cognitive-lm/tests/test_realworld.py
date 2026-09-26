@@ -45,6 +45,12 @@ class Sample(unittest.TestCase):
         self.assertEqual(Counter(bins.tolist()), {b: 20 for b in range(5)})
         self.assertEqual(len({q.id for q in picked}), 100)
 
+    def test_a_smaller_sample_is_a_subset_of_a_larger_one(self):
+        qs = [popqa.Question(str(i), f"s{i}", "r", "q", ["a"], int(10 ** (i / 200)), []) for i in range(1000)]
+        small = {q.id for q in popqa.sample(qs, 50, seed=3)[0]}
+        large = {q.id for q in popqa.sample(qs, 500, seed=3)[0]}
+        self.assertLessEqual(small, large)
+
 
 class Candidates(unittest.TestCase):
     def test_greedy_first_then_beams_deduplicated_by_normalised_text(self):
@@ -89,6 +95,25 @@ class CorpusCache(unittest.TestCase):
                 Corpus._request = orig
             with open(path) as f:
                 self.assertEqual(len([json.loads(l) for l in f]), 2)
+
+    def test_requests_are_spaced_and_a_refusal_holds_every_worker(self):
+        import time
+        from realworld import corpus as cm
+        with tempfile.TemporaryDirectory() as d:
+            c = Corpus(os.path.join(d, "c.jsonl"))
+            orig = cm.MIN_INTERVAL_S
+            cm.MIN_INTERVAL_S = 0.05
+            try:
+                t = time.monotonic()
+                for _ in range(4):
+                    c._wait_for_slot()
+                self.assertGreaterEqual(time.monotonic() - t, 0.15)
+                c._hold(0.2)
+                t = time.monotonic()
+                c._wait_for_slot()
+                self.assertGreaterEqual(time.monotonic() - t, 0.18)
+            finally:
+                cm.MIN_INTERVAL_S = orig
 
     def test_query_operators_inside_names_are_removed(self):
         self.assertEqual(clean("Tom AND Jerry OR Spike"), "Tom Jerry Spike")
