@@ -1,0 +1,676 @@
+{
+ "config": {
+  "seed": 2,
+  "d": 64,
+  "days": 5,
+  "new_people": 500,
+  "new_mentions": 4000,
+  "old_mentions": 2000,
+  "epochs": 8,
+  "policies": "no_sleep,sleep,sleep_self,sleep_verified,sleep_audit",
+  "ckpt": "results/ckpt",
+  "out": "results/lifecycle_seed2.json"
+ },
+ "policies": {
+  "no_sleep": [
+   {
+    "day": 0,
+    "store": 14524,
+    "familiar_keys": 14524,
+    "memory_bits": {
+     "store": 450244,
+     "key_list": 0,
+     "filters": 421276
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8796666666666667,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 1,
+    "store": 15863,
+    "familiar_keys": 15863,
+    "memory_bits": {
+     "store": 491753,
+     "key_list": 0,
+     "filters": 458752
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8836666666666667,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.0,
+    "unseen_hal": 0.0005063291139240507
+   },
+   {
+    "day": 2,
+    "store": 17172,
+    "familiar_keys": 17172,
+    "memory_bits": {
+     "store": 532332,
+     "key_list": 0,
+     "filters": 495058
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.865,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.0,
+    "day2_care_acc": 1.0,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.0033333333333333335,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 3,
+    "store": 18474,
+    "familiar_keys": 18474,
+    "memory_bits": {
+     "store": 572694,
+     "key_list": 0,
+     "filters": 531016
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.879,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.0006666666666666666,
+    "day2_care_acc": 1.0,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.002,
+    "day3_care_acc": 1.0,
+    "day3_care_hal": 0.0,
+    "day3_weights_acc": 0.03333333333333333,
+    "unseen_hal": 0.0002610966057441253
+   },
+   {
+    "day": 4,
+    "store": 19743,
+    "familiar_keys": 19743,
+    "memory_bits": {
+     "store": 612033,
+     "key_list": 0,
+     "filters": 565842
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8833333333333333,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.0,
+    "day2_care_acc": 1.0,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.0006666666666666666,
+    "day3_care_acc": 1.0,
+    "day3_care_hal": 0.0,
+    "day3_weights_acc": 0.03133333333333333,
+    "day4_care_acc": 1.0,
+    "day4_care_hal": 0.0,
+    "day4_weights_acc": 0.0,
+    "unseen_hal": 0.00026469031233456857
+   },
+   {
+    "day": 5,
+    "store": 21002,
+    "familiar_keys": 21002,
+    "memory_bits": {
+     "store": 651062,
+     "key_list": 0,
+     "filters": 600178
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8693333333333333,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.0,
+    "day2_care_acc": 1.0,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.0026666666666666666,
+    "day3_care_acc": 1.0,
+    "day3_care_hal": 0.0,
+    "day3_weights_acc": 0.035333333333333335,
+    "day4_care_acc": 1.0,
+    "day4_care_hal": 0.0,
+    "day4_weights_acc": 0.0,
+    "day5_care_acc": 1.0,
+    "day5_care_hal": 0.0,
+    "day5_weights_acc": 0.0,
+    "unseen_hal": 0.0
+   }
+  ],
+  "sleep": [
+   {
+    "day": 0,
+    "store": 14524,
+    "familiar_keys": 14524,
+    "memory_bits": {
+     "store": 450244,
+     "key_list": 0,
+     "filters": 421276
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8803333333333333,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 1,
+    "store": 3191,
+    "familiar_keys": 15863,
+    "memory_bits": {
+     "store": 98921,
+     "key_list": 0,
+     "filters": 458752
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8823333333333333,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.12466666666666666,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 2,
+    "store": 2096,
+    "familiar_keys": 17172,
+    "memory_bits": {
+     "store": 64976,
+     "key_list": 0,
+     "filters": 495058
+    },
+    "day0_care_acc": 0.8336666666666667,
+    "day0_care_hal": 0.005,
+    "day0_weights_acc": 0.5996666666666667,
+    "day1_care_acc": 0.7373333333333333,
+    "day1_care_hal": 0.0006666666666666666,
+    "day1_weights_acc": 0.06066666666666667,
+    "day2_care_acc": 1.0,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.22,
+    "unseen_hal": 0.00025693730729701953
+   },
+   {
+    "day": 3,
+    "store": 1661,
+    "familiar_keys": 18474,
+    "memory_bits": {
+     "store": 51491,
+     "key_list": 0,
+     "filters": 531016
+    },
+    "day0_care_acc": 0.743,
+    "day0_care_hal": 0.007333333333333333,
+    "day0_weights_acc": 0.5713333333333334,
+    "day1_care_acc": 0.39866666666666667,
+    "day1_care_hal": 0.01,
+    "day1_weights_acc": 0.02,
+    "day2_care_acc": 0.6506666666666666,
+    "day2_care_hal": 0.005333333333333333,
+    "day2_weights_acc": 0.06,
+    "day3_care_acc": 1.0,
+    "day3_care_hal": 0.0,
+    "day3_weights_acc": 0.2653333333333333,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 4,
+    "store": 1408,
+    "familiar_keys": 19743,
+    "memory_bits": {
+     "store": 43648,
+     "key_list": 0,
+     "filters": 565842
+    },
+    "day0_care_acc": 0.7136666666666667,
+    "day0_care_hal": 0.008,
+    "day0_weights_acc": 0.575,
+    "day1_care_acc": 0.26666666666666666,
+    "day1_care_hal": 0.014,
+    "day1_weights_acc": 0.030666666666666665,
+    "day2_care_acc": 0.41733333333333333,
+    "day2_care_hal": 0.011333333333333334,
+    "day2_weights_acc": 0.011333333333333334,
+    "day3_care_acc": 0.5166666666666667,
+    "day3_care_hal": 0.016,
+    "day3_weights_acc": 0.06066666666666667,
+    "day4_care_acc": 1.0,
+    "day4_care_hal": 0.0,
+    "day4_weights_acc": 0.174,
+    "unseen_hal": 0.00026469031233456857
+   },
+   {
+    "day": 5,
+    "store": 1346,
+    "familiar_keys": 21002,
+    "memory_bits": {
+     "store": 41726,
+     "key_list": 0,
+     "filters": 600178
+    },
+    "day0_care_acc": 0.699,
+    "day0_care_hal": 0.007,
+    "day0_weights_acc": 0.5793333333333334,
+    "day1_care_acc": 0.134,
+    "day1_care_hal": 0.05333333333333334,
+    "day1_weights_acc": 0.008,
+    "day2_care_acc": 0.24333333333333335,
+    "day2_care_hal": 0.016666666666666666,
+    "day2_weights_acc": 0.013333333333333334,
+    "day3_care_acc": 0.3933333333333333,
+    "day3_care_hal": 0.014666666666666666,
+    "day3_weights_acc": 0.06,
+    "day4_care_acc": 0.578,
+    "day4_care_hal": 0.004,
+    "day4_weights_acc": 0.106,
+    "day5_care_acc": 1.0,
+    "day5_care_hal": 0.0,
+    "day5_weights_acc": 0.168,
+    "unseen_hal": 0.0
+   }
+  ],
+  "sleep_self": [
+   {
+    "day": 0,
+    "store": 14524,
+    "familiar_keys": 14524,
+    "memory_bits": {
+     "store": 450244,
+     "key_list": 246908,
+     "filters": 421276
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8756666666666667,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 1,
+    "store": 3191,
+    "familiar_keys": 15863,
+    "memory_bits": {
+     "store": 98921,
+     "key_list": 269671,
+     "filters": 458752
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8896666666666667,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.12666666666666668,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 2,
+    "store": 2746,
+    "familiar_keys": 17172,
+    "memory_bits": {
+     "store": 85126,
+     "key_list": 291924,
+     "filters": 495058
+    },
+    "day0_care_acc": 0.954,
+    "day0_care_hal": 0.001,
+    "day0_weights_acc": 0.851,
+    "day1_care_acc": 0.8306666666666667,
+    "day1_care_hal": 0.027333333333333334,
+    "day1_weights_acc": 0.12733333333333333,
+    "day2_care_acc": 1.0,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.12466666666666666,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 3,
+    "store": 2390,
+    "familiar_keys": 18474,
+    "memory_bits": {
+     "store": 74090,
+     "key_list": 314058,
+     "filters": 531016
+    },
+    "day0_care_acc": 0.9203333333333333,
+    "day0_care_hal": 0.004666666666666667,
+    "day0_weights_acc": 0.7936666666666666,
+    "day1_care_acc": 0.6633333333333333,
+    "day1_care_hal": 0.009333333333333334,
+    "day1_weights_acc": 0.10733333333333334,
+    "day2_care_acc": 0.836,
+    "day2_care_hal": 0.004666666666666667,
+    "day2_weights_acc": 0.15066666666666667,
+    "day3_care_acc": 1.0,
+    "day3_care_hal": 0.0,
+    "day3_weights_acc": 0.2853333333333333,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 4,
+    "store": 2173,
+    "familiar_keys": 19743,
+    "memory_bits": {
+     "store": 67363,
+     "key_list": 335631,
+     "filters": 565842
+    },
+    "day0_care_acc": 0.8773333333333333,
+    "day0_care_hal": 0.003,
+    "day0_weights_acc": 0.7373333333333333,
+    "day1_care_acc": 0.5433333333333333,
+    "day1_care_hal": 0.0026666666666666666,
+    "day1_weights_acc": 0.09466666666666666,
+    "day2_care_acc": 0.6313333333333333,
+    "day2_care_hal": 0.016666666666666666,
+    "day2_weights_acc": 0.11333333333333333,
+    "day3_care_acc": 0.7166666666666667,
+    "day3_care_hal": 0.008666666666666666,
+    "day3_weights_acc": 0.21066666666666667,
+    "day4_care_acc": 1.0,
+    "day4_care_hal": 0.0,
+    "day4_weights_acc": 0.132,
+    "unseen_hal": 0.00026469031233456857
+   },
+   {
+    "day": 5,
+    "store": 1949,
+    "familiar_keys": 21002,
+    "memory_bits": {
+     "store": 60419,
+     "key_list": 357034,
+     "filters": 600178
+    },
+    "day0_care_acc": 0.8266666666666667,
+    "day0_care_hal": 0.008333333333333333,
+    "day0_weights_acc": 0.6726666666666666,
+    "day1_care_acc": 0.416,
+    "day1_care_hal": 0.014,
+    "day1_weights_acc": 0.04133333333333333,
+    "day2_care_acc": 0.5473333333333333,
+    "day2_care_hal": 0.002,
+    "day2_weights_acc": 0.1,
+    "day3_care_acc": 0.6073333333333333,
+    "day3_care_hal": 0.01,
+    "day3_weights_acc": 0.12733333333333333,
+    "day4_care_acc": 0.7153333333333334,
+    "day4_care_hal": 0.0033333333333333335,
+    "day4_weights_acc": 0.108,
+    "day5_care_acc": 1.0,
+    "day5_care_hal": 0.0,
+    "day5_weights_acc": 0.156,
+    "unseen_hal": 0.0
+   }
+  ],
+  "sleep_verified": [
+   {
+    "day": 0,
+    "store": 14524,
+    "familiar_keys": 14524,
+    "memory_bits": {
+     "store": 450244,
+     "key_list": 246908,
+     "filters": 421276
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8713333333333333,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 1,
+    "store": 3191,
+    "familiar_keys": 15863,
+    "memory_bits": {
+     "store": 98921,
+     "key_list": 269671,
+     "filters": 458752
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8846666666666667,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.114,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 2,
+    "store": 2948,
+    "familiar_keys": 17172,
+    "memory_bits": {
+     "store": 91388,
+     "key_list": 291924,
+     "filters": 495058
+    },
+    "day0_care_acc": 0.982,
+    "day0_care_hal": 0.0013333333333333333,
+    "day0_weights_acc": 0.858,
+    "day1_care_acc": 0.9193333333333333,
+    "day1_care_hal": 0.024,
+    "day1_weights_acc": 0.13533333333333333,
+    "day2_care_acc": 1.0,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.12466666666666666,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 3,
+    "store": 2875,
+    "familiar_keys": 18474,
+    "memory_bits": {
+     "store": 89125,
+     "key_list": 314058,
+     "filters": 531016
+    },
+    "day0_care_acc": 0.959,
+    "day0_care_hal": 0.001,
+    "day0_weights_acc": 0.828,
+    "day1_care_acc": 0.826,
+    "day1_care_hal": 0.008,
+    "day1_weights_acc": 0.15133333333333332,
+    "day2_care_acc": 0.95,
+    "day2_care_hal": 0.0026666666666666666,
+    "day2_weights_acc": 0.15133333333333332,
+    "day3_care_acc": 1.0,
+    "day3_care_hal": 0.0,
+    "day3_weights_acc": 0.218,
+    "unseen_hal": 0.0002610966057441253
+   },
+   {
+    "day": 4,
+    "store": 2720,
+    "familiar_keys": 19743,
+    "memory_bits": {
+     "store": 84320,
+     "key_list": 335631,
+     "filters": 565842
+    },
+    "day0_care_acc": 0.9326666666666666,
+    "day0_care_hal": 0.003,
+    "day0_weights_acc": 0.7843333333333333,
+    "day1_care_acc": 0.5753333333333334,
+    "day1_care_hal": 0.006666666666666667,
+    "day1_weights_acc": 0.12533333333333332,
+    "day2_care_acc": 0.8593333333333333,
+    "day2_care_hal": 0.0026666666666666666,
+    "day2_weights_acc": 0.09666666666666666,
+    "day3_care_acc": 0.796,
+    "day3_care_hal": 0.03933333333333333,
+    "day3_weights_acc": 0.10933333333333334,
+    "day4_care_acc": 1.0,
+    "day4_care_hal": 0.0,
+    "day4_weights_acc": 0.08666666666666667,
+    "unseen_hal": 0.00026469031233456857
+   },
+   {
+    "day": 5,
+    "store": 2528,
+    "familiar_keys": 21002,
+    "memory_bits": {
+     "store": 78368,
+     "key_list": 357034,
+     "filters": 600178
+    },
+    "day0_care_acc": 0.8976666666666666,
+    "day0_care_hal": 0.006,
+    "day0_weights_acc": 0.772,
+    "day1_care_acc": 0.48,
+    "day1_care_hal": 0.006666666666666667,
+    "day1_weights_acc": 0.16066666666666668,
+    "day2_care_acc": 0.6706666666666666,
+    "day2_care_hal": 0.0013333333333333333,
+    "day2_weights_acc": 0.11333333333333333,
+    "day3_care_acc": 0.702,
+    "day3_care_hal": 0.03333333333333333,
+    "day3_weights_acc": 0.15266666666666667,
+    "day4_care_acc": 0.862,
+    "day4_care_hal": 0.0026666666666666666,
+    "day4_weights_acc": 0.092,
+    "day5_care_acc": 1.0,
+    "day5_care_hal": 0.0,
+    "day5_weights_acc": 0.20333333333333334,
+    "unseen_hal": 0.0
+   }
+  ],
+  "sleep_audit": [
+   {
+    "day": 0,
+    "store": 14524,
+    "familiar_keys": 14524,
+    "memory_bits": {
+     "store": 450244,
+     "key_list": 246908,
+     "filters": 421276
+    },
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.869,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 1,
+    "store": 3191,
+    "familiar_keys": 15863,
+    "memory_bits": {
+     "store": 98921,
+     "key_list": 269671,
+     "filters": 458752
+    },
+    "audit_writebacks": 0,
+    "day0_care_acc": 1.0,
+    "day0_care_hal": 0.0,
+    "day0_weights_acc": 0.8866666666666667,
+    "day1_care_acc": 1.0,
+    "day1_care_hal": 0.0,
+    "day1_weights_acc": 0.138,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 2,
+    "store": 3768,
+    "familiar_keys": 17172,
+    "memory_bits": {
+     "store": 116808,
+     "key_list": 291924,
+     "filters": 495058
+    },
+    "audit_writebacks": 786,
+    "day0_care_acc": 0.9996666666666667,
+    "day0_care_hal": 0.0003333333333333333,
+    "day0_weights_acc": 0.8423333333333334,
+    "day1_care_acc": 0.9953333333333333,
+    "day1_care_hal": 0.004666666666666667,
+    "day1_weights_acc": 0.128,
+    "day2_care_acc": 1.0,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.11533333333333333,
+    "unseen_hal": 0.0
+   },
+   {
+    "day": 3,
+    "store": 4198,
+    "familiar_keys": 18474,
+    "memory_bits": {
+     "store": 130138,
+     "key_list": 314058,
+     "filters": 531016
+    },
+    "audit_writebacks": 931,
+    "day0_care_acc": 0.9993333333333333,
+    "day0_care_hal": 0.0003333333333333333,
+    "day0_weights_acc": 0.861,
+    "day1_care_acc": 0.9913333333333333,
+    "day1_care_hal": 0.002,
+    "day1_weights_acc": 0.16733333333333333,
+    "day2_care_acc": 0.9993333333333333,
+    "day2_care_hal": 0.0006666666666666666,
+    "day2_weights_acc": 0.10466666666666667,
+    "day3_care_acc": 1.0,
+    "day3_care_hal": 0.0,
+    "day3_weights_acc": 0.24866666666666667,
+    "unseen_hal": 0.0005221932114882506
+   },
+   {
+    "day": 4,
+    "store": 4655,
+    "familiar_keys": 19743,
+    "memory_bits": {
+     "store": 144305,
+     "key_list": 335631,
+     "filters": 565842
+    },
+    "audit_writebacks": 1006,
+    "day0_care_acc": 0.999,
+    "day0_care_hal": 0.0003333333333333333,
+    "day0_weights_acc": 0.8513333333333334,
+    "day1_care_acc": 0.9906666666666667,
+    "day1_care_hal": 0.0006666666666666666,
+    "day1_weights_acc": 0.16133333333333333,
+    "day2_care_acc": 0.9966666666666667,
+    "day2_care_hal": 0.0,
+    "day2_weights_acc": 0.12333333333333334,
+    "day3_care_acc": 0.9926666666666667,
+    "day3_care_hal": 0.007333333333333333,
+    "day3_weights_acc": 0.19133333333333333,
+    "day4_care_acc": 1.0,
+    "day4_care_hal": 0.0,
+    "day4_weights_acc": 0.06733333333333333,
+    "unseen_hal": 0.00026469031233456857
+   },
+   {
+    "day": 5,
+    "store": 5229,
+    "familiar_keys": 21002,
+    "memory_bits": {
+     "store": 162099,
+     "key_list": 357034,
+     "filters": 600178
+    },
+    "audit_writebacks": 1111,
+    "day0_care_acc": 0.9983333333333333,
+    "day0_care_hal": 0.0013333333333333333,
+    "day0_weights_acc": 0.8526666666666667,
+    "day1_care_acc": 0.9906666666666667,
+    "day1_care_hal": 0.0033333333333333335,
+    "day1_weights_acc": 0.17866666666666667,
+    "day2_care_acc": 0.996,
+    "day2_care_hal": 0.0006666666666666666,
+    "day2_weights_acc": 0.11466666666666667,
+    "day3_care_acc": 0.998,
+    "day3_care_hal": 0.0006666666666666666,
+    "day3_weights_acc": 0.25933333333333336,
+    "day4_care_acc": 0.9986666666666667,
+    "day4_care_hal": 0.0013333333333333333,
+    "day4_weights_acc": 0.06466666666666666,
+    "day5_care_acc": 1.0,
+    "day5_care_hal": 0.0,
+    "day5_weights_acc": 0.11933333333333333,
+    "unseen_hal": 0.0
+   }
+  ]
+ }
+}

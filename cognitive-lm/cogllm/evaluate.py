@@ -40,6 +40,16 @@ def decide(probs, threshold=0.0, allow_idk=True):
     return pred
 
 
+def wilson_upper(k, n, z=1.96):
+    """95% Wilson upper bound on a rate seen k times in n trials (n = 0 gives 1)."""
+    if n == 0:
+        return 1.0
+    p = k / n
+    centre = p + z * z / (2 * n)
+    half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return float((centre + half) / (1 + z * z / n))
+
+
 def score(pred, truth, counts, ghost=None):
     """pred/truth: value ids (-1 = abstain). counts: exposure count per query.
 
@@ -58,6 +68,11 @@ def score(pred, truth, counts, ghost=None):
         "abstain": float((~answered).mean()),
         "coverage": float(answered.mean()),
         "halluc_given_answered": float(halluc.sum() / max(1, answered.sum())),
+        # conditional rates, so "0.00%" carries the sample size it rests on
+        "unseen_n": int((~seen).sum()),
+        "halluc_on_unseen": float(halluc[~seen].sum() / max(1, (~seen).sum())),
+        "halluc_on_unseen_ub95": wilson_upper(int(halluc[~seen].sum()), int((~seen).sum())),
+        "halluc_on_seen": float(halluc[seen].sum() / max(1, seen.sum())),
     }
     b = np.array(count_buckets(counts))
     per = {}
@@ -73,7 +88,9 @@ def score(pred, truth, counts, ghost=None):
         }
     res["by_count"] = per
     if ghost is not None:
-        res["ghost_hallucination"] = float((np.asarray(ghost) >= 0).mean())
+        ghost = np.asarray(ghost)
+        res["ghost_hallucination"] = float((ghost >= 0).mean())
+        res["ghost_hallucination_ub95"] = wilson_upper(int((ghost >= 0).sum()), len(ghost))
     return res
 
 

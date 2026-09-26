@@ -20,8 +20,9 @@ import time
 import numpy as np
 import torch
 
+from cogllm.baselines import ExactDict, KeyFilterStatic
 from cogllm.checksum import TIP_OF_TONGUE, UNKNOWN_ENTITY, UNKNOWN_FACT, CheckedRecall
-from cogllm.evaluate import BUCKETS, score
+from cogllm.evaluate import BUCKETS, score, wilson_upper
 from cogllm.memory import EpisodicStore
 from cogllm.model import GPT, train_lm
 from cogllm.system import CMLM, key_bits
@@ -30,6 +31,34 @@ from cogllm.world_mt import MTConfig, answer_probs_mt, build_mt_world, mt_seqs
 from experiments.pilot_mt import CARE, READ_ONCE
 
 THRESH = [0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999]
+
+
+def size_checksum(w, q, qn, qr, truth, counts, probs, rank, eps_k, a, N=20, targets=(0.01, 0.003, 0.001)):
+    """Out-of-sample test of the checksum-size formula (docs/theory.md section 5).
+
+    Split people in two. On the calibration half, measure the never-seen share
+    MM and E[min(R - 1, N)], and solve the formula for the triple false-positive
+    rate that meets each hallucination target:
+        eps_t = target / (MM * eps_k * N + (1 - MM) * E[min(R - 1, N)])
+    then size a fresh Bloom checksum for that rate and measure on the other half.
+    """
+    side = np.random.default_rng(a.seed + 77).random(w.cfg.n_entities) < 0.5
+    cal, test = side[q[:, 0]], ~side[q[:, 0]]
+    seen_c = (counts > 0) & cal
+    mm = float((counts[cal] == 0).mean())
+    e_r = float(np.minimum(rank[seen_c] - 1, N).mean())
+    rows = []
+    for target in targets:
+        eps_t = target / (mm * eps_k * N + (1 - mm) * e_r)
+        b = float(np.log2(1 / eps_t) / np.log(2))  # optimal Bloom: 1.44 log2(1/eps) bits per item
+        c = CheckedRecall(w, w.stream, triple_bits=b, seed=a.seed + 1000)
+        pred = c.answer(None, qn[test], qr[test], N=N, probs=probs[test])
+        r = score(np.where(pred >= 0, pred, -1), truth[test], counts[test])
+        halluc = int(round(r["hallucination"] * r["n"]))
+        rows.append({"target": target, "bits_per_fact": b, "calib_mm": mm, "calib_E_min_R": e_r,
+                     "measured": r["hallucination"], "n_test": r["n"],
+                     "measured_ub95": wilson_upper(halluc, r["n"]), "accuracy": r["accuracy"]})
+    return rows
 
 
 def main():
@@ -107,6 +136,7 @@ def main():
         if bits is not None:
             r["bits"] = bits
             r["non_weight_bits_per_seen_fact"] = sum(v for k, v in bits.items() if k != "weights") / seen_facts
+            r["total_bits_per_seen_fact"] = sum(bits.values()) / seen_facts
         r["levels"] = {lab: float((pred == c).mean()) for lab, c in
                        [("unknown_entity", UNKNOWN_ENTITY), ("unknown_fact", UNKNOWN_FACT), ("tip_of_tongue", TIP_OF_TONGUE),
                         ("read_once", READ_ONCE)]}
@@ -127,8 +157,11 @@ def main():
             r = score(pr, truth, counts, gpr)
             pts.append({"t": t, "accuracy": r["accuracy"], "hallucination": r["hallucination"],
                         "ghost_hallucination": r["ghost_hallucination"]})
+        op = max([x for x in pts if x["hallucination"] <= 0.01], key=lambda x: x["accuracy"], default=None)
         return {"frontier": pts, "default": pts[0],
-                "acc_at_hal_1pct": max([x["accuracy"] for x in pts if x["hallucination"] <= 0.01], default=0.0),
+                "acc_at_hal_1pct": op["accuracy"] if op else 0.0,
+                # ghost-people rate at that same operating point, not at threshold 0
+                "ghost_at_hal_1pct": op["ghost_hallucination"] if op else None,
                 "acc_at_hal_0.1pct": max([x["accuracy"] for x in pts if x["hallucination"] <= 0.001], default=0.0)}
 
     cr = CheckedRecall(w, w.stream, triple_bits=a.triple_bits, seed=a.seed)
@@ -147,6 +180,14 @@ def main():
     sb["store"] = st.store.n_bits(key_bits(w), int(np.ceil(np.log2(V))))
     out["store_only"] = summarize(sp, gsp, sb, {"store_entries": len(st.store)})
     log(f"store only: acc {out['store_only']['accuracy']:.3f} hal {out['store_only']['hallucination']:.4f}")
+
+    # the cheapest exact value stores (cogllm/baselines.py): what CAR's bits must beat
+    true_vals = w.values[w.stream[:, 0], w.stream[:, 1]]
+    for tag, st_ in [("exact_dict", ExactDict(w, w.stream, true_vals)),
+                     ("key_filter_static_function", KeyFilterStatic(w, w.stream, true_vals, seed=a.seed))]:
+        out[tag] = summarize(st_.answer(qn, qr), st_.answer(gn, gr), st_.bits())
+        log(f"{tag}: acc {out[tag]['accuracy']:.3f} hal {out[tag]['hallucination']:.4f} "
+            f"bits/fact {out[tag]['non_weight_bits_per_seen_fact']:.1f}")
 
     # controls without any weights: candidates in random order (prefix-pruned or full scan)
     rnd = np.random.default_rng(a.seed + 5).random((len(q), V)).astype(np.float32)
@@ -192,6 +233,12 @@ def main():
             pred_acc = seen.mean() * np.mean((rank[seen] <= N) * (1 - eps_t) ** (rank[seen] - 1))
             r["predicted"] = {"hallucination": float(pred_hal), "accuracy": float(pred_acc)}
             res[f"CAR_N{N}"] = r
+        # ablation: entity + key filters with the weights' top answer, no triple checksum
+        res["key_filter_greedy"] = summarize(cr.answer(None, qn, qr, N=1, probs=vals, verify=False),
+                                             cr.answer(None, gn, gr, N=1, probs=gp[:, 1:], verify=False),
+                                             {k: v for k, v in dict(cr.bits(), weights=res["params"] * 16).items()
+                                              if k != "triple_checksum"})
+        res["checksum_sizing"] = size_checksum(w, q, qn, qr, truth, counts, vals, rank, eps_k, a)
         for N in [20, 50]:
             pred = crp.answer(None, qn, qr, N=N, probs=vals)
             gpred = crp.answer(None, gn, gr, N=N, probs=gp[:, 1:])
@@ -256,6 +303,8 @@ def main():
         sp, _ = sto.answer(qn, qr)
         rr = score(np.where(sp >= 0, sp, -1), truth, counts)
         row["store_only"] = {"accuracy": rr["accuracy"], "hallucination": rr["hallucination"]}
+        rr = score(ExactDict(w, ment, vals_m, min_count=2).answer(qn, qr), truth, counts)
+        row["store_no_singletons"] = {"accuracy": rr["accuracy"], "hallucination": rr["hallucination"]}
         out["noise"].append(row)
         log(f"mislink {mis}: " + json.dumps(row))
 

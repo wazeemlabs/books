@@ -54,25 +54,38 @@ L.append("Accuracy = correct answers / all queries. Hallucination = wrong answer
 # ---- main table -----------------------------------------------------------------------
 L.append("## 1. Main result\n")
 L.append("| weights | params | weights only: greedy acc / halluc | weights only: acc @ hal ≤ 1% | + IDK training: acc @ hal ≤ 1% "
-         "| **CAR N=1** acc / halluc | **CAR+prefix N=50** acc / halluc | **CARE** acc / halluc | CARE store (% of facts) |")
-L.append("|---|---|---|---|---|---|---|---|---|")
+         "| key filter + greedy (no checksum) acc / halluc | **CAR N=1** acc / halluc | **CAR+prefix N=50** acc / halluc | **CARE** acc / halluc | CARE store (% of facts) |")
+L.append("|---|---|---|---|---|---|---|---|---|---|")
 for d in SIZES:
     s = ["sizes", d]
     L.append(f"| d={d} | {params(d):,} | {pm(s + ['weights', 'default', 'accuracy'])} / {pm(s + ['weights', 'default', 'hallucination'])} "
              f"| {pm(s + ['weights', 'acc_at_hal_1pct'])} | {pm(s + ['weights_idk', 'acc_at_hal_1pct'])} "
+             f"| {pm(s + ['key_filter_greedy', 'accuracy'])} / {pm(s + ['key_filter_greedy', 'hallucination'], dec=2)} "
              f"| {pm(s + ['CAR_N1', 'accuracy'])} / {pm(s + ['CAR_N1', 'hallucination'], dec=2)} "
              f"| {pm(s + ['CAR_prefix_N50', 'accuracy'])} / {pm(s + ['CAR_prefix_N50', 'hallucination'], dec=2)} "
              f"| {pm(s + ['CARE_N20', 'accuracy'])} / {pm(s + ['CARE_N20', 'hallucination'], dec=2)} "
              f"| {pm(s + ['CARE_N20', 'store_share_of_seen_facts'], dec=0)} |")
-L.append(f"| store only (no weights) | 0 | | | | | | {pm(['store_only', 'accuracy'])} / {pm(['store_only', 'hallucination'], dec=2)} | 100 |")
+L.append(f"| store only (no weights) | 0 | | | | | | | {pm(['store_only', 'accuracy'])} / {pm(['store_only', 'hallucination'], dec=2)} | 100 |")
 L.append("")
+ub = vals(["sizes", SIZES[-1], "CAR_N1", "halluc_on_unseen_ub95"]).max()
+nu = int(vals(["sizes", SIZES[-1], "CAR_N1", "unseen_n"]).min())
+L.append(f"Where a cell says 0.00, no hallucination was observed among ~{nu:,} never-seen test questions per seed; "
+         f"the 95% upper bound on the rate among never-seen questions is {100 * ub:.2f}%. Test queries are drawn "
+         "by popularity, so they repeat facts (20,000 queries over roughly 6,400 distinct facts per seed).\n")
+L.append("Most of the drop in hallucination from strong weights comes from the (entity, relation) key filter, not "
+         "the triple checksum: compare the key-filter column with CAR N=1. The checksum matters when the weights are weak.\n")
+L.append("CARE starts with every fact in the overflow store and evicts only the facts the weights plus checksum already "
+         "answer correctly, so its accuracy and hallucination equal the store's by construction. What it measures is "
+         "how small the store can get.\n")
 
 # ---- memory -------------------------------------------------------------------------------
 L.append("## 2. Memory outside the weights (bits per seen fact)\n")
-L.append("| system | non-weight bits / seen fact | accuracy | hallucination |")
-L.append("|---|---|---|---|")
+L.append("| system | non-weight bits / seen fact | total bits / seen fact (weights at 16 bits/param) | accuracy | hallucination |")
+L.append("|---|---|---|---|---|")
 d0 = SIZES[-2] if len(SIZES) > 1 else SIZES[0]
-rows = [("store only (exact key + value + count, plus filters)", ["store_only"]),
+rows = [("exact dict: exact key + value", ["exact_dict"]),
+        ("key filter + static function (value table with no keys; log2 V bound)", ["key_filter_static_function"]),
+        ("store only (exact key + value + count, plus filters)", ["store_only"]),
         ("no weights: full scan of all 1,024 values, 14-bit checksum", ["no_weights", "full_scan_N1024"]),
         ("no weights: full scan, 20-bit checksum", ["no_weights", "full_scan_N1024_b20"]),
         ("no weights: full scan, 28-bit checksum", ["no_weights", "full_scan_N1024_b28"]),
@@ -82,11 +95,18 @@ rows = [("store only (exact key + value + count, plus filters)", ["store_only"])
         (f"CAR+prefix N=50, weights d={d0}", ["sizes", d0, "CAR_prefix_N50"]),
         (f"CARE N=20, weights d={d0}", ["sizes", d0, "CARE_N20"])]
 for lab, p in rows:
-    L.append(f"| {lab} | {vals(p + ['non_weight_bits_per_seen_fact']).mean():.1f} | {pm(p + ['accuracy'])} | {pm(p + ['hallucination'], dec=2)} |")
+    L.append(f"| {lab} | {vals(p + ['non_weight_bits_per_seen_fact']).mean():.1f} | {vals(p + ['total_bits_per_seen_fact']).mean():.1f} "
+             f"| {pm(p + ['accuracy'])} | {pm(p + ['hallucination'], dec=2)} |")
 L.append("")
+L.append("With 1,024 possible values, a value costs only 10 bits, less than the 14-bit checksum. So in this world a "
+         "key filter plus a static function beats CAR on bits, with no weights at all. CAR can only win on bits where "
+         "values are long, open strings (names, titles), whose cost grows while the checksum's does not.\n")
 
 # ---- list size ------------------------------------------------------------------------------
 L.append("## 3. List size N, and the list-decoding formula (docs/theory.md §5)\n")
+L.append("The accuracy prediction uses the measured rank of the true value, so it matches almost by construction; "
+         "the match shows the Bloom false positives are independent at the measured rate. The real test of the formula "
+         "is the out-of-sample sizing below.\n")
 L.append("| weights | N | accuracy (measured) | accuracy (predicted) | hallucination (measured) | hallucination (predicted) | tip of the tongue |")
 L.append("|---|---|---|---|---|---|---|")
 for d in SIZES:
@@ -94,6 +114,19 @@ for d in SIZES:
         p = ["sizes", d, f"CAR_N{N}"]
         L.append(f"| d={d} | {N} | {pm(p + ['accuracy'])} | {pm(p + ['predicted', 'accuracy'])} | {pm(p + ['hallucination'], dec=2)} "
                  f"| {pm(p + ['predicted', 'hallucination'], dec=2)} | {pm(p + ['levels', 'tip_of_tongue'])} |")
+L.append("")
+
+L.append("### 3b. Sizing the checksum out of sample (N=20)\n")
+L.append("People are split in two. On one half the formula is solved for the checksum size that meets a hallucination "
+         "target, using only the never-seen share and E[min(R - 1, N)] measured there. A fresh checksum of that size is "
+         "then scored on the other half. Seed 0 is shown with the mean over seeds in brackets.\n")
+L.append("| weights | target | bits / fact chosen | measured hallucination (95% upper bound) | accuracy |")
+L.append("|---|---|---|---|---|")
+for d in SIZES:
+    for i, row in enumerate(R[0]["sizes"][d]["checksum_sizing"]):
+        mean = np.mean([r["sizes"][d]["checksum_sizing"][i]["measured"] for r in R])
+        L.append(f"| d={d} | {100 * row['target']:.1f}% | {row['bits_per_fact']:.1f} | {100 * row['measured']:.2f}% "
+                 f"({100 * row['measured_ub95']:.2f}%) [{100 * mean:.2f}%] | {100 * row['accuracy']:.1f}% |")
 L.append("")
 
 # ---- graded ---------------------------------------------------------------------------------
@@ -105,22 +138,24 @@ L.append(f"- know the person, never read this fact: {pm(p + ['unknown_fact'])}%"
 L.append(f"- tip of the tongue (read it, can't bring it back): {pm(p + ['tip_of_tongue'], dec=2)}%")
 L.append(f"- ghost people (never existed) answered: {pm(['sizes', dl, 'CARE_N20', 'ghost_hallucination'], dec=2)}% "
          f"(weights only, greedy: {pm(['sizes', dl, 'weights', 'default', 'ghost_hallucination'])}%; "
-         f"IDK-trained: {pm(['sizes', dl, 'weights_idk', 'default', 'ghost_hallucination'])}%)\n")
+         f"IDK-trained, at threshold 0: {pm(['sizes', dl, 'weights_idk', 'default', 'ghost_hallucination'])}%; "
+         f"IDK-trained, at its ≤1% operating point: {pm(['sizes', dl, 'weights_idk', 'ghost_at_hal_1pct'])}%)\n")
 
 # ---- noise -----------------------------------------------------------------------------------
 L.append("## 5. Noisy fact extraction (mentions filed under the wrong person), weights d=32\n")
-L.append("| mislinks | weights greedy halluc | store only acc / halluc | CAR N=1 | CAR N=5 | CAR N=20 | CARE | CARE strict |")
-L.append("|---|---|---|---|---|---|---|---|")
+L.append("| mislinks | weights greedy halluc | store only acc / halluc | store, abstain on facts read once | CAR N=1 | CAR N=5 | CAR N=20 | CARE | CARE strict |")
+L.append("|---|---|---|---|---|---|---|---|---|")
 for i, row in enumerate(R[0]["noise"]):
     def cell(k):
         a = np.array([r["noise"][i][k]["accuracy"] for r in R])
         h = np.array([r["noise"][i][k]["hallucination"] for r in R])
         return f"{100 * a.mean():.1f} / {100 * h.mean():.2f}"
     g = np.mean([r["noise"][i]["weights_greedy"] for r in R])
-    L.append(f"| {int(100 * row['mislink'])}% | {100 * g:.1f} | {cell('store_only')} | {cell('CAR_N1')} | {cell('CAR_N5')} "
+    L.append(f"| {int(100 * row['mislink'])}% | {100 * g:.1f} | {cell('store_only')} | {cell('store_no_singletons')} | {cell('CAR_N1')} | {cell('CAR_N5')} "
              f"| {cell('CAR_N20')} | {cell('CARE_N20')} | {cell('CARE_N20_strict')} |")
 L.append("\nCARE strict answers a fact read only once and not recalled by the weights with \"I read that once, "
-         "but can't confirm it\" instead of asserting it.\n")
+         "but can't confirm it\" instead of asserting it. A plain store that does the same does about as well, so "
+         "the gain comes from distrusting single mentions, not from the weights.\n")
 
 # ---- ablations -------------------------------------------------------------------------------
 dk = next((d for d in SIZES if "k2_CAR_N1" in R[0]["sizes"][d]), None)

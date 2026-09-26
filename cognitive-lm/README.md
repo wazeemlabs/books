@@ -66,101 +66,109 @@ Hard synthetic world: 10,000 people, 4 attributes, answers are 2-token
 strings from 1,024 values. Popularity is Zipfian: 14,444 facts seen, 61% of
 them only once. About 10% of test questions are about facts never seen.
 Tiny GPTs trained on CPU. The ceiling (every seen fact answered correctly)
-is 89.9%.
+is 89.9%. Questions arrive as exact (entity, relation) ids and fact
+extraction is perfect, so these results say nothing yet about real text.
 
-| Weights | Weights alone, greedy acc / halluc. | Weights alone, best acc at ≤1% halluc. | + IDK training, ≤1% | **+ checksum, N=1** | **+ prefix checksum, N=50** | **CARE** (store holds) |
+| Weights | Weights alone, greedy acc / halluc. | Weights alone, best acc at ≤1% halluc. | + IDK training, ≤1% | Key filter + greedy (no checksum) | **+ checksum, N=1** | **+ prefix checksum, N=50** |
 |---|---|---|---|---|---|---|
-| 12k params | 50.7% / **49.3%** | 49.7% | 54.6% | 50.7% / 0.06% | 86.0% / 0.73% | 89.9% / 0.00% (94%) |
-| 37k | 65.8% / **34.2%** | 64.4% | 68.8% | 65.8% / 0.01% | 88.2% / 0.43% | 89.9% / 0.00% (80%) |
-| 123k | 82.8% / **17.2%** | 78.9% | 79.3% | 82.8% / 0.00% | 89.8% / 0.04% | 89.9% / 0.00% (23%) |
-| 258k | 89.3% / **10.7%** | 85.0% | 85.1% | 89.3% / 0.00% | 89.9% / 0.00% | 89.9% / 0.00% (1%) |
+| 12k params | 50.7% / 49.3% | 49.7% | 54.6% | 50.7% / 39.2% | 50.7% / 0.06% | 86.0% / 0.73% |
+| 37k | 65.8% / 34.2% | 64.4% | 68.8% | 65.8% / 24.1% | 65.8% / 0.01% | 88.2% / 0.43% |
+| 123k | 82.8% / 17.2% | 78.9% | 79.3% | 82.8% / 7.1% | 82.8% / 0.00% | 89.8% / 0.04% |
+| 258k | 89.3% / 10.7% | 85.0% | 85.1% | 89.3% / 0.54% | 89.3% / 0.00% | 89.9% / 0.00% |
 
-1. **The knowledge is already in the weights; knowing THAT is what's
-   missing.** The 258k model knows almost every fact it read (89.3% vs the
-   89.9% ceiling). It still makes up an answer to every never-seen
-   question: 10.7% hallucination, and 100% of questions about people who
-   don't exist. "I don't know" training only gets it to 85.1% at ≤1%
-   hallucination, and it still answers 37% of the ghost-people questions.
-   A 14-bit-per-fact checksum gives **89.3% at 0.00%**, with no retraining.
-2. **The theory predicts the numbers.** The list-decoding formula
-   (`docs/theory.md` §5) matched measured accuracy exactly and measured
-   hallucination to within a few hundredths of a percent, across all sizes
-   and list lengths (`RESULTS.md` §3).
-3. **Weights and checksum split the bits like a decoder and its CRC.**
-   Without weights, checking all 1,024 values needs a 28-bit checksum
-   (89.8%, 0.03%). With the 123k weights, a 14-bit checksum at N=1 gives
-   0.00%. In prefix search, even the 12k-param weights add 10 points of
-   accuracy and cut hallucination 2.7x compared with searching in random
-   order.
-4. **Graded "I don't know" comes for free.** "Never heard of this person"
-   (4.6% of questions), "know them, never read this" (5.5%), "tip of the
-   tongue" (0.04%).
-5. **Two memories that must agree are robust to noisy extraction.** With 5
-   or 10% of mentions filed under the wrong person, a plain store
-   hallucinates 1.1 or 2.1%. CAR with N=1 hallucinates 0.08 or 0.34%
-   (lower accuracy, though). Strict CARE halves the store's error.
-6. **CARE shrinks the store as the weights get better**: from 94% of facts
-   (12k params) to 23% (123k) to 1% (258k), always at the ceiling with
-   0.00% hallucination.
-7. **Lifelong learning without forgetting or hallucinating**
-   (`figures/lifecycle.png`, `results/lifecycle_seed0.json`). Over five
-   "days", 500 new people arrive each day. Awake, facts go into the filters
-   and overflow store instantly (no gradients). Asleep, the weights
-   consolidate the overflow, rehearse their own memories, and the store
-   evicts what they now recall. Two new mechanisms make this work:
-   - **Checksum-verified self-replay.** Only rehearse memories the
-     checksum verifies. 0.9% of them are wrong, against 46% for plain
-     self-replay, which rehearses its own hallucinations.
-   - **Audited sleep (two-phase commit).** Keep yesterday's weights until
-     the new ones pass a checksum audit, and write back anything they
-     forgot. Result: every fact kept (99.2 to 100% on every day's facts,
-     99.8% on the originals), 0.00 to 0.05% hallucination on never-seen facts, and
-     the store grows 62% slower than never sleeping (+490 vs +1,280 facts a
-     day). Without the audit, plain sleep drops the originals to 69% and
-     day-1 facts to 18%.
-8. **A cheaper checksum still works.** Store (person, value) pairs seen in
-   the same sentence instead of full triples. That needs only entity
-   recognition, not relation extraction. Accuracy is unchanged, and
-   hallucination at N=1 is 0.3 to 1.0%, vs 0.00 to 0.02% for triples and
-   10 to 34% for the weights alone (`results/assoc_seed0.json`). This is a
-   worst case: every relation here shares one value pool.
+"0.00%" means none seen in ~2,000 never-seen questions per seed; the 95%
+upper bound is 0.2% of never-seen questions.
 
-What failed is written up honestly in [`docs/ideas.md`](docs/ideas.md):
-- two list-decoding losses;
-- a count-min-only checksum;
-- my "confidence tracks fame" hypothesis;
-- FamLM, an extraction-free "familiarity sense" from hashed n-gram counters.
-  It gets 88.5% at ≤0.1% hallucination on exact phrasing, but 0% on
-  paraphrase, and the ablation showed it is really a learned n-gram memory.
+What holds up:
+
+1. **The weights know more than they can safely say.** The 258k model
+   gets 89.3% of questions right against an 89.9% ceiling, yet answers
+   every never-seen question. Checking its answer against a 14-bit-per-fact
+   checksum removes the hallucinations without retraining.
+2. **With weak weights the checksum is what does the work.** For the 12k
+   model, the (entity, relation) key filter alone still leaves 39%
+   hallucination; the triple checksum brings it to 0.06%. For the 258k
+   model most of the gain is the key filter (10.7% to 0.54%).
+3. **The checksum size can be chosen in advance.** Solving the
+   list-decoding formula (`docs/theory.md` §5) on half the people and
+   testing a checksum of that size on the other half met the hallucination
+   target in 11 of 12 cases, and missed by 1.5x in the last (`RESULTS.md`
+   §3b). The in-sample match of predicted and measured accuracy is close to
+   an identity and should not be cited as evidence.
+4. **Prefix checksums make long candidate lists cheap.** In prefix search,
+   even the 12k-param weights add 10 points of accuracy and cut
+   hallucination 2.7x over searching in random order with the same filter.
+5. **Checksum-verified self-replay avoids rehearsing hallucinations.** 0.9%
+   of rehearsed memories are wrong, against 46% for plain self-replay
+   (seed 0).
+6. **Graded "I don't know" comes from the filters.** "Never heard of this
+   person" (4.6% of questions), "know them, never read this" (5.5%), "tip of
+   the tongue" (0.04%).
+
+What does not hold up, or is weaker than first written:
+
+- **CAR does not save memory in this world.** A value from 1,024 options
+  costs 10 bits, less than the 14-bit checksum. A key filter plus a static
+  function (a value table with no keys) gets 89.9% at 0.08% hallucination
+  with 20 bits per fact and no weights; CAR needs 29 bits plus the weights
+  (`RESULTS.md` §2). CAR can only win on bits where values are long, open
+  strings. That is the regime the real-model experiment has to test.
+- **CARE's ceiling accuracy at 0.00% is the store's number.** CARE starts
+  with every fact stored and only evicts facts the weights already recall,
+  so its accuracy equals the store's by construction. What it shows is how
+  small the store can get: 94%, 80%, 23% and 1% of facts as the weights grow.
+- **Strict CARE's noise robustness is not special.** Under 10% mislinks, a
+  plain store that refuses facts read once gives 80.3% / 0.74%, as good as
+  strict CARE (80.9% / 1.03%).
+- **Audited sleep keeps facts but not memory.** Over 5 days and 3 seeds it
+  keeps 96.5 to 100% of every day's facts, with at most 0.4% hallucination on
+  facts read and 0.05% on facts never read. But replay and audit need a
+  list of every key read so far, which a Bloom filter can't provide. Counted
+  in, memory grows 72 kbit a day against 75 for never sleeping.
+- **"I don't know" training is a stronger baseline than first reported.** At
+  its ≤1% operating point the 258k model answers 6.0% of questions about
+  people who don't exist, not 37% (that figure was at threshold 0).
+- **The pair checksum** (person, value) needs only entity recognition. It
+  gets 0.3 to 1.0% hallucination at N=1 (seed 0), against 10 to 34% for the
+  weights alone.
+
+Other failures are written up in [`docs/ideas.md`](docs/ideas.md): two
+list-decoding losses, a count-min-only checksum, the "confidence tracks
+fame" hypothesis, and FamLM (strong on exact phrasing, 0% on paraphrase).
 
 ## Is it new?
 
-As of 2026-09-25, we found no work that:
+Checked on 2026-09-26 against full texts; every paper is saved in
+[`sources/`](sources/INDEX.md).
 
-- uses a membership checksum over training facts *inside* recall to pick
-  among the model's own candidates and abstain otherwise;
-- frames LM recall as CRC-aided list decoding, with a rate split between
-  weights and checksum;
-- produces graded metamemory from filters;
-- keeps an overflow store holding only what the weights + checksum can't
-  recall.
+Not found anywhere:
 
-Closest neighbours:
+- a compact, value-free membership filter over training facts used
+  *inside* recall, to pick the first of the model's own top-N candidates
+  that passes, and to abstain when none does;
+- the CRC-aided list-decoding view of recall, with filter bits traded
+  against list size;
+- rehearsal filtered by a checksum (checksum-verified self-replay);
+- a cascade of entity, key and triple filters giving typed "I don't know".
 
-- **Data Portraits** (Bloom filters over training data, used for auditing
-  only).
-- **Retrieval-Constrained Decoding** (restricts answers to valid entity
-  names).
-- **KG-verification pipelines** (these store full graphs).
-- **LMLM** (stores fact values in a database).
-- **Prefix-constrained generative retrieval** (keeps item IDs valid).
+Already done, so cite rather than claim:
 
-"Isn't this just RAG?" is answered honestly in
-[`docs/vs_rag.md`](docs/vs_rag.md): partly, and here is exactly where it
-differs and where RAG is still better.
+- **QuCo-RAG** (arXiv 2512.19134) checks generated (head, tail) pairs for
+  co-occurrence in the model's own pretraining corpus, using an exact
+  multi-terabyte index, and retrieves (never abstains) when the count is
+  zero. It is the closest work to CAR.
+- **ReFactX** (arXiv 2508.16983) constrains decoding to real Wikidata
+  facts through an exact 800M-triple prefix tree, and prompts the model to
+  say "I don't know".
+- **An overflow store holding only facts the model can't recall**: SPLM
+  (Sun, Padthe, Asai, Yih, 2025), Dual-Layer Agentic Memory (arXiv
+  2608.22215), LMLM (arXiv 2505.15962).
+- **Evicting a fact only after the new weights recall it**: Dual-Layer
+  Agentic Memory §3.4, and the Sleeping LLM reports (Zenodo). Auditing all
+  earlier facts and writing back what was forgotten is still new, but see
+  the memory cost above.
 
-The full map is in [`docs/literature.md`](docs/literature.md). Web search is
-not proof of novelty; read the listed neighbours in full first.
+"Isn't this just RAG?" is answered in [`docs/vs_rag.md`](docs/vs_rag.md).
 
 ## Does it scale?
 
@@ -182,6 +190,7 @@ cogllm/world.py, world_mt.py   synthetic worlds (48-value and 1,024-value answer
 cogllm/model.py                tiny GPT + training
 cogllm/checksum.py             checksum-aided recall (Bloom checksum, key/entity/prefix filters, count tie-break)
 cogllm/memory.py               Bloom filter, episodic store
+cogllm/baselines.py            no-weights value stores: exact dict, key filter + static function
 cogllm/system.py               round-1 complementary-memory model (kept for comparison)
 experiments/run_care.py        final experiment (3 seeds) -> RESULTS.md via report_care.py
 experiments/pilot_car.py       pilots on the 48-value world
@@ -192,6 +201,8 @@ experiments/assoc.py           relation-free (entity, value) pair checksum
 experiments/pilot_fam.py       FamLM, the hashed-counter familiarity sense (cogllm/famlm.py)
 experiments/run.py, report.py  round 1 (docs/round1/)
 docs/                          theory, literature, ideas log, scaling + PhD roadmap
+sources/                       every cited paper: PDF + full text by topic, see sources/INDEX.md
+tests/                         python -m unittest discover -s tests -t .
 ```
 
 ## Run it
@@ -204,7 +215,7 @@ python -m experiments.pilot_mt          # variations on the hard world
 python -m experiments.pilot_car         # variations on the easy world
 ```
 
-Everything runs on CPU. The 3 final seeds take about 75 minutes on 4 cores.
+Everything runs on CPU. The 3 final seeds take about 75 minutes on 4 cores when training from scratch, and about 3 minutes from the saved checkpoints.
 
 Trained weights for every run are in `results/ckpt/` (15 MB): `care_s{seed}_*`
 from `run_care.py`, `mt_s0_*` from `pilot_mt.py`, `s0_*` from

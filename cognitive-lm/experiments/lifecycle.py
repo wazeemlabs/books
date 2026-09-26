@@ -31,6 +31,7 @@ import torch
 from cogllm.checksum import CheckedRecall
 from cogllm.evaluate import score
 from cogllm.memory import EpisodicStore
+from cogllm.system import key_bits, value_bits
 from cogllm.model import GPT, train_lm
 from cogllm.world_mt import MTConfig, answer_probs_mt, build_mt_world, mt_seqs
 
@@ -145,6 +146,12 @@ def main():
                 return pred, p.argmax(1)
 
             row = {"day": day + 1, "store": len(store), "familiar_keys": int(len(keys))}
+            # Replay and audit enumerate every key read so far, which a Bloom filter
+            # cannot do, so those policies also keep an exact key list. Count it.
+            kb, vb = key_bits(w), value_bits(w)
+            row["memory_bits"] = {"store": store.n_bits(kb, vb),
+                                  "key_list": len(keys) * kb if policy in ("sleep_self", "sleep_verified", "sleep_audit") else 0,
+                                  "filters": sum(cr.bits().values())}
             if policy == "sleep_audit" and day >= 0:
                 row["audit_writebacks"] = audit_writebacks
             groups = {"day0": w.stream[rng.integers(0, len(w.stream), 3000)]}

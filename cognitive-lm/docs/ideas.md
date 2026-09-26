@@ -91,3 +91,23 @@ paraphrase. The two candidates are (a) LMLM-style canonical key emission
 by the model itself, which is already shown to work at 382M params, and (b)
 learned, phrasing-invariant keys from the model's own representation of
 the question. (b) is the riskiest and most valuable next step.
+
+## Round 4: hostile review (2026-09-26)
+
+A methods audit and a full-text literature check changed several claims.
+All numbers are 3 seeds unless noted (`RESULTS.md`, `results/lifecycle_seed*.json`).
+
+| Check | Result | Consequence |
+|---|---|---|
+| Key filter + greedy, no triple checksum | 258k params: 0.54% hallucination (vs 10.7% weights alone, 0.00% CAR). 12k params: 39.2% (vs 0.06% CAR) | for strong weights the key filter does most of the work; the checksum matters for weak weights |
+| Cheapest exact stores | exact dict 27 bits/fact, 0.00%; key filter + static function 20 bits/fact, 0.08%; CAR N=1 29 bits + weights | CAR loses on bits when values are small (10 bits here); it has to be tested on open-string values |
+| Predicted vs measured accuracy | uses the measured rank of the true value, so it matches by construction | dropped as evidence |
+| Checksum sized out of sample | formula fitted on half the people met the target on the other half in 11 of 12 cases, 1.5x over in one | kept: the formula is predictive |
+| Store that refuses facts read once, under mislinks | 10%: 80.3% / 0.74%, vs strict CARE 80.9% / 1.03% | strict CARE's robustness comes from distrusting singletons, not the weights |
+| IDK training at its ≤1% point | 6.0% of ghost-people questions answered (258k), not 37% | README corrected |
+| Lifecycle with the key list counted | audited sleep keeps 96.5 to 100% of facts, ≤0.4% hallucination on read facts; memory grows 72 kbit/day vs 75 for never sleeping | audited sleep preserves facts but saves almost no memory in this world |
+| Literature, full texts | QuCo-RAG (corpus co-occurrence check, retrieves), ReFactX (exact triple trie, prompted IDK), SPLM / Dual-Layer / LMLM (store only unrecallable facts; evict after validation) | overflow store and evict-after-validation are prior work; the value-free checksum inside top-N recall, the CRC framing, verified replay and typed filter abstention were not found |
+
+Next: a real model (OLMo-2 1B) on PopQA, with a checksum built from OLMo's
+own pretraining corpus and open-string answers, where storing values is
+expensive and the checksum's fixed cost can win.

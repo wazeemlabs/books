@@ -105,7 +105,10 @@ class CheckedRecall:
             b["prefix_checksum"] = self.prefix.n_bits()
         return b
 
-    def answer(self, model, names, rels, N=5, probs=None):
+    def answer(self, model, names, rels, N=5, probs=None, verify=True):
+        """verify=False skips the triple checksum and answers the top candidate
+        whenever the entity and key filters pass: the ablation that shows how
+        much of the gain is the key filter alone."""
         w = self.w
         n = len(names)
         pred = np.full(n, UNKNOWN_FACT, dtype=np.int64)
@@ -135,7 +138,7 @@ class CheckedRecall:
                 p = np.where(p > 0, p, -1.0)  # pruned branches sort last
             order = np.argsort(-p, axis=1)[:, :N] if N < p.shape[1] else np.argsort(-p, axis=1)
             tri = fcodes[s:s + chunk, None] * V + order.astype(np.uint64)
-            ok = self.tri.contains(tri.ravel()).reshape(tri.shape)
+            ok = self.tri.contains(tri.ravel()).reshape(tri.shape) if verify else np.ones(tri.shape, bool)
             if self.counting:
                 c = self.cms.count(tri.ravel()).reshape(tri.shape).astype(float)
                 # most-read verified candidate wins; ties go to the weights' ranking
