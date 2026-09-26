@@ -205,3 +205,8 @@ python -m experiments.pilot_car         # variations on the easy world
 ```
 
 Everything runs on CPU. The 3 final seeds take about 75 minutes on 4 cores.
+
+Trained weights for every run are in `results/ckpt/` (15 MB): `care_s{seed}_*`
+from `run_care.py`, `mt_s0_*` from `pilot_mt.py`, `s0_*` from
+`pilot_car.py`. The scripts load them if present instead of retraining, so
+`lifecycle.py`, `continual.py` and `assoc.py` run straight away.
