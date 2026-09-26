@@ -25,3 +25,29 @@ What this shows:
 3. **The extraction-free pair checksum fails.** 42% of wrong candidates co-occur with their subject within 100 tokens of the corpus (common values like "politician", "American football", "London"), and 29% of right candidates do not. At N=1 it is worse than a plain confidence threshold (16.0% / 30.7% against 17.0% / 23.0%), and a longer list only adds hallucinations. The QuCo-RAG signal is too weak to certify an answer; it can only flag.
 
 So the idea stands or falls on the checksum between those two: something close to fact-level that can be built from the corpus without a perfect extractor.
+
+## Step 2: checksums built by reading the corpus
+
+`python -m experiments.real_extract`, raw numbers in `results/real_extract_pilot.json`. Same 300 questions and generations. For each subject, up to 10 passages of OLMo-mix-1124 mentioning it, spread evenly over all its mentions (2,788 passages). Qwen2.5-3B-Instruct reads each passage and answers the question from it alone or says NONE, without seeing the candidates.
+
+| System | Accuracy | Hallucination | Abstain | Ghosts answered |
+|---|---|---|---|---|
+| Greedy, confidence threshold (log p ≥ -1.5) | 11.7% | 8.3% | 80% | 14% |
+| CAR, value anywhere in a passage, N=10 | 15.3% | 20.0% | 65% | 0% |
+| CAR, value within 10 words of the subject, N=10 | 11.7% | 15.0% | 73% | 0% |
+| CAR, extracted checksum, N=1 | 7.7% | 4.0% | 88% | 0% |
+| CAR, extracted checksum, N=10 | 12.0% | 7.3% | 81% | 0% |
+| CAR, oracle triple checksum, N=10 | 34.7% | 1.3% | 64% | 0% |
+
+| Checksum | Wrong candidates accepted | Right candidates accepted |
+|---|---|---|
+| pair co-occurrence (step 1) | 42.0% | 70.7% |
+| value anywhere in a passage | 6.1% | 37.2% |
+| value within 10 words | 3.5% | 24.4% |
+| extracted | 2.3% | 32.9% |
+| oracle | 0.2% | 100% |
+
+- **Precision is good, coverage is not.** The extracted checksum accepts 2.3% of wrong candidates but only a third of right ones. 45% of questions got any fact from their passages, and only 21% got the gold answer.
+- **The extractor does not answer from memory.** On passages about a different subject it answered 0.7% of the time and never gave the gold answer.
+- **Net: level with a confidence threshold on real questions** (12.0% / 7.3% against 11.7% / 8.3% at the same abstention, within noise), and better only on ghosts.
+- **Why coverage is low:** 10 evenly spaced mentions out of thousands rarely include the sentence that states the fact, and common names bring passages about other people. Next: retrieve the passages where the subject and each candidate co-occur (what a full offline extraction would have read) and extract from those, still without showing the candidate.
